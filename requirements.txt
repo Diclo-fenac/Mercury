@@ -1,0 +1,52 @@
+# FastAPI and ASGI server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+
+# Async HTTP client
+httpx>=0.25.0
+
+# Pydantic for data validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Redis async client
+redis[hiredis]>=5.0.0
+
+# Google Cloud services
+google-genai>=0.1.0
+google-cloud-firestore>=2.13.0
+google-cloud-storage>=2.10.0
+firebase-admin>=6.2.0
+
+# Vector database
+qdrant-client>=1.7.0
+
+# Search engine
+typesense>=0.18.0
+
+# Image processing
+Pillow>=10.1.0
+
+# Language detection and translation
+langdetect>=1.0.9
+deep-translator>=1.11.4
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Monitoring and logging
+structlog>=23.2.0
+
+# Development dependencies (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.11.0
+isort>=5.12.0
+
+# Optional: for better performance
+orjson>=3.9.0
+ujson>=5.8.0

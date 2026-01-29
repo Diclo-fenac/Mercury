@@ -1,0 +1,1874 @@
+{
+  "metadata": {
+    "scanned_at": "2026-01-23T22:51:38.429355",
+    "project_id": "walmart-happy-spark",
+    "total_collections": 3,
+    "total_documents": 46
+  },
+  "collections": {
+    "users": {
+      "document_count": 20,
+      "fields": {
+        "created_at": {
+          "type": "timestamp",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2025-07-14 07:19:32.324000+00:00",
+            "2025-07-13 18:11:23.859000+00:00",
+            "2025-07-14 09:07:13.703000+00:00"
+          ]
+        },
+        "behavior": {
+          "type": "map",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "{'frequent_categories': [], 'most_viewed_products': []}",
+            "{'frequent_categories': [], 'most_viewed_products': []}",
+            "{'frequent_categories': [], 'most_viewed_products': []}"
+          ]
+        },
+        "behavior.frequent_categories": {
+          "type": "array",
+          "status": "optional",
+          "presence_ratio": 0.3,
+          "nullable": false,
+          "sample_values": [
+            "[]",
+            "[]",
+            "[]"
+          ]
+        },
+        "behavior.most_viewed_products": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[]",
+            "[]",
+            "[]"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "preferences": {
+          "type": "map",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "{'budget_range': {'min': 0, 'max': 1000}, 'preferred_size': [], 'preferred_colors': [], 'preferred_b",
+            "{'budget_range': {'min': 0, 'max': 1000}, 'preferred_size': [], 'preferred_colors': [], 'preferred_b",
+            "{'budget_range': {'min': 0, 'max': 1000}, 'preferred_size': [], 'preferred_colors': [], 'preferred_b"
+          ]
+        },
+        "preferences.budget_range": {
+          "type": "map",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "{'min': 0, 'max': 1000}",
+            "{'min': 0, 'max': 1000}",
+            "{'min': 0, 'max': 1000}"
+          ]
+        },
+        "preferences.budget_range.min": {
+          "type": "integer",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "preferences.budget_range.max": {
+          "type": "integer",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            1000,
+            1000,
+            1000
+          ]
+        },
+        "preferences.preferred_size": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[]",
+            "[]",
+            "[]"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "preferences.preferred_colors": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[]",
+            "[]",
+            "[]"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "preferences.preferred_brands": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[]",
+            "[]",
+            "[]"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "preferences.preferred_categories": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[]",
+            "[]",
+            "[]"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "updated_at": {
+          "type": "timestamp",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2025-07-14 07:19:32.324000+00:00",
+            "2025-07-13 18:18:43.951000+00:00",
+            "2025-07-14 09:07:13.703000+00:00"
+          ]
+        },
+        "last_activity": {
+          "type": "timestamp",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2025-07-14 07:19:32.324000+00:00",
+            "2025-07-14 09:12:23.622000+00:00",
+            "2025-07-14 09:07:13.703000+00:00"
+          ]
+        },
+        "stats": {
+          "type": "map",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "{'add_to_cart': 0, 'views': 0, 'purchases': 0, 'searches': 0}",
+            "{'add_to_cart': 0, 'views': 0, 'purchases': 0, 'searches': 2}",
+            "{'add_to_cart': 0, 'views': 0, 'purchases': 0, 'searches': 0}"
+          ]
+        },
+        "stats.add_to_cart": {
+          "type": "integer",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "stats.views": {
+          "type": "integer",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "stats.purchases": {
+          "type": "integer",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "stats.searches": {
+          "type": "integer",
+          "status": "optional",
+          "presence_ratio": 0.3,
+          "nullable": false,
+          "sample_values": [
+            0,
+            2,
+            0
+          ]
+        },
+        "name": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "User_t_user",
+            "User_er_001",
+            "User_user1"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "test_user",
+            "test_user_001",
+            "user1"
+          ]
+        },
+        "gender": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "male",
+            "female",
+            "male"
+          ]
+        },
+        "health": {
+          "type": "array",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "['Obesity', 'Back Pain']",
+            "['Heart Disease', 'Cholesterol']",
+            "['Diabetes Type 2']"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "stats.search_appearances": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            41,
+            9,
+            33
+          ]
+        },
+        "stats.reviews_written": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            5,
+            5,
+            1
+          ]
+        },
+        "stats.compare_with_other_products": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            7,
+            1,
+            4
+          ]
+        },
+        "stats.refunds": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            0,
+            1,
+            0
+          ]
+        },
+        "stats.ratings_given": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            9,
+            1,
+            2
+          ]
+        },
+        "stats.hover_events": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            114,
+            24,
+            192
+          ]
+        },
+        "stats.questions_asked": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            1,
+            0,
+            1
+          ]
+        },
+        "stats.shares": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            4,
+            3,
+            3
+          ]
+        },
+        "stats.clicks": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            123,
+            65,
+            21
+          ]
+        },
+        "stats.remove_from_cart": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            2,
+            5,
+            1
+          ]
+        },
+        "stats.wishlist_additions": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            4,
+            9,
+            7
+          ]
+        },
+        "stats.promo_code_used": {
+          "type": "integer",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            4,
+            3,
+            0
+          ]
+        },
+        "location": {
+          "type": "map",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "{'lat': 19.00095584590129, 'address': '945, Gandhi Nagar, Mumbai', 'state': 'Maharashtra', 'lon': 72",
+            "{'lat': 20.04294017001856, 'address': '425, Gandhi Nagar, Nashik', 'state': 'Maharashtra', 'lon': 73",
+            "{'lat': 19.049960378192615, 'address': '507, Station Road, Mumbai', 'state': 'Maharashtra', 'lon': 7"
+          ]
+        },
+        "location.lat": {
+          "type": "number",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            19.00095584590129,
+            20.04294017001856,
+            19.049960378192615
+          ]
+        },
+        "location.address": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "945, Gandhi Nagar, Mumbai",
+            "425, Gandhi Nagar, Nashik",
+            "507, Station Road, Mumbai"
+          ]
+        },
+        "location.state": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "Maharashtra",
+            "Maharashtra",
+            "Maharashtra"
+          ]
+        },
+        "location.lon": {
+          "type": "number",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            72.96138003713756,
+            73.72349482239419,
+            72.97031685129294
+          ]
+        },
+        "location.city": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "Mumbai",
+            "Nashik",
+            "Mumbai"
+          ]
+        }
+      },
+      "sample_documents": [
+        {
+          "created_at": "2025-07-14 07:19:32.324000+00:00",
+          "behavior": {
+            "frequent_categories": [],
+            "most_viewed_products": []
+          },
+          "preferences": {
+            "budget_range": {
+              "min": 0,
+              "max": 1000
+            },
+            "preferred_size": [],
+            "preferred_colors": [],
+            "preferred_brands": [],
+            "preferred_categories": []
+          },
+          "updated_at": "2025-07-14 07:19:32.324000+00:00",
+          "last_activity": "2025-07-14 07:19:32.324000+00:00",
+          "stats": {
+            "add_to_cart": 0,
+            "views": 0,
+            "purchases": 0,
+            "searches": 0
+          },
+          "name": "User_t_user",
+          "id": "test_user"
+        },
+        {
+          "created_at": "2025-07-13 18:11:23.859000+00:00",
+          "behavior": {
+            "frequent_categories": [],
+            "most_viewed_products": []
+          },
+          "preferences": {
+            "budget_range": {
+              "min": 0,
+              "max": 1000
+            },
+            "preferred_size": [],
+            "preferred_colors": [],
+            "preferred_brands": [],
+            "preferred_categories": []
+          },
+          "updated_at": "2025-07-13 18:18:43.951000+00:00",
+          "stats": {
+            "add_to_cart": 0,
+            "views": 0,
+            "purchases": 0,
+            "searches": 2
+          },
+          "last_activity": "2025-07-14 09:12:23.622000+00:00",
+          "name": "User_er_001",
+          "id": "test_user_001"
+        },
+        {
+          "created_at": "2025-07-14 09:07:13.703000+00:00",
+          "behavior": {
+            "frequent_categories": [],
+            "most_viewed_products": []
+          },
+          "preferences": {
+            "budget_range": {
+              "min": 0,
+              "max": 1000
+            },
+            "preferred_size": [],
+            "preferred_colors": [],
+            "preferred_brands": [],
+            "preferred_categories": []
+          },
+          "updated_at": "2025-07-14 09:07:13.703000+00:00",
+          "last_activity": "2025-07-14 09:07:13.703000+00:00",
+          "stats": {
+            "add_to_cart": 0,
+            "views": 0,
+            "purchases": 0,
+            "searches": 0
+          },
+          "name": "User_user1",
+          "id": "user1"
+        }
+      ],
+      "notes": "Schema inferred from 20 documents"
+    },
+    "conversations": {
+      "document_count": 6,
+      "fields": {
+        "created_at": {
+          "type": "timestamp",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2026-01-23 22:43:18.355378+00:00",
+            "2026-01-23 22:37:56.289513+00:00",
+            "2026-01-23 22:36:56.232321+00:00"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "New Chat",
+            "New Chat",
+            "New Chat"
+          ]
+        },
+        "user_id": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "test_user",
+            "test_user",
+            "test_user"
+          ]
+        },
+        "last_message_at": {
+          "type": "timestamp",
+          "status": "common",
+          "presence_ratio": 0.5,
+          "nullable": false,
+          "sample_values": [
+            "2026-01-23 22:43:21.056433+00:00",
+            "2026-01-23 22:37:59.047294+00:00",
+            "2026-01-23 22:36:58.746828+00:00"
+          ]
+        },
+        "updated_at": {
+          "type": "timestamp",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2026-01-23 22:43:18.355389+00:00",
+            "2026-01-23 22:37:56.289527+00:00",
+            "2026-01-23 22:36:56.232336+00:00"
+          ]
+        },
+        "message_count": {
+          "type": "integer",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            2,
+            2,
+            2
+          ]
+        },
+        "id": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "conv_test_user_5431df10",
+            "conv_test_user_be372244",
+            "conv_test_user_ef0513b9"
+          ]
+        }
+      },
+      "sample_documents": [
+        {
+          "created_at": "2026-01-23 22:43:18.355378+00:00",
+          "title": "New Chat",
+          "user_id": "test_user",
+          "last_message_at": "2026-01-23 22:43:21.056433+00:00",
+          "updated_at": "2026-01-23 22:43:18.355389+00:00",
+          "message_count": 2,
+          "id": "conv_test_user_5431df10"
+        },
+        {
+          "created_at": "2026-01-23 22:37:56.289513+00:00",
+          "title": "New Chat",
+          "user_id": "test_user",
+          "last_message_at": "2026-01-23 22:37:59.047294+00:00",
+          "updated_at": "2026-01-23 22:37:56.289527+00:00",
+          "message_count": 2,
+          "id": "conv_test_user_be372244"
+        },
+        {
+          "created_at": "2026-01-23 22:36:56.232321+00:00",
+          "title": "New Chat",
+          "user_id": "test_user",
+          "last_message_at": "2026-01-23 22:36:58.746828+00:00",
+          "updated_at": "2026-01-23 22:36:56.232336+00:00",
+          "message_count": 2,
+          "id": "conv_test_user_ef0513b9"
+        }
+      ],
+      "notes": "Schema inferred from 6 documents"
+    },
+    "products": {
+      "document_count": 20,
+      "fields": {
+        "created_at": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2025-07-04T21:29:14.347992Z",
+            "2025-07-04T21:29:23.647449Z",
+            "2025-07-04T21:29:19.024488Z"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "",
+            "Micro Lite Uni Tee Run",
+            "ECKO Unltd YD CHECK  Cotton Woven Slim Fit Khaki/Navy Blue Shirt"
+          ]
+        },
+        "tags": {
+          "type": "map",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "{'Fit': 'Regular', 'Brand Fit': 'Regular', 'Suitable For': 'Western Wear', 'Type': 'Polo Neck', 'Bra",
+            "{'Fit': 'Regular', 'Brand Fit': 'Regular', 'Suitable For': 'Western Wear', 'Type': 'Round Neck', 'Br",
+            "{'Fit': 'Slim', 'Pack of': '1', 'Generic Name': 'Shirt', 'Pattern': 'Checkered', 'Style Code': 'EKSH"
+          ]
+        },
+        "tags.Fit": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.6,
+          "nullable": false,
+          "sample_values": [
+            "Regular",
+            "Regular",
+            "Slim"
+          ]
+        },
+        "tags.Brand Fit": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.2,
+          "nullable": false,
+          "sample_values": [
+            "Regular",
+            "Regular",
+            "slim"
+          ]
+        },
+        "tags.Suitable For": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.8,
+          "nullable": false,
+          "sample_values": [
+            "Western Wear",
+            "Western Wear",
+            "Western Wear"
+          ]
+        },
+        "tags.Type": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.55,
+          "nullable": false,
+          "sample_values": [
+            "Polo Neck",
+            "Round Neck",
+            "Polo Neck"
+          ]
+        },
+        "tags.Brand Color": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.5,
+          "nullable": false,
+          "sample_values": [
+            "Silver Grey",
+            "Aqua",
+            "Green;Light Green;Orange"
+          ]
+        },
+        "tags.Ideal For": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.6,
+          "nullable": false,
+          "sample_values": [
+            "Men",
+            "Men",
+            "Men"
+          ]
+        },
+        "tags.Neck Type": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.45,
+          "nullable": false,
+          "sample_values": [
+            "Polo Neck",
+            "Round Neck",
+            "Polo Neck"
+          ]
+        },
+        "tags.Pack of": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        "tags.Sales Package": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.6,
+          "nullable": false,
+          "sample_values": [
+            "1 T-Shirt",
+            "1 T-Shirt",
+            "3 T-Shirts"
+          ]
+        },
+        "tags.Pattern": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 0.9,
+          "nullable": false,
+          "sample_values": [
+            "Solid",
+            "Solid",
+            "Checkered"
+          ]
+        },
+        "tags.Fabric Care": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.85,
+          "nullable": false,
+          "sample_values": [
+            "Regular Machine Wash, Do not Iron on print/embroidery/embellishment, Reverse and dry, Do not tumble dry, Dry in shade, Do not dry clean",
+            "Gentle Machine Wash",
+            "Regular Machine Wash"
+          ]
+        },
+        "tags.Size": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.45,
+          "nullable": false,
+          "sample_values": [
+            "M",
+            "XL",
+            "XXL"
+          ]
+        },
+        "tags.Sleeve Type": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.25,
+          "nullable": false,
+          "sample_values": [
+            "Narrow",
+            "Narrow",
+            "Narrow"
+          ]
+        },
+        "tags.Fabric": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 0.95,
+          "nullable": false,
+          "sample_values": [
+            "Cotton Blend",
+            "Cotton Lycra Blend",
+            "Cotton Blend"
+          ]
+        },
+        "tags.Style Code": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 0.9,
+          "nullable": false,
+          "sample_values": [
+            "AX-Basic-Silver Grey",
+            "T10000580",
+            "EKSH001982"
+          ]
+        },
+        "tags.Sleeve": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.85,
+          "nullable": false,
+          "sample_values": [
+            "Half Sleeve",
+            "Half Sleeve",
+            "Full Sleeve"
+          ]
+        },
+        "stock": {
+          "type": "boolean",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            false,
+            false,
+            false
+          ]
+        },
+        "url": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "https://www.flipkart.com/axmann-solid-men-polo-neck-grey-t-shirt/p/itmf6zzugzete9nh?pid=TSHF6ZJMQHBFAMQP&lid=LSTTSHF6ZJMQHBFAMQPCZKYLV&marketplace=FLIPKART&srno=b_5_183&otracker=browse&fm=organic&iid=ff75deb1-5727-4528-90b8-13c43c011ec2.TSHF6ZJMQHBFAMQP.SEARCH&ssid=7f97jhf72o0000001612096497727",
+            "https://www.flipkart.com/t10-sports-solid-men-round-neck-blue-t-shirt/p/itmf3ym9szz34gnu?pid=TSHEQ9SJKZSHKGYE&lid=LSTTSHEQ9SJKZSHKGYEVB8AVC&marketplace=FLIPKART&srno=b_5_173&otracker=browse&fm=organic&iid=1c1a4ea3-7a14-42e0-b13a-7daae3c62a14.TSHEQ9SJKZSHKGYE.SEARCH&ssid=4pdy8m4x7k0000001612412004853",
+            "https://www.flipkart.com/ecko-unltd-men-checkered-casual-khaki-shirt/p/itm369fea7136ac2?pid=SHTFV5GHAZWWGCQH&lid=LSTSHTFV5GHAZWWGCQHTSTZWH&marketplace=FLIPKART&srno=b_7_259&otracker=browse&fm=organic&iid=707e928b-7b9a-4dfc-9ada-13276cc5d621.SHTFV5GHAZWWGCQH.SEARCH&ssid=j74o5w0x8w0000001612104155232"
+          ]
+        },
+        "price": {
+          "type": "map",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "{'selling': 490.0, 'actual': 545.0, 'discount_percent': 10.09}",
+            "{'selling': 499.0, 'actual': 999.0, 'discount_percent': 50.05}",
+            "{'selling': 734.0, 'actual': 1049.0, 'discount_percent': 30.03}"
+          ]
+        },
+        "price.selling": {
+          "type": "number",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            490.0,
+            499.0,
+            734.0
+          ]
+        },
+        "price.actual": {
+          "type": "number",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            545.0,
+            999.0,
+            1049.0
+          ]
+        },
+        "price.discount_percent": {
+          "type": "number",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            10.09,
+            50.05,
+            30.03
+          ]
+        },
+        "rating": {
+          "type": "number",
+          "status": "required",
+          "presence_ratio": 0.9,
+          "nullable": false,
+          "sample_values": [
+            3.8,
+            2.3,
+            2.5
+          ]
+        },
+        "images": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "['https://rukminim1.flixcart.com/image/128/128/jj1qrgw0/t-shirt/m/f/d/xl-ax-basic-silver-grey-axmann",
+            "['https://rukminim1.flixcart.com/image/128/128/t-shirt/g/z/g/xxl-t10000580-t10-sports-original-imaeq",
+            "['https://rukminim1.flixcart.com/image/128/128/kehfi4w0-0/shirt/5/m/i/m-eksh001982-ecko-unltd-origin"
+          ],
+          "array_element_types": [
+            "str"
+          ]
+        },
+        "sub_category": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "Topwear",
+            "Topwear",
+            "Topwear"
+          ]
+        },
+        "updated_at": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2025-07-04T21:29:14.347992Z",
+            "2025-07-04T21:29:23.647449Z",
+            "2025-07-04T21:29:19.024488Z"
+          ]
+        },
+        "brand": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "AXMA",
+            "T10 Spor",
+            "ECKO Unl"
+          ]
+        },
+        "uploaded_at": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "2025-07-04T22:08:16.131197Z",
+            "2025-07-04T22:11:20.459378Z",
+            "2025-07-04T22:09:44.814865Z"
+          ]
+        },
+        "online_available": {
+          "type": "boolean",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            true,
+            true,
+            true
+          ]
+        },
+        "price_history": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[{'date': '2025-02-04', 'price': 500.86}, {'date': '2025-03-06', 'price': 527.96}, {'date': '2025-04",
+            "[{'date': '2025-02-04', 'price': 475.16}, {'date': '2025-03-06', 'price': 512.24}, {'date': '2025-04",
+            "[{'date': '2025-02-04', 'price': 723.53}, {'date': '2025-03-06', 'price': 719.59}, {'date': '2025-04"
+          ],
+          "array_element_types": [
+            "dict"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "Clothing and Accessories",
+            "Clothing and Accessories",
+            "Clothing and Accessories"
+          ]
+        },
+        "availability": {
+          "type": "array",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "[{'shelf': 'top', 'quantity': 8, 'is_backstock': True, 'store_id': 'WM_STORE_010', 'aisle': 'B6'}, {",
+            "[{'shelf': 'top', 'quantity': 46, 'is_backstock': False, 'store_id': 'WM_STORE_015', 'aisle': 'B1'},",
+            "[{'shelf': 'top', 'quantity': 37, 'is_backstock': False, 'store_id': 'WM_STORE_014', 'aisle': 'B5'},"
+          ],
+          "array_element_types": [
+            "dict"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "Solid Men Polo Neck Grey T-Shirt",
+            "Solid Men Round Neck Blue T-Shirt",
+            "Men Slim Fit Checkered Cut Away Collar Casual Shirt"
+          ]
+        },
+        "pid": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "00005493-1875-5b43-8061-20c7d0cbe6b1",
+            "0003c6ae-73c1-5f18-a5e6-778e5f7b8804",
+            "000636e4-07c0-5d26-adfd-f6114389edb7"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "status": "required",
+          "presence_ratio": 1.0,
+          "nullable": false,
+          "sample_values": [
+            "00005493-1875-5b43-8061-20c7d0cbe6b1",
+            "0003c6ae-73c1-5f18-a5e6-778e5f7b8804",
+            "000636e4-07c0-5d26-adfd-f6114389edb7"
+          ]
+        },
+        "tags.Generic Name": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.5,
+          "nullable": false,
+          "sample_values": [
+            "Shirt",
+            "T Shirts",
+            "Cargos"
+          ]
+        },
+        "tags.Color": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.55,
+          "nullable": false,
+          "sample_values": [
+            "Khaki",
+            "Blue",
+            "Multicolor"
+          ]
+        },
+        "tags.Reversible": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.7,
+          "nullable": false,
+          "sample_values": [
+            "No",
+            "No",
+            "No"
+          ]
+        },
+        "tags.Collar": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.1,
+          "nullable": false,
+          "sample_values": [
+            "Cut Away",
+            "Spread"
+          ]
+        },
+        "tags.Country of Origin": {
+          "type": "string",
+          "status": "common",
+          "presence_ratio": 0.5,
+          "nullable": false,
+          "sample_values": [
+            "India",
+            "India",
+            "India"
+          ]
+        },
+        "tags.Other Details": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.1,
+          "nullable": false,
+          "sample_values": [
+            "Dailywear Comfort Fit Poly Cotton T-Shirts - Pack of 2",
+            "\u00a0This T-shirt with printed quotes gives a trendy yet casual look. Durable stitching and Quality finish makes this Product a must have in your wardrobe"
+          ]
+        },
+        "tags.Model Name": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.2,
+          "nullable": false,
+          "sample_values": [
+            "META_6",
+            "Men's Workout Tank Top BodyBuilding Sleeveless Gym Hoodies",
+            "Mens Formal Slim Fit Checkered Shirt - Full Sleeves - Colour Pink - Extra Large Size"
+          ]
+        },
+        "tags.Occasion": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.25,
+          "nullable": false,
+          "sample_values": [
+            "Casual",
+            "Casual",
+            "Sports"
+          ]
+        },
+        "tags.Hooded": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.15,
+          "nullable": false,
+          "sample_values": [
+            "No",
+            "Yes",
+            "Yes"
+          ]
+        },
+        "tags.Closure": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.15,
+          "nullable": false,
+          "sample_values": [
+            "Zipper",
+            "Drawstring, Elastic",
+            "Lace-Ups"
+          ]
+        },
+        "tags.Character": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "None"
+          ]
+        },
+        "tags.Neck": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.15,
+          "nullable": false,
+          "sample_values": [
+            "Hooded Neck",
+            "Mandarin/Chinese Neck",
+            "Hooded Neck"
+          ]
+        },
+        "tags.Pockets": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Side Pockets"
+          ]
+        },
+        "tags.Covered in Warranty": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "No"
+          ]
+        },
+        "tags.Warranty Summary": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "1 Months"
+          ]
+        },
+        "tags.Not Covered in Warranty": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "No"
+          ]
+        },
+        "tags.Domestic Warranty": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.1,
+          "nullable": false,
+          "sample_values": [
+            "1",
+            "3 Months"
+          ]
+        },
+        "tags.Secondary Color": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Pink"
+          ]
+        },
+        "tags.Warranty Service Type": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Replacement"
+          ]
+        },
+        "tags.Sole Material": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Fabric"
+          ]
+        },
+        "tags.Care Instructions": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Care Instructions: Use shoe bags to prevent any stains, dust any dry dirt from the surface using a clean cloth."
+          ]
+        },
+        "tags.Weight": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "500 g (per single Shoe) - Weight of the product may vary depending on size."
+          ]
+        },
+        "tags.Outer Material": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Mesh"
+          ]
+        },
+        "tags.Package contains": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "1 kurta"
+          ]
+        },
+        "tags.Length Type": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Knee Length"
+          ]
+        },
+        "tags.Number of Contents in Sales Package": {
+          "type": "string",
+          "status": "optional",
+          "presence_ratio": 0.05,
+          "nullable": false,
+          "sample_values": [
+            "Pack of 1"
+          ]
+        }
+      },
+      "sample_documents": [
+        {
+          "created_at": "2025-07-04T21:29:14.347992Z",
+          "description": "",
+          "tags": {
+            "Fit": "Regular",
+            "Brand Fit": "Regular",
+            "Suitable For": "Western Wear",
+            "Type": "Polo Neck",
+            "Brand Color": "Silver Grey",
+            "Ideal For": "Men",
+            "Neck Type": "Polo Neck",
+            "Pack of": "1",
+            "Sales Package": "1 T-Shirt",
+            "Pattern": "Solid",
+            "Fabric Care": "Regular Machine Wash, Do not Iron on print/embroidery/embellishment, Reverse and dry, Do not tumble dry, Dry in shade, Do not dry clean",
+            "Size": "M",
+            "Sleeve Type": "Narrow",
+            "Fabric": "Cotton Blend",
+            "Style Code": "AX-Basic-Silver Grey",
+            "Sleeve": "Half Sleeve"
+          },
+          "stock": false,
+          "url": "https://www.flipkart.com/axmann-solid-men-polo-neck-grey-t-shirt/p/itmf6zzugzete9nh?pid=TSHF6ZJMQHBFAMQP&lid=LSTTSHF6ZJMQHBFAMQPCZKYLV&marketplace=FLIPKART&srno=b_5_183&otracker=browse&fm=organic&iid=ff75deb1-5727-4528-90b8-13c43c011ec2.TSHF6ZJMQHBFAMQP.SEARCH&ssid=7f97jhf72o0000001612096497727",
+          "price": {
+            "selling": 490.0,
+            "actual": 545.0,
+            "discount_percent": 10.09
+          },
+          "rating": 3.8,
+          "images": [
+            "https://rukminim1.flixcart.com/image/128/128/jj1qrgw0/t-shirt/m/f/d/xl-ax-basic-silver-grey-axmann-original-imaf6zzvtgkvsgfg.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/jj1qrgw0/t-shirt/m/q/p/m-ax-basic-silver-grey-axmann-original-imaf6zzvgezptwzz.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/jj1qrgw0/t-shirt/j/6/g/3xl-ax-basic-silver-grey-axmann-original-imaf6zzvjgxcgptj.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/jj1qrgw0/t-shirt/m/f/d/xxl-ax-basic-silver-grey-axmann-original-imaf6zzvhzhtbnek.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/jj1qrgw0/t-shirt/m/f/d/l-ax-basic-silver-grey-axmann-original-imaf6zzvuxe6zn3w.jpeg?q=70"
+          ],
+          "sub_category": "Topwear",
+          "updated_at": "2025-07-04T21:29:14.347992Z",
+          "brand": "AXMA",
+          "uploaded_at": "2025-07-04T22:08:16.131197Z",
+          "online_available": true,
+          "price_history": [
+            {
+              "date": "2025-02-04",
+              "price": 500.86
+            },
+            {
+              "date": "2025-03-06",
+              "price": 527.96
+            },
+            {
+              "date": "2025-04-05",
+              "price": 485.82
+            },
+            {
+              "date": "2025-05-05",
+              "price": 450.48
+            },
+            {
+              "date": "2025-06-04",
+              "price": 535.03
+            },
+            {
+              "date": "2025-07-04",
+              "price": 475.38
+            }
+          ],
+          "category": "Clothing and Accessories",
+          "availability": [
+            {
+              "shelf": "top",
+              "quantity": 8,
+              "is_backstock": true,
+              "store_id": "WM_STORE_010",
+              "aisle": "B6"
+            },
+            {
+              "shelf": "top",
+              "quantity": 36,
+              "is_backstock": true,
+              "store_id": "WM_STORE_005",
+              "aisle": "B6"
+            },
+            {
+              "shelf": "middle",
+              "quantity": 41,
+              "is_backstock": false,
+              "store_id": "WM_STORE_015",
+              "aisle": "B6"
+            }
+          ],
+          "title": "Solid Men Polo Neck Grey T-Shirt",
+          "pid": "00005493-1875-5b43-8061-20c7d0cbe6b1",
+          "id": "00005493-1875-5b43-8061-20c7d0cbe6b1"
+        },
+        {
+          "created_at": "2025-07-04T21:29:23.647449Z",
+          "description": "Micro Lite Uni Tee Run",
+          "tags": {
+            "Fit": "Regular",
+            "Brand Fit": "Regular",
+            "Suitable For": "Western Wear",
+            "Type": "Round Neck",
+            "Brand Color": "Aqua",
+            "Neck Type": "Round Neck",
+            "Ideal For": "Men",
+            "Pack of": "1",
+            "Sales Package": "1 T-Shirt",
+            "Pattern": "Solid",
+            "Size": "XL",
+            "Sleeve Type": "Narrow",
+            "Style Code": "T10000580",
+            "Fabric": "Cotton Lycra Blend",
+            "Sleeve": "Half Sleeve"
+          },
+          "stock": false,
+          "url": "https://www.flipkart.com/t10-sports-solid-men-round-neck-blue-t-shirt/p/itmf3ym9szz34gnu?pid=TSHEQ9SJKZSHKGYE&lid=LSTTSHEQ9SJKZSHKGYEVB8AVC&marketplace=FLIPKART&srno=b_5_173&otracker=browse&fm=organic&iid=1c1a4ea3-7a14-42e0-b13a-7daae3c62a14.TSHEQ9SJKZSHKGYE.SEARCH&ssid=4pdy8m4x7k0000001612412004853",
+          "price": {
+            "selling": 499.0,
+            "actual": 999.0,
+            "discount_percent": 50.05
+          },
+          "rating": 2.3,
+          "images": [
+            "https://rukminim1.flixcart.com/image/128/128/t-shirt/g/z/g/xxl-t10000580-t10-sports-original-imaeq8d3s9xsjmzs.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/t-shirt/g/z/g/xs-t10000580-t10-sports-original-imaeq8d35gctpkhk.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/t-shirt/g/z/g/xxl-t10000580-t10-sports-original-imaeq8d3zzwbqwba.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/t-shirt/g/z/g/xs-t10000580-t10-sports-original-imaeq8d3mxuth9bc.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/t-shirt/g/z/g/xs-t10000580-t10-sports-original-imaeq8d3czzzjps7.jpeg?q=70"
+          ],
+          "sub_category": "Topwear",
+          "updated_at": "2025-07-04T21:29:23.647449Z",
+          "brand": "T10 Spor",
+          "uploaded_at": "2025-07-04T22:11:20.459378Z",
+          "online_available": true,
+          "price_history": [
+            {
+              "date": "2025-02-04",
+              "price": 475.16
+            },
+            {
+              "date": "2025-03-06",
+              "price": 512.24
+            },
+            {
+              "date": "2025-04-05",
+              "price": 493.84
+            },
+            {
+              "date": "2025-05-05",
+              "price": 537.96
+            },
+            {
+              "date": "2025-06-04",
+              "price": 529.15
+            },
+            {
+              "date": "2025-07-04",
+              "price": 511.76
+            }
+          ],
+          "category": "Clothing and Accessories",
+          "availability": [
+            {
+              "shelf": "top",
+              "quantity": 46,
+              "is_backstock": false,
+              "store_id": "WM_STORE_015",
+              "aisle": "B1"
+            },
+            {
+              "shelf": "middle",
+              "quantity": 48,
+              "is_backstock": false,
+              "store_id": "WM_STORE_013",
+              "aisle": "B1"
+            },
+            {
+              "shelf": "top",
+              "quantity": 28,
+              "is_backstock": true,
+              "store_id": "WM_STORE_012",
+              "aisle": "B1"
+            }
+          ],
+          "title": "Solid Men Round Neck Blue T-Shirt",
+          "pid": "0003c6ae-73c1-5f18-a5e6-778e5f7b8804",
+          "id": "0003c6ae-73c1-5f18-a5e6-778e5f7b8804"
+        },
+        {
+          "created_at": "2025-07-04T21:29:19.024488Z",
+          "description": "ECKO Unltd YD CHECK  Cotton Woven Slim Fit Khaki/Navy Blue Shirt",
+          "tags": {
+            "Fit": "Slim",
+            "Pack of": "1",
+            "Generic Name": "Shirt",
+            "Pattern": "Checkered",
+            "Style Code": "EKSH001982",
+            "Fabric Care": "Gentle Machine Wash",
+            "Suitable For": "Western Wear",
+            "Color": "Khaki",
+            "Fabric": "Cotton Blend",
+            "Reversible": "No",
+            "Collar": "Cut Away",
+            "Country of Origin": "India",
+            "Sleeve": "Full Sleeve"
+          },
+          "stock": false,
+          "url": "https://www.flipkart.com/ecko-unltd-men-checkered-casual-khaki-shirt/p/itm369fea7136ac2?pid=SHTFV5GHAZWWGCQH&lid=LSTSHTFV5GHAZWWGCQHTSTZWH&marketplace=FLIPKART&srno=b_7_259&otracker=browse&fm=organic&iid=707e928b-7b9a-4dfc-9ada-13276cc5d621.SHTFV5GHAZWWGCQH.SEARCH&ssid=j74o5w0x8w0000001612104155232",
+          "price": {
+            "selling": 734.0,
+            "actual": 1049.0,
+            "discount_percent": 30.03
+          },
+          "rating": 2.5,
+          "images": [
+            "https://rukminim1.flixcart.com/image/128/128/kehfi4w0-0/shirt/5/m/i/m-eksh001982-ecko-unltd-original-imafv5gkh94dnbgg.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/kehfi4w0-0/shirt/c/q/z/m-eksh001982-ecko-unltd-original-imafv5gk99esf8he.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/kehfi4w0-0/shirt/s/1/3/m-eksh001982-ecko-unltd-original-imafv5gkpmj3hkj2.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/kehfi4w0-0/shirt/f/2/b/m-eksh001982-ecko-unltd-original-imafv5gkjbfbmjzt.jpeg?q=70",
+            "https://rukminim1.flixcart.com/image/128/128/kehfi4w0-0/shirt/8/l/n/xl-eksh001982-ecko-unltd-original-imafv5gwfk9rrs8z.jpeg?q=70"
+          ],
+          "sub_category": "Topwear",
+          "updated_at": "2025-07-04T21:29:19.024488Z",
+          "brand": "ECKO Unl",
+          "uploaded_at": "2025-07-04T22:09:44.814865Z",
+          "online_available": true,
+          "price_history": [
+            {
+              "date": "2025-02-04",
+              "price": 723.53
+            },
+            {
+              "date": "2025-03-06",
+              "price": 719.59
+            },
+            {
+              "date": "2025-04-05",
+              "price": 712.08
+            },
+            {
+              "date": "2025-05-05",
+              "price": 769.05
+            },
+            {
+              "date": "2025-06-04",
+              "price": 749.59
+            },
+            {
+              "date": "2025-07-04",
+              "price": 671.61
+            }
+          ],
+          "category": "Clothing and Accessories",
+          "availability": [
+            {
+              "shelf": "top",
+              "quantity": 37,
+              "is_backstock": false,
+              "store_id": "WM_STORE_014",
+              "aisle": "B5"
+            },
+            {
+              "shelf": "bottom",
+              "quantity": 13,
+              "is_backstock": false,
+              "store_id": "WM_STORE_006",
+              "aisle": "B5"
+            },
+            {
+              "shelf": "bottom",
+              "quantity": 11,
+              "is_backstock": false,
+              "store_id": "WM_STORE_008",
+              "aisle": "B5"
+            },
+            {
+              "shelf": "top",
+              "quantity": 8,
+              "is_backstock": true,
+              "store_id": "WM_STORE_013",
+              "aisle": "B5"
+            }
+          ],
+          "title": "Men Slim Fit Checkered Cut Away Collar Casual Shirt",
+          "pid": "000636e4-07c0-5d26-adfd-f6114389edb7",
+          "id": "000636e4-07c0-5d26-adfd-f6114389edb7"
+        }
+      ],
+      "notes": "Schema inferred from 20 documents"
+    }
+  },
+  "relationships": [
+    {
+      "type": "foreign_key",
+      "from_collection": "conversations",
+      "from_field": "user_id",
+      "to_collection": "users",
+      "confidence": "inferred"
+    },
+    {
+      "type": "embedded",
+      "collection": "users",
+      "field": "preferences",
+      "embedded_fields": [
+        "budget_range",
+        "preferred_size",
+        "preferred_colors",
+        "preferred_brands",
+        "preferred_categories"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "users",
+      "field": "stats",
+      "embedded_fields": [
+        "add_to_cart",
+        "views",
+        "purchases",
+        "searches"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "users",
+      "field": "preferences",
+      "embedded_fields": [
+        "budget_range",
+        "preferred_size",
+        "preferred_colors",
+        "preferred_brands",
+        "preferred_categories"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "users",
+      "field": "stats",
+      "embedded_fields": [
+        "add_to_cart",
+        "views",
+        "purchases",
+        "searches"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "users",
+      "field": "preferences",
+      "embedded_fields": [
+        "budget_range",
+        "preferred_size",
+        "preferred_colors",
+        "preferred_brands",
+        "preferred_categories"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "users",
+      "field": "stats",
+      "embedded_fields": [
+        "add_to_cart",
+        "views",
+        "purchases",
+        "searches"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "products",
+      "field": "tags",
+      "embedded_fields": [
+        "Fit",
+        "Brand Fit",
+        "Suitable For",
+        "Type",
+        "Brand Color",
+        "Ideal For",
+        "Neck Type",
+        "Pack of",
+        "Sales Package",
+        "Pattern",
+        "Fabric Care",
+        "Size",
+        "Sleeve Type",
+        "Fabric",
+        "Style Code",
+        "Sleeve"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "products",
+      "field": "price",
+      "embedded_fields": [
+        "selling",
+        "actual",
+        "discount_percent"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "products",
+      "field": "tags",
+      "embedded_fields": [
+        "Fit",
+        "Brand Fit",
+        "Suitable For",
+        "Type",
+        "Brand Color",
+        "Neck Type",
+        "Ideal For",
+        "Pack of",
+        "Sales Package",
+        "Pattern",
+        "Size",
+        "Sleeve Type",
+        "Style Code",
+        "Fabric",
+        "Sleeve"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "products",
+      "field": "price",
+      "embedded_fields": [
+        "selling",
+        "actual",
+        "discount_percent"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "products",
+      "field": "tags",
+      "embedded_fields": [
+        "Fit",
+        "Pack of",
+        "Generic Name",
+        "Pattern",
+        "Style Code",
+        "Fabric Care",
+        "Suitable For",
+        "Color",
+        "Fabric",
+        "Reversible",
+        "Collar",
+        "Country of Origin",
+        "Sleeve"
+      ],
+      "confidence": "observed"
+    },
+    {
+      "type": "embedded",
+      "collection": "products",
+      "field": "price",
+      "embedded_fields": [
+        "selling",
+        "actual",
+        "discount_percent"
+      ],
+      "confidence": "observed"
+    }
+  ],
+  "access_patterns": {
+    "users": {
+      "inferred_patterns": [
+        "get_by_id",
+        "query_by_email",
+        "update_preferences"
+      ],
+      "read_heavy": true,
+      "write_heavy": false
+    },
+    "conversations": {
+      "inferred_patterns": [
+        "get_by_user_id",
+        "get_by_id",
+        "create",
+        "delete"
+      ],
+      "read_heavy": false,
+      "write_heavy": false
+    },
+    "products": {
+      "inferred_patterns": [
+        "search",
+        "get_trending",
+        "get_by_category",
+        "get_by_id"
+      ],
+      "read_heavy": true,
+      "write_heavy": false
+    }
+  }
+}
