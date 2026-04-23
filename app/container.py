@@ -3,8 +3,8 @@ Dependency Injection Container
 Manages service lifecycle and dependencies
 """
 import asyncio
-from typing import Dict, Any, Optional
 from functools import lru_cache
+from typing import Any, Dict
 
 from app.settings import get_settings
 from app.utils.logger import get_logger
@@ -52,8 +52,8 @@ class Container:
         """Initialize infrastructure layer"""
         from app.infrastructure.cache.redis import RedisClient
         from app.infrastructure.db.firestore import FirestoreClient
-        from app.infrastructure.vector.qdrant import QdrantClient
         from app.infrastructure.storage.gcs import GCSClient
+        from app.infrastructure.vector.qdrant import QdrantClient
         
         # Redis - try to connect, continue if fails
         try:
@@ -70,18 +70,24 @@ class Container:
             logger.warning(f"Redis not available: {e}")
             self._services['redis'] = None
         
-        # Firestore - with timeout
+        # Firestore - with timeout and fallback to mock in debug
         try:
             self._services['firestore'] = FirestoreClient(
                 project_id=self.settings.GOOGLE_CLOUD_PROJECT,
-                credentials_path=self.settings.FIREBASE_CREDENTIALS_PATH,  # Use Firebase credentials
+                credentials_path=self.settings.FIREBASE_CREDENTIALS_PATH,
                 collection_name=self.settings.FIRESTORE_COLLECTION
             )
-            await asyncio.wait_for(self._services['firestore'].connect(), timeout=10.0)
+            await asyncio.wait_for(self._services['firestore'].connect(), timeout=5.0)
             logger.info("Firestore connected")
         except (asyncio.TimeoutError, Exception) as e:
             logger.error(f"Firestore connection failed: {e}")
-            raise Exception(f"Firestore is required but failed to connect: {e}")
+            if self.settings.DEBUG:
+                logger.warning("⚠️ Falling back to MockFirestoreClient for local development")
+                from app.infrastructure.db.mock_firestore import MockFirestoreClient
+                self._services['firestore'] = MockFirestoreClient()
+                await self._services['firestore'].connect()
+            else:
+                raise Exception(f"Firestore is required but failed to connect: {e}")
         
         # Qdrant - with timeout
         try:
@@ -113,12 +119,12 @@ class Container:
     
     async def _init_domain_services(self) -> None:
         """Initialize domain services"""
-        from app.domain.products.service import ProductService
-        from app.domain.users.service import UserService
-        from app.domain.pricing.service import PricingService
-        from app.domain.recommendations.engine import RecommendationEngine
         from app.domain.conversations.service import ConversationService
+        from app.domain.pricing.service import PricingService
+        from app.domain.products.service import ProductService
         from app.domain.products.trending_service import TrendingProductsService
+        from app.domain.recommendations.engine import RecommendationEngine
+        from app.domain.users.service import UserService
         
         # Product Service
         self._services['product_service'] = ProductService(
@@ -157,10 +163,10 @@ class Container:
     
     async def _init_addons(self) -> None:
         """Initialize add-ons layer"""
-        from app.addons.search.hybrid import HybridSearch
+        from app.addons.image.processor import ImageProcessor
         from app.addons.memory.short_term import ShortTermMemory
         from app.addons.personalization.scorer import PersonalizationScorer
-        from app.addons.image.processor import ImageProcessor
+        from app.addons.search.hybrid import HybridSearch
         
         # Search
         self._services['hybrid_search'] = HybridSearch(
@@ -214,12 +220,12 @@ class Container:
     async def _init_orchestrators(self) -> None:
         """Initialize orchestrators"""
         from app.orchestrators.chat_orchestrator import ChatOrchestrator
-        from app.orchestrators.search_orchestrator import SearchOrchestrator
         from app.orchestrators.conversation_orchestrator import ConversationOrchestrator
-        from app.orchestrators.product_orchestrator import ProductOrchestrator
-        from app.orchestrators.user_orchestrator import UserOrchestrator
-        from app.orchestrators.recommendation_orchestrator import RecommendationOrchestrator
         from app.orchestrators.image_orchestrator import ImageOrchestrator
+        from app.orchestrators.product_orchestrator import ProductOrchestrator
+        from app.orchestrators.recommendation_orchestrator import RecommendationOrchestrator
+        from app.orchestrators.search_orchestrator import SearchOrchestrator
+        from app.orchestrators.user_orchestrator import UserOrchestrator
         
         # Search Orchestrator (needed by other orchestrators)
         self._services['search_orchestrator'] = SearchOrchestrator(
@@ -229,9 +235,9 @@ class Container:
         )
         
         # Now create SearchTools, VariantTools, PersonalizationTools, and WorkflowTools after search_orchestrator exists
+        from app.intelligence.tools.personalization_tools import PersonalizationTools
         from app.intelligence.tools.search_tools import SearchTools
         from app.intelligence.tools.variant_tools import VariantTools
-        from app.intelligence.tools.personalization_tools import PersonalizationTools
         from app.intelligence.tools.workflow_tools import WorkflowTools
         from app.intelligence.workflow.capability_chain import CapabilityChain
         

@@ -2,7 +2,8 @@
 Image Orchestrator - Layer 2: Orchestration
 Coordinates image processing workflow
 """
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from app.addons.image.processor import ImageProcessor
 from app.addons.search.hybrid import HybridSearch
 
@@ -52,6 +53,25 @@ class ImageOrchestrator:
                 "details": f"Failed to process image upload: {str(e)}"
             }
     
+    async def get_image_metadata(self, image_id: str, user_id: str) -> Dict[str, Any]:
+        """Get image metadata and analysis results"""
+        try:
+            if not self.image_processor:
+                return {"success": False, "error": "image_service_unavailable"}
+            
+            result = await self.image_processor.get_cached_analysis(image_id)
+            if not result:
+                return {"success": False, "error": "not_found"}
+            
+            # Authorization check
+            if result.get('user_id') != user_id:
+                return {"success": False, "error": "access_denied"}
+            
+            return {"success": True, "image": result}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     async def search_by_image(
         self, 
         image_id: Optional[str] = None,

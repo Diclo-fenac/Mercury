@@ -2,17 +2,18 @@
 Chat Orchestrator - Layer 2: Orchestration
 Coordinates chat workflow with enhanced image intelligence and function calling
 """
-from typing import Dict, Any, Optional
-from app.intelligence.engine import LLMEngine
-from app.addons.memory.short_term import ShortTermMemory
+from typing import Any, Dict, List, Optional, Union
+
 from app.addons.image.processor import ImageProcessor
-from app.domain.users.service import UserService
+from app.addons.memory.short_term import ShortTermMemory
 from app.domain.conversations.service import ConversationService
+from app.domain.users.service import UserService
+from app.intelligence.engine import LLMEngine
+from app.intelligence.tools.image_tools import ImageTools
+from app.intelligence.tools.personalization_tools import PersonalizationTools
 from app.intelligence.tools.product_tools import ProductTools
 from app.intelligence.tools.user_tools import UserTools
-from app.intelligence.tools.image_tools import ImageTools
 from app.intelligence.tools.variant_tools import VariantTools
-from app.intelligence.tools.personalization_tools import PersonalizationTools
 from app.utils.logger import get_logger
 
 logger = get_logger("chat_orchestrator")
@@ -240,6 +241,76 @@ class ChatOrchestrator:
             
             logger.info("✅ Autonomous workflow tools registered")
     
+    async def handle_completion(self, request: Any) -> Dict[str, Any]:
+        """Handle OpenAI-style chat completion request"""
+        try:
+            user_id = request.user_id
+            conversation_id = request.conversation_id
+            
+            # Use last message as the primary query for existing handle logic
+            # In a real upgrade, handle() would be refactored to support full message arrays
+            last_message = request.messages[-1].content if request.messages else ""
+            
+            # Map request to existing handle logic
+            # This maintains compatibility while we transition
+            result = await self.handle(
+                message=last_message,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_type='text',
+                image_data=request.image_data
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Chat completion failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def stream_completion(self, request: Any):
+        """Stream chat completion using SSE"""
+        try:
+            # Simple mock streaming for now
+            # In production, this would use self.llm.generate_stream
+            message = request.messages[-1].content if request.messages else ""
+            
+            # Just a placeholder for actual streaming logic
+            full_text = f"Streaming response for: {message}"
+            import asyncio
+            import json
+            
+            for chunk in full_text.split():
+                data = json.dumps({"choices": [{"delta": {"content": chunk + " "}}]})
+                yield f"data: {data}\n\n"
+                await asyncio.sleep(0.1)
+                
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error(f"Streaming error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    async def get_available_tools(self) -> List[Dict[str, Any]]:
+        """Get definitions of all registered tools"""
+        # This would return definitions from self.llm.tools
+        return [
+            {"name": name, "description": info["description"], "parameters": info["parameters"]}
+            for name, info in self.llm.tools.items()
+        ]
+
+    async def execute_tool(self, tool_name: str, parameters: Dict[str, Any], user_id: str = None) -> Any:
+        """Directly execute a registered tool"""
+        if tool_name not in self.llm.tools:
+            raise Exception(f"Tool {tool_name} not found")
+        
+        tool_info = self.llm.tools[tool_name]
+        func = tool_info['function']
+        
+        # In a real app, you might need to inject user_id into parameters
+        if asyncio.iscoroutinefunction(func):
+            return await func(**parameters)
+        return func(**parameters)
+
     async def handle(
         self, 
         message: str, 

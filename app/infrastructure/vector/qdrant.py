@@ -3,11 +3,10 @@ Qdrant Vector Database Client
 Layer 6: Infrastructure - Data & State
 Pure CRUD operations for vector search, no business logic
 """
-from typing import Dict, Any, Optional, List
-import asyncio
+from typing import Any, Dict, List, Optional
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from app.utils.logger import get_logger
 

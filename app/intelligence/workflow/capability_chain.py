@@ -2,9 +2,10 @@
 Capability Chain - Layer 3: Intelligence
 Autonomous capability chaining for intelligent workflow orchestration
 """
-from typing import Dict, Any, List, Optional, Tuple
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from app.utils.logger import get_logger
 
 logger = get_logger("capability_chain")

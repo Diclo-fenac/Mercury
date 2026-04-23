@@ -2,9 +2,10 @@
 User Service - Layer 5: Domain
 Pure business logic
 """
-from typing import Dict, Any, Optional
-from app.infrastructure.db.firestore import FirestoreClient
+from typing import Any, Dict, Optional
+
 from app.infrastructure.cache.redis import RedisClient
+from app.infrastructure.db.firestore import FirestoreClient
 
 
 class UserService:

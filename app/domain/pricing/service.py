@@ -2,7 +2,7 @@
 Pricing Service - Layer 5: Domain
 Pure business logic for pricing rules using actual database schema
 """
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
 
 class PricingService:

@@ -3,14 +3,14 @@ WebSocket Event Handlers
 Handles different types of WebSocket events and messages
 """
 import json
-import asyncio
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict
+
 from fastapi import WebSocket
 
-from app.websocket.manager import WebSocketManager
-from app.services.container import ServiceContainer
 from app.core.logging import StructuredLogger
+from app.services.container import ServiceContainer
+from app.websocket.manager import WebSocketManager
 
 logger = StructuredLogger("websocket_handlers")
 

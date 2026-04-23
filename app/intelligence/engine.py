@@ -3,7 +3,8 @@ LLM Engine - Layer 3: Intelligence
 Google Gemini integration with function calling
 """
 import asyncio
-from typing import Dict, Any, Optional, List, Callable
+from typing import Any, Callable, Dict, Optional
+
 import google.genai as genai
 
 from app.utils.logger import get_logger
@@ -80,7 +81,7 @@ class LLMEngine:
     def _build_prompt(self, message: str, context: Optional[Dict[str, Any]] = None) -> str:
         """Build prompt with context"""
         parts = [
-            "You are a helpful shopping assistant for Walmart.",
+            "You are a helpful shopping assistant for Mercury.",
             "Help users find products, answer questions, and provide recommendations.",
             ""
         ]
@@ -125,8 +126,9 @@ class LLMEngine:
         
         try:
             import base64
-            from PIL import Image
             from io import BytesIO
+
+            from PIL import Image
             
             # Decode base64 image
             if image_data.startswith('data:image/'):

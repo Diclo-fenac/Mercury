@@ -3,9 +3,9 @@ Firestore Database Client
 Layer 6: Infrastructure - Data & State
 Pure CRUD operations, no business logic
 """
-from typing import Dict, Any, Optional, List
-from datetime import datetime
 import asyncio
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter

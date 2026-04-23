@@ -2,13 +2,13 @@
 Health Check Endpoints
 System health and status monitoring
 """
-from fastapi import APIRouter, Depends
-from typing import Dict, Any
 
-from app.models.responses import HealthStatus
+from fastapi import APIRouter, Depends
+
 from app.api.dependencies import get_container_dependency
-from app.utils.logger import get_logger
+from app.models.responses import HealthStatus
 from app.settings import get_settings
+from app.utils.logger import get_logger
 
 logger = get_logger("health")
 router = APIRouter()
@@ -41,11 +41,6 @@ async def health_check(
         version=settings.VERSION,
         services=service_health
     )
-
-@router.get("/ping")
-async def ping():
-    """Simple ping endpoint for load balancers"""
-    return {"status": "ok", "message": "pong"}
 
 @router.get("/ready")
 async def readiness_check(

@@ -3,12 +3,13 @@ LLM Service
 Google Gemini integration with async support
 """
 import asyncio
-from typing import Dict, Any, Optional, List
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from typing import Any, Dict, List, Optional
 
-from app.services.container import ServiceInterface
+import google.generativeai as genai
+from google.generativeai.types import HarmBlockThreshold, HarmCategory
+
 from app.core.logging import get_logger
+from app.services.container import ServiceInterface
 
 logger = get_logger("llm")
 
@@ -95,7 +96,7 @@ class LLMService(ServiceInterface):
             
             # System context
             prompt_parts.append("""
-You are an AI assistant for Walmart, helping customers find products and answer questions.
+You are an AI assistant for Mercury, helping customers find products and answer questions.
 You have access to product information, user preferences, and shopping context.
 Be helpful, friendly, and concise. Focus on providing relevant product recommendations.
 """)
@@ -152,6 +153,7 @@ Be helpful, friendly, and concise. Focus on providing relevant product recommend
             # Prepare image for Gemini
             import base64
             import io
+
             from PIL import Image
             
             # Decode base64 image

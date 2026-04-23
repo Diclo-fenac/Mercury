@@ -2,7 +2,8 @@
 Variant Discovery Tools - Layer 3: Intelligence
 Function calling tools for product variant and substitute discovery
 """
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from app.addons.search.hybrid import HybridSearch
 from app.utils.logger import get_logger
 

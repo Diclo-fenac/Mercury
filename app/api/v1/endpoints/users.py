@@ -2,11 +2,12 @@
 User Endpoints
 User profile management, preferences, and activity tracking
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from typing import Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+
+from app.api.dependencies import PaginationParams, get_container_dependency, require_auth
 from app.models.responses import UserProfileResponse
-from app.api.dependencies import get_container_dependency, require_auth
 
 router = APIRouter()
 
@@ -61,8 +62,8 @@ async def get_user_profile(
 @router.get("/{user_id}/recommendations")
 async def get_user_recommendations(
     user_id: str = Path(..., description="User identifier"),
-    limit: int = Query(default=10, ge=1, le=50, description="Number of recommendations"),
     category: Optional[str] = Query(None, description="Filter by category"),
+    pagination: PaginationParams = Depends(),
     container = Depends(get_container_dependency),
     current_user = Depends(require_auth)
 ):
@@ -84,7 +85,7 @@ async def get_user_recommendations(
         
         result = await recommendation_orchestrator.get_personalized_recommendations(
             user_id=user_id,
-            limit=limit,
+            limit=pagination.limit,
             category=category
         )
         
@@ -95,13 +96,19 @@ async def get_user_recommendations(
             )
         
         recommendations = result.get("recommendations", [])
+        total = len(recommendations)
         
         return {
             "user_id": user_id,
             "recommendations": recommendations,
             "personalized": True,
             "category": category,
-            "total": len(recommendations),
+            "pagination": {
+                "page": pagination.page,
+                "per_page": pagination.limit,
+                "total": total,
+                "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
+            },
             "personalization_type": result.get("personalization_type"),
             "strategies_used": result.get("strategies_used", [])
         }

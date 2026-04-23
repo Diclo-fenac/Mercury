@@ -2,7 +2,8 @@
 User Orchestrator - Layer 2: Orchestration
 Coordinates user workflow
 """
-from typing import Dict, Any, Optional
+from typing import Any, Dict
+
 from app.domain.users.service import UserService
 
 

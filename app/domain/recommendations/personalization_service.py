@@ -2,11 +2,12 @@
 Personalization Service - Layer 4: Domain
 Handles user personalized recommendations
 """
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import structlog
+
 from app.infrastructure.cache import CacheClient
 from app.infrastructure.database import FirestoreClient
-import structlog
-from datetime import datetime, timedelta
 
 logger = structlog.get_logger(__name__)
 

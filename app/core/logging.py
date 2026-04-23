@@ -4,10 +4,10 @@ Structured logging setup for FastAPI application
 """
 import logging
 import sys
-from typing import Dict, Any
-from datetime import datetime
+from typing import Any, Dict
 
 from app.core.config import get_settings
+
 
 class ColoredFormatter(logging.Formatter):
     """Colored log formatter for better readability"""

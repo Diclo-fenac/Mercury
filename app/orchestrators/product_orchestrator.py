@@ -2,7 +2,8 @@
 Product Orchestrator - Layer 2: Orchestration
 Coordinates product workflow
 """
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Optional
+
 from app.domain.products.service import ProductService
 from app.domain.users.service import UserService
 

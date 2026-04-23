@@ -2,9 +2,10 @@
 Hybrid Search - Layer 4: Add-ons
 Combines semantic and keyword search with variant discovery
 """
-from typing import List, Dict, Any, Optional
-from app.infrastructure.vector.qdrant import QdrantClient
+from typing import Any, Dict, List, Optional
+
 from app.infrastructure.db.firestore import FirestoreClient
+from app.infrastructure.vector.qdrant import QdrantClient
 from app.utils.logger import get_logger
 
 logger = get_logger("hybrid_search")

@@ -3,8 +3,8 @@ Service Container
 Dependency injection container for managing service instances
 """
 import asyncio
-from typing import Dict, Any, Optional, Type, TypeVar, Generic, List
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -158,15 +158,15 @@ class ServiceContainer:
     async def _register_all_services(self) -> None:
         """Register all application services"""
         # Import services here to avoid circular imports
-        from app.services.redis_service import RedisService
-        from app.services.llm_service import LLMService
-        from app.services.user_service import UserService
-        from app.services.product_service import ProductService
         from app.services.chat_service import ChatService
         from app.services.conversation_service import ConversationService
-        from app.services.image_service import ImageService
-        from app.services.search_service import SearchService
         from app.services.firestore_service import FirestoreService
+        from app.services.image_service import ImageService
+        from app.services.llm_service import LLMService
+        from app.services.product_service import ProductService
+        from app.services.redis_service import RedisService
+        from app.services.search_service import SearchService
+        from app.services.user_service import UserService
         
         # Register Redis service
         self.register_service(

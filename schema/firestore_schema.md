@@ -1,6 +1,6 @@
 # Firestore Database Schema
 **Generated on**: 2026-01-23T22:51:38.429355
-**Project ID**: walmart-happy-spark
+**Project ID**: mercury-project
 **Collections**: 3
 **Total Documents**: 46
 

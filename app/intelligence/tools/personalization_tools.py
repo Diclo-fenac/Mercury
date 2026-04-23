@@ -2,7 +2,8 @@
 Personalization Tools - Layer 3: Intelligence
 Function calling tools for behavioral personalization and context management
 """
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from app.addons.personalization.scorer import PersonalizationScorer
 from app.utils.logger import get_logger
 

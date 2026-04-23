@@ -3,12 +3,12 @@ WebSocket Connection Manager
 Manages WebSocket connections, rooms, and message broadcasting
 """
 import json
-import asyncio
-from typing import Dict, List, Set, Optional, Any
 from datetime import datetime
-from fastapi import WebSocket, WebSocketDisconnect
+from typing import Any, Dict, List, Optional, Set
 
-from app.core.logging import get_logger, StructuredLogger
+from fastapi import WebSocket
+
+from app.core.logging import StructuredLogger
 
 logger = StructuredLogger("websocket")
 
@@ -251,7 +251,7 @@ class WebSocketManager:
             "event": "connection_response",
             "data": {
                 "status": "connected",
-                "message": "🛍️ Welcome to Walmart AI Assistant - FastAPI Elite Edition!",
+                "message": "🛍️ Welcome to Mercury AI Assistant - FastAPI Elite Edition!",
                 "session_id": id(websocket),
                 "server_time": datetime.now().isoformat(),
                 "features": [

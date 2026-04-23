@@ -3,10 +3,11 @@ FastAPI Dependencies
 Dependency injection for services and utilities
 """
 import asyncio
-from typing import Dict, Any, Optional
 from functools import lru_cache
+from typing import Any, Dict, Optional
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
 from app.core.logging import get_logger

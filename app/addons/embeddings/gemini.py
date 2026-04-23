@@ -4,6 +4,7 @@ Generate embeddings for semantic search
 """
 import asyncio
 from typing import List, Optional
+
 import google.generativeai as genai
 
 from app.utils.logger import get_logger

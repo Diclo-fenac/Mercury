@@ -2,9 +2,10 @@
 Chat Schemas
 Request/Response models for chat endpoints
 """
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, validator
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, Field, validator
 
 
 class ChatRequest(BaseModel):

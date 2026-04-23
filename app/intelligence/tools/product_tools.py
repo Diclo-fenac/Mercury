@@ -2,7 +2,8 @@
 Product Tools - Layer 3: Intelligence
 Function calling tools for product operations
 """
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from app.domain.products.service import ProductService
 
 

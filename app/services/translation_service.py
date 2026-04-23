@@ -2,12 +2,13 @@
 Translation Service
 Language detection and translation using deep-translator
 """
-from typing import Optional, Dict, Any
-from langdetect import detect
-from deep_translator import GoogleTranslator
+from typing import Any, Dict, Optional
 
-from app.services.container import ServiceInterface
+from deep_translator import GoogleTranslator
+from langdetect import detect
+
 from app.core.logging import get_logger
+from app.services.container import ServiceInterface
 
 logger = get_logger("translation")
 

@@ -2,18 +2,19 @@
 Application Configuration
 Pydantic-based settings with environment variable support
 """
-import os
 from functools import lru_cache
-from typing import Optional, List
+from pathlib import Path
+from typing import List, Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from pathlib import Path
+
 
 class Settings(BaseSettings):
     """Application settings with validation"""
     
     # App settings
-    APP_NAME: str = "Walmart AI Assistant"
+    APP_NAME: str = "Mercury AI Assistant"
     VERSION: str = "4.0.0"
     DEBUG: bool = Field(default=False, env="DEBUG")
     PORT: int = Field(default=8000, env="PORT")
@@ -31,7 +32,7 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: Optional[str] = Field(env="FIREBASE_CREDENTIALS_PATH")
     
     # Google Cloud Storage
-    GCS_BUCKET_NAME: str = Field(default="walmart-sparkathon-images", env="GCS_BUCKET_NAME")
+    GCS_BUCKET_NAME: str = Field(default="mercury-images", env="GCS_BUCKET_NAME")
     
     # Qdrant Vector Database
     QDRANT_HOST: str = Field(default="localhost", env="QDRANT_HOST")

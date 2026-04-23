@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Setting up complete Walmart AI Assistant search system..."
+echo "Setting up complete Mercury AI Assistant search system..."
 echo "This will install Typesense + Qdrant + index all data"
 echo ""
 

@@ -2,7 +2,8 @@
 Short-term Memory - Layer 4: Add-ons
 Session-based memory using Redis
 """
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from app.infrastructure.cache.redis import RedisClient
 
 

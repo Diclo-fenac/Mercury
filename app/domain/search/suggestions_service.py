@@ -2,10 +2,12 @@
 Search Suggestions Service - Layer 4: Domain
 Handles search autocomplete and trending searches
 """
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import structlog
+
 from app.infrastructure.cache import CacheClient
 from app.infrastructure.search.typesense import TypesenseClient
-import structlog
 
 logger = structlog.get_logger(__name__)
 

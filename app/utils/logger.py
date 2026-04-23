@@ -4,7 +4,6 @@ Structured Logging Utility
 import logging
 import sys
 from typing import Any, Dict, Optional
-from datetime import datetime
 
 
 def setup_logging(log_level: str = "INFO"):

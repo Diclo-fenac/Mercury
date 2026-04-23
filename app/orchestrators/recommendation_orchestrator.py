@@ -2,10 +2,11 @@
 Recommendation Orchestrator - Layer 2: Orchestration
 Coordinates recommendation workflow
 """
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Optional
+
+from app.domain.products.service import ProductService
 from app.domain.recommendations.engine import RecommendationEngine
 from app.domain.users.service import UserService
-from app.domain.products.service import ProductService
 
 
 class RecommendationOrchestrator:

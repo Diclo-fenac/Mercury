@@ -2,8 +2,9 @@
 Personalization Scorer - Layer 4: Add-ons
 Enhanced behavioral personalization with cross-session and session-specific context
 """
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from app.domain.users.service import UserService
 from app.infrastructure.cache.redis import RedisClient
 from app.utils.logger import get_logger

@@ -1,4 +1,4 @@
-# Walmart AI Assistant - Intelligence Restoration Task
+# Mercury AI Assistant - Intelligence Restoration Task
 
 ## 🎯 Mission
 Restore advanced intelligence capabilities from legacy Flask system into current FastAPI 6-layer architecture without creating a monolith.

@@ -134,7 +134,7 @@ def generate_migration_report():
 
 def create_readme():
     """Create README for the new structure"""
-    readme_content = """# Walmart AI Assistant - Clean Architecture
+    readme_content = """# Mercury AI Assistant - Clean Architecture
 
 ## 🏗️ Architecture
 

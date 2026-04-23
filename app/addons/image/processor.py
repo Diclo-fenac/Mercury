@@ -3,16 +3,17 @@ Image Processor - Layer 4: Add-ons
 Enhanced image upload, processing, barcode detection, and product identification
 """
 import base64
-import uuid
 import json
-from typing import Dict, Any, Optional, List
+import uuid
 from datetime import datetime
-from PIL import Image
 from io import BytesIO
-import google.genai as genai
+from typing import Any, Dict, Optional
 
-from app.infrastructure.storage.gcs import GCSClient
+import google.genai as genai
+from PIL import Image
+
 from app.infrastructure.cache.redis import RedisClient
+from app.infrastructure.storage.gcs import GCSClient
 from app.utils.logger import get_logger
 
 logger = get_logger("image_processor")

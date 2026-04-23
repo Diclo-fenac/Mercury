@@ -2,11 +2,10 @@
 Product Service
 Product management and search operations
 """
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from app.services.container import ServiceInterface
 from app.core.logging import get_logger
+from app.services.container import ServiceInterface
 
 logger = get_logger("product")
 

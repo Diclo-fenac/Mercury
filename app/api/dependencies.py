@@ -2,9 +2,23 @@
 API Dependencies
 FastAPI dependency injection for services
 """
-from typing import Dict, Any, Optional
-from fastapi import Depends, HTTPException, status, Request
+from typing import Any, Dict, Optional
+
+from fastapi import Depends, HTTPException, Query, status
+
 from app.container import get_container
+
+
+class PaginationParams:
+    """Dependency for common pagination parameters"""
+    def __init__(
+        self, 
+        page: int = Query(1, ge=1, description="Page number"), 
+        limit: int = Query(20, ge=1, le=100, description="Items per page")
+    ):
+        self.page = page
+        self.limit = limit
+        self.offset = (page - 1) * limit
 
 
 async def get_container_dependency():
@@ -42,29 +56,78 @@ async def get_chat_service(container = Depends(get_container_dependency)):
     return container.get('chat_orchestrator')
 
 
-# Authentication (simplified for development)
-async def get_current_user() -> Optional[Dict[str, Any]]:
-    """Get current user (optional) - simplified for development"""
-    # In production, this would validate JWT tokens, API keys, etc.
-    return None
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 
+from app.settings import get_settings
 
-async def require_auth() -> Dict[str, Any]:
-    """Require authentication - simplified for development"""
-    # In production, this would validate JWT tokens, API keys, etc.
-    # For now, return a mock user for development
-    return {
-        "user_id": "dev_user_123",
-        "email": "dev@example.com",
-        "roles": ["user"]
-    }
+security = HTTPBearer(auto_error=False)
+
+# Authentication
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> Optional[Dict[str, Any]]:
+    """
+    Get current user from JWT token
+    Returns None if no token provided or invalid
+    """
+    if not credentials:
+        return None
     
-    # Production implementation would be:
-    # token = get_token_from_header()
-    # user = validate_jwt_token(token)
-    # if not user:
-    #     raise HTTPException(status_code=401, detail="Invalid token")
-    # return user
+    settings = get_settings()
+    token = credentials.credentials
+    
+    try:
+        # Development override: allow "dev_user_*" tokens
+        if settings.DEBUG and token.startswith("user_"):
+            user_id = token.replace("user_", "")
+            return {"user_id": user_id, "authenticated": True, "roles": ["user"]}
+
+        payload = jwt.decode(
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=["HS256"]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+        
+        return {
+            "user_id": user_id,
+            "authenticated": True,
+            "roles": payload.get("roles", ["user"]),
+            "email": payload.get("email")
+        }
+    except JWTError:
+        return None
+    except Exception:
+        # In a real app, log this
+        return None
+
+
+async def require_auth(
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Require valid authentication token"""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Valid authentication token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return current_user
+
+
+async def require_admin(
+    current_user: Dict[str, Any] = Depends(require_auth)
+) -> Dict[str, Any]:
+    """Require admin role"""
+    if "admin" not in current_user.get("roles", []):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user
 
 
 # Rate limiting (simple implementation)

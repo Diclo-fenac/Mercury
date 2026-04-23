@@ -2,10 +2,12 @@
 Response Models
 Pydantic models for API response validation
 """
-from typing import Optional, List, Dict, Any, Union
-from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 # Base response models
 class BaseResponse(BaseModel):
@@ -23,8 +25,15 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
 # Product models
+class ScoreBreakdown(BaseModel):
+    """Transparency for search ranking scores"""
+    keyword_score: float = Field(0.0, description="Keyword/Exact match score")
+    semantic_score: float = Field(0.0, description="Semantic/Vector similarity score")
+    rrf_score: float = Field(0.0, description="Reciprocal Rank Fusion combined score")
+    personalization_boost: float = Field(0.0, description="Boost from user preferences/history")
+
 class ProductInfo(BaseModel):
-    """Product information"""
+    """Product information with ranking transparency"""
     id: str = Field(..., description="Product identifier")
     title: str = Field(..., description="Product title")
     description: Optional[str] = Field(None, description="Product description")
@@ -37,15 +46,23 @@ class ProductInfo(BaseModel):
     images: Optional[List[str]] = Field(None, description="Product images")
     tags: Optional[Dict[str, Any]] = Field(None, description="Product tags")
     availability: Optional[List[Dict[str, Any]]] = Field(None, description="Store availability")
+    score: float = Field(0.0, description="Search relevance score")
+    breakdown: Optional[ScoreBreakdown] = Field(None, description="Ranking score transparency")
+
+class SearchMeta(BaseModel):
+    """Search execution metadata"""
+    latency_ms: int = Field(..., description="Execution time in milliseconds")
+    cache_hit: bool = Field(default=False, description="Whether results came from cache")
+    search_mode: str = Field(default="hybrid", description="Search mode used (keyword, semantic, hybrid)")
 
 class SearchResult(BaseResponse):
-    """Search results response"""
+    """Production-ready search results response"""
     query: str = Field(..., description="Search query")
     results: List[ProductInfo] = Field(..., description="Search results")
     total_results: int = Field(..., description="Total number of results")
-    reranked: bool = Field(default=False, description="Results were reranked")
-    personalized: bool = Field(default=False, description="Results were personalized")
-    search_metadata: Optional[Dict[str, Any]] = Field(None, description="Search metadata")
+    facets: Optional[Dict[str, Dict[str, int]]] = Field(None, description="Aggregated result facets")
+    meta: Optional[SearchMeta] = Field(None, description="Execution metadata")
+    search_metadata: Optional[Dict[str, Any]] = Field(None, description="Additional search metadata")
 
 # Chat models
 class ChatResponse(BaseResponse):
@@ -122,6 +139,7 @@ class ConversationListResponse(BaseResponse):
     """Conversation list response"""
     conversations: List[ConversationSummary] = Field(..., description="User conversations")
     total: int = Field(..., description="Total number of conversations")
+    pagination: Optional[Dict[str, Any]] = Field(None, description="Pagination metadata")
 
 class ConversationDetailResponse(BaseResponse):
     """Conversation detail response"""

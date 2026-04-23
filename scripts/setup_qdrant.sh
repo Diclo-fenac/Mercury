@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Setting up Qdrant for Walmart AI Assistant..."
+echo "Setting up Qdrant for Mercury AI Assistant..."
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
@@ -14,7 +14,7 @@ docker stop qdrant 2>/dev/null || true
 docker rm qdrant 2>/dev/null || true
 
 # Create Qdrant storage directory
-QDRANT_STORAGE="$(realpath ~/Desktop/walmart_sparkathon/qdrant_sto)"
+QDRANT_STORAGE="$(realpath ~/Desktop/mercury/qdrant_sto)"
 echo "Creating Qdrant storage directory at $QDRANT_STORAGE..."
 mkdir -p "$QDRANT_STORAGE"
 

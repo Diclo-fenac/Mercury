@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Setting up Typesense for Walmart AI Assistant..."
+echo "Setting up Typesense for Mercury AI Assistant..."
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then

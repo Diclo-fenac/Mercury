@@ -2,12 +2,12 @@
 Trending Products Service - Layer 5: Domain
 Handles trending products and deals based on actual database fields
 """
-from typing import List, Dict, Any, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from app.infrastructure.cache.redis import RedisClient
 from app.infrastructure.db.firestore import FirestoreClient
 from app.utils.logger import get_logger
-from datetime import datetime, timedelta
-import random
 
 logger = get_logger("trending_products")
 

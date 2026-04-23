@@ -2,21 +2,23 @@
 Chat Endpoints
 Chat functionality with AI assistant
 """
-from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.models.requests import ChatMessage
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+
+from app.api.dependencies import PaginationParams, get_container_dependency, require_auth
+from app.models.requests import ChatCompletionRequest, ChatToolsRequest
 from app.models.responses import ChatResponse
-from app.api.dependencies import get_container_dependency, require_auth
 
 router = APIRouter()
 
-@router.post("/", response_model=ChatResponse)
-async def chat(
-    request: ChatMessage,
+@router.post("/completions", response_model=ChatResponse)
+async def chat_completion(
+    request: ChatCompletionRequest,
     container = Depends(get_container_dependency),
     current_user = Depends(require_auth)
 ):
-    """Send chat message to AI assistant"""
+    """OpenAI-style chat completions (batch mode)"""
     try:
         chat_orchestrator = container.get('chat_orchestrator')
         if not chat_orchestrator:
@@ -25,20 +27,16 @@ async def chat(
                 detail="Chat service not available"
             )
         
-        # Verify user owns the conversation
-        if current_user["user_id"] != request.user_id:
-            raise HTTPException(
+        # Verify user authorization
+        user_id = request.user_id or current_user["user_id"]
+        if current_user["user_id"] != user_id:
+             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
-        
-        result = await chat_orchestrator.handle(
-            message=request.message,
-            user_id=request.user_id,
-            conversation_id=request.conversation_id,
-            message_type=request.message_type,
-            image_data=request.image_data
-        )
+
+        # Map new model to orchestrator
+        result = await chat_orchestrator.handle_completion(request)
         
         if not result.get('success'):
             raise HTTPException(
@@ -48,9 +46,8 @@ async def chat(
         
         return ChatResponse(
             response=result.get("response", ""),
-            conversation_id=request.conversation_id,
-            function_called=result.get("function_called"),
-            image_analysis=result.get("image_analysis"),
+            conversation_id=request.conversation_id or result.get("conversation_id", "unknown"),
+            message_id=result.get("message_id", "unknown"),
             features_used=result.get("features_used", {})
         )
         
@@ -62,9 +59,75 @@ async def chat(
             detail=f"Chat failed: {str(e)}"
         )
 
+@router.post("/stream")
+async def chat_stream(
+    request: ChatCompletionRequest,
+    container = Depends(get_container_dependency),
+    current_user = Depends(require_auth)
+):
+    """Streaming chat completions using Server-Sent Events (SSE)"""
+    try:
+        chat_orchestrator = container.get('chat_orchestrator')
+        if not chat_orchestrator:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Chat service not available"
+            )
+        
+        user_id = request.user_id or current_user["user_id"]
+        if current_user["user_id"] != user_id:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
+        return StreamingResponse(
+            chat_orchestrator.stream_completion(request),
+            media_type="text/event-stream"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Streaming failed: {str(e)}"
+        )
+
+@router.post("/tools")
+async def chat_tools(
+    request: ChatToolsRequest,
+    container = Depends(get_container_dependency),
+    current_user = Depends(require_auth)
+):
+    """Discover or execute specific tools"""
+    try:
+        chat_orchestrator = container.get('chat_orchestrator')
+        if not chat_orchestrator:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Chat service not available"
+            )
+
+        if request.operation == "discover":
+            tools = await chat_orchestrator.get_available_tools()
+            return {"success": True, "tools": tools}
+        else:
+            result = await chat_orchestrator.execute_tool(
+                request.tool_name, 
+                request.parameters,
+                user_id=current_user["user_id"]
+            )
+            return {"success": True, "result": result}
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Tool operation failed: {str(e)}"
+        )
+
 @router.get("/history/{conversation_id}")
 async def get_conversation_history(
     conversation_id: str,
+    pagination: PaginationParams = Depends(),
     container = Depends(get_container_dependency),
     current_user = Depends(require_auth)
 ):
@@ -80,7 +143,7 @@ async def get_conversation_history(
         result = await conversation_orchestrator.get_conversation_history(
             conversation_id=conversation_id,
             user_id=current_user["user_id"],
-            limit=50
+            limit=pagination.limit
         )
         
         if not result.get('success'):
@@ -100,11 +163,19 @@ async def get_conversation_history(
                     detail="Failed to get conversation history"
                 )
         
+        messages = result.get("messages", [])
+        total = len(messages)
+        
         return {
             "success": True,
             "conversation_id": conversation_id,
-            "messages": result.get("messages", []),
-            "total": len(result.get("messages", []))
+            "messages": messages,
+            "pagination": {
+                "page": pagination.page,
+                "per_page": pagination.limit,
+                "total": total,
+                "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
+            }
         }
         
     except HTTPException:

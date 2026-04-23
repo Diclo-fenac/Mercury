@@ -2,7 +2,8 @@
 Mock Firestore Client for Graceful Degradation
 Used when real Firestore is unavailable
 """
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from app.utils.logger import get_logger
 
 logger = get_logger("mock_firestore")
@@ -154,7 +155,7 @@ class MockFirestoreClient:
     
     async def log_user_activity(self, activity_data: Dict[str, Any]) -> Optional[str]:
         """Mock log user activity - returns None"""
-        logger.debug(f"MockFirestore: log_user_activity() -> None")
+        logger.debug("MockFirestore: log_user_activity() -> None")
         return None
     
     async def get_user_activity(

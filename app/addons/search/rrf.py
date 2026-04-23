@@ -2,8 +2,7 @@
 Reciprocal Rank Fusion - Layer 4: Add-ons
 Combines results from multiple search engines
 """
-from typing import List, Dict, Any, Optional
-import math
+from typing import Any, Dict, List, Optional
 
 from app.utils.logger import get_logger
 

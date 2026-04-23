@@ -2,7 +2,8 @@
 User Tools - Layer 3: Intelligence
 Function calling tools for user operations
 """
-from typing import Dict, Any
+from typing import Any, Dict
+
 from app.domain.users.service import UserService
 
 

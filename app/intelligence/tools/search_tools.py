@@ -2,7 +2,8 @@
 Search Tools for LLM Function Calling
 Layer 3: Intelligence - Tools
 """
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 from app.utils.logger import get_logger
 
 logger = get_logger("search_tools")

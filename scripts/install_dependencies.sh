@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Installing dependencies for Walmart AI Assistant..."
+echo "Installing dependencies for Mercury AI Assistant..."
 
 # Check if pip is available
 if ! command -v pip &> /dev/null; then

@@ -2,8 +2,9 @@
 Typesense Search Client
 Layer 6: Infrastructure - Fuzzy/Keyword Search
 """
-from typing import Dict, Any, Optional, List
 import asyncio
+from typing import Any, Dict, List, Optional
+
 import typesense
 
 from app.utils.logger import get_logger

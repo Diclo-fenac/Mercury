@@ -2,7 +2,8 @@
 Conversation Orchestrator - Layer 2: Orchestration
 Coordinates conversation workflow
 """
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Optional
+
 from app.domain.conversations.service import ConversationService
 
 

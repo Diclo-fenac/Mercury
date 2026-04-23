@@ -2,9 +2,10 @@
 Conversation Service - Layer 5: Domain
 Pure business logic for conversations
 """
-from typing import Dict, Any, Optional, List
-from app.infrastructure.db.firestore import FirestoreClient
+from typing import Any, Dict, List, Optional
+
 from app.infrastructure.cache.redis import RedisClient
+from app.infrastructure.db.firestore import FirestoreClient
 from app.infrastructure.id_generator import IDGenerator
 
 

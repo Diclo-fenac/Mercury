@@ -2,14 +2,12 @@
 Cache Management Endpoints
 Redis cache operations and statistics
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Optional, Dict, Any
+from typing import Any, Dict
 
-from app.models.responses import CacheStats, BaseResponse
-from app.api.dependencies import (
-    get_container_dependency,
-    get_current_user
-)
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.api.dependencies import get_container_dependency, require_admin
+from app.models.responses import CacheStats
 from app.utils.logger import get_logger
 
 logger = get_logger("cache")
@@ -18,7 +16,7 @@ router = APIRouter()
 @router.get("/stats", response_model=CacheStats)
 async def get_cache_stats(
     container = Depends(get_container_dependency),
-    current_user: Optional[Dict[str, Any]] = Depends(get_current_user)
+    admin: Dict[str, Any] = Depends(require_admin)
 ):
     """
     Get Redis cache statistics
@@ -52,7 +50,8 @@ async def get_cache_stats(
 
 @router.get("/health")
 async def check_cache_health(
-    container = Depends(get_container_dependency)
+    container = Depends(get_container_dependency),
+    admin: Dict[str, Any] = Depends(require_admin)
 ):
     """
     Check cache service health

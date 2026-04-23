@@ -2,7 +2,8 @@
 Image Intelligence Tools - Layer 3: Intelligence
 Function calling tools for image analysis and barcode detection
 """
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from app.addons.image.processor import ImageProcessor
 from app.utils.logger import get_logger
 

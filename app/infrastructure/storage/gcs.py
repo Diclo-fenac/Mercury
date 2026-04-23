@@ -5,11 +5,10 @@ Pure file operations, no business logic
 """
 import asyncio
 import base64
-from typing import Optional, List, Dict, Any
-from io import BytesIO
+from typing import Any, Dict, List, Optional
 
 from google.cloud import storage
-from google.cloud.storage import Bucket, Blob
+from google.cloud.storage import Bucket
 
 from app.utils.logger import get_logger
 

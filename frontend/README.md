@@ -1,6 +1,6 @@
-# Walmart AI Assistant - Enhanced Frontend API Tester
+# Mercury AI Assistant - Enhanced Frontend API Tester
 
-A comprehensive web-based frontend for testing all API endpoints including the new **Intelligence Restoration** features of the Walmart AI Assistant.
+A comprehensive web-based frontend for testing all API endpoints including the new **Intelligence Restoration** features of the Mercury AI Assistant.
 
 ## 🚀 New Intelligence Features
 
@@ -116,7 +116,7 @@ A comprehensive web-based frontend for testing all API endpoints including the n
 
 ### Prerequisites
 - Modern web browser (Chrome, Firefox, Safari, Edge)
-- Running Walmart AI Assistant backend server with Intelligence Restoration
+- Running Mercury AI Assistant backend server with Intelligence Restoration
 - Backend server accessible at `http://localhost:8000`
 
 ### Installation
@@ -451,7 +451,7 @@ To contribute improvements:
 
 ### Prerequisites
 - Modern web browser (Chrome, Firefox, Safari, Edge)
-- Running Walmart AI Assistant backend server
+- Running Mercury AI Assistant backend server
 - Backend server accessible at `http://localhost:8000`
 
 ### Installation

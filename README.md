@@ -1,6 +1,6 @@
-# Walmart AI Assistant
+# Mercury AI Assistant
 
-An advanced AI-powered product search and recommendation system for Walmart. This is a production-ready FastAPI backend with a sophisticated hybrid search engine combining fuzzy matching, semantic search, and personalization.
+An advanced AI-powered product search and recommendation system for Mercury. This is a production-ready FastAPI backend with a sophisticated hybrid search engine combining fuzzy matching, semantic search, and personalization.
 
 ## Key Features
 
@@ -117,8 +117,8 @@ where:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/walmart-ai-assistant.git
-cd walmart-ai-assistant
+git clone https://github.com/your-org/mercury-ai-assistant.git
+cd mercury-ai-assistant
 ```
 
 ### 2. Environment Setup
@@ -245,7 +245,7 @@ curl -X POST http://localhost:8000/api/v1/search/ \
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `GOOGLE_API_KEY` | Google Gemini API key | `AIzaSy...` |
-| `GOOGLE_CLOUD_PROJECT` | GCP project ID | `walmart-ai-project` |
+| `GOOGLE_CLOUD_PROJECT` | GCP project ID | `mercury-ai-project` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON | `/app/config/service-account.json` |
 | `FIREBASE_CREDENTIALS_PATH` | Path to Firebase config | `/app/config/firebase.json` |
 | `SECRET_KEY` | FastAPI secret key | `your-secret-key` |
@@ -284,7 +284,7 @@ You need two credential files:
 ## Project Structure
 
 ```
-walmart-ai-assistant/
+mercury-ai-assistant/
 ├── app/
 │   ├── api/                    # API Layer (FastAPI endpoints)
 │   │   └── v1/
@@ -446,14 +446,14 @@ Total Response Time:         185-380ms ✅
 
 ```bash
 # Build image
-docker build -t walmart-ai-assistant:latest .
+docker build -t mercury-ai-assistant:latest .
 
 # Run container
 docker run -p 8000:8000 \
   -e GOOGLE_API_KEY=your-key \
   -e GOOGLE_CLOUD_PROJECT=your-project \
   -e REDIS_HOST=redis \
-  walmart-ai-assistant:latest
+  mercury-ai-assistant:latest
 
 # Or use docker-compose
 docker-compose up -d
@@ -467,7 +467,7 @@ kubectl apply -f infra/k8s/
 
 # Check deployment
 kubectl get pods
-kubectl logs -f deployment/walmart-ai-assistant
+kubectl logs -f deployment/mercury-ai-assistant
 ```
 
 See `infra/k8s/` for complete Kubernetes manifests.
@@ -478,8 +478,8 @@ See `infra/k8s/` for complete Kubernetes manifests.
 # On the server:
 
 # 1. Clone repository
-git clone https://github.com/your-org/walmart-ai-assistant.git
-cd walmart-ai-assistant
+git clone https://github.com/your-org/mercury-ai-assistant.git
+cd mercury-ai-assistant
 
 # 2. Setup Python environment
 python3.11 -m venv venv
@@ -497,14 +497,14 @@ python scripts/index_typesense.py
 python scripts/index_qdrant_vectors.py
 
 # 5. Start application with systemd
-sudo cp infra/systemd/walmart-ai.service /etc/systemd/system/
+sudo cp infra/systemd/mercury-ai.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable walmart-ai
-sudo systemctl start walmart-ai
+sudo systemctl enable mercury-ai
+sudo systemctl start mercury-ai
 
 # 6. Setup Nginx reverse proxy
-sudo cp infra/nginx/walmart-ai.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/walmart-ai.conf /etc/nginx/sites-enabled/
+sudo cp infra/nginx/mercury-ai.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/mercury-ai.conf /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```

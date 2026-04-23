@@ -2,7 +2,8 @@
 Recommendation Engine - Layer 5: Domain
 Pure business logic for recommendations using actual database schema
 """
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from app.domain.products.service import ProductService
 from app.domain.users.service import UserService
 

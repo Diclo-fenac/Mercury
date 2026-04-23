@@ -1,9 +1,61 @@
+# --- Project Specific ---
 config/firebase-config.json
 config/google_cred.json
-__pycache__/
-*.pyc
 .env
-.venv
+.env.local
+.env.*.local
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Virtual Environments ---
+.venv/
 venv/
+ENV/
+env/
+
+# --- Tools ---
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints
+.ruff_cache/
+
+# --- UV ---
+.uv
+
+# --- IDEs ---
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+logs/
+*.log

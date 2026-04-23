@@ -4,13 +4,15 @@ Clean architecture implementation
 """
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.settings import get_settings
-from app.container import get_container
-from app.utils.logger import setup_logging
 from app.api.v1.router import api_router
+from app.container import get_container
+from app.middleware.versioning import VersioningMiddleware
+from app.settings import get_settings
+from app.utils.logger import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     
     app = FastAPI(
-        title="Walmart AI Assistant",
+        title="Mercury AI Assistant",
         version="4.0.0",
         docs_url="/docs" if settings.DEBUG else None,
         lifespan=lifespan
@@ -50,12 +52,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
+    app.add_middleware(VersioningMiddleware)
+    
     # Include main API router with all endpoints
     app.include_router(api_router, prefix="/api/v1")
     
     @app.get("/")
     async def root():
-        return {"message": "Walmart AI Assistant API", "version": "4.0.0"}
+        return {"message": "Mercury AI Assistant API", "version": "4.0.0"}
     
     @app.get("/health")
     async def health():

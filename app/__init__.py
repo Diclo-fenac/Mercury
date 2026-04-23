@@ -1,1 +1,1 @@
-"""Walmart AI Assistant Application"""
+"""Mercury AI Assistant Application"""
