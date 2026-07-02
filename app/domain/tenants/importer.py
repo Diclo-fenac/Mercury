@@ -6,6 +6,7 @@ import csv
 import io
 import uuid
 from typing import Any, Dict, List
+
 from app.infrastructure.search.typesense import TypesenseClient
 from app.utils.logger import get_logger
 

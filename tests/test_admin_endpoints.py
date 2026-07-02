@@ -1,11 +1,13 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock
+
 
 @pytest.fixture
 def admin_client():
+    from app.api.dependencies import TenantContext, get_container_dependency, require_admin_key
     from main import app
-    from app.api.dependencies import require_admin_key, get_container_dependency, TenantContext
     
     # Mock admin tenant
     dummy_admin_tenant = TenantContext(

@@ -2,9 +2,9 @@
 Locust load test for Mercury AI Assistant
 Run: locust -f tests/load_test.py --host=http://localhost:8000
 """
-from locust import HttpUser, task, between
 import random
-import json
+
+from locust import HttpUser, between, task
 
 
 class MercuryUser(HttpUser):

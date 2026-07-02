@@ -1,17 +1,18 @@
 import asyncio
-from logging.config import fileConfig
-
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
-
-# Import models for autogenerate
 import sys
+from logging.config import fileConfig
 from pathlib import Path
+
+# Add app to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from app.infrastructure.db.models import Base
+
+from sqlalchemy import pool  # noqa: E402
+from sqlalchemy.engine import Connection  # noqa: E402
+from sqlalchemy.ext.asyncio import async_engine_from_config  # noqa: E402
+
+from alembic import context  # noqa: E402
+from app.infrastructure.db.models import Base  # noqa: E402
+from app.settings import get_settings  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -23,7 +24,6 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Dynamically override the alembic.ini sqlalchemy.url with the app's env vars
-from app.settings import get_settings
 settings = get_settings()
 if settings.DATABASE_URL:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

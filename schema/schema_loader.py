@@ -4,7 +4,7 @@ Loads cached schema information without connecting to Postgres
 """
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 
 class PostgresSchema:

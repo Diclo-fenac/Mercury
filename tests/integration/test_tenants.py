@@ -1,7 +1,8 @@
-import pytest
+import sys
 import uuid
 from pathlib import Path
-import sys
+
+import pytest
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -164,7 +165,6 @@ class TestTenantIntegration:
 
         # 3. Seed products into PostgreSQL
         from app.infrastructure.db.models import Product
-        import uuid
         
         prod_a_id = f"prod_a_{suffix}"
         prod_b_id = f"prod_b_{suffix}"

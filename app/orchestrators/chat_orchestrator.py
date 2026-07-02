@@ -2,7 +2,8 @@
 Chat Orchestrator - Layer 2: Orchestration
 Coordinates chat workflow with enhanced image intelligence and function calling
 """
-from typing import Any, Dict, List, Optional, Union
+import asyncio
+from typing import Any, Dict, List, Optional
 
 from app.addons.image.processor import ImageProcessor
 from app.addons.memory.short_term import ShortTermMemory
@@ -10,10 +11,8 @@ from app.domain.conversations.service import ConversationService
 from app.domain.users.service import UserService
 from app.intelligence.engine import LLMEngine
 from app.intelligence.tools.image_tools import ImageTools
-from app.intelligence.tools.personalization_tools import PersonalizationTools
 from app.intelligence.tools.product_tools import ProductTools
 from app.intelligence.tools.user_tools import UserTools
-from app.intelligence.tools.variant_tools import VariantTools
 from app.utils.logger import get_logger
 
 logger = get_logger("chat_orchestrator")
@@ -104,8 +103,8 @@ class ChatOrchestrator:
 
     async def _tool_search_products(self, query: str, category: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
         """Search products scoped by the active tenant"""
-        from app.core.security.context import tenant_context_var, user_id_var
         from app.container import get_container
+        from app.core.security.context import tenant_context_var, user_id_var
         
         tenant = tenant_context_var.get()
         user_id = user_id_var.get() or "guest"
@@ -231,9 +230,10 @@ class ChatOrchestrator:
     async def stream_completion(self, request: Any, tenant_context: Optional[Any] = None):
         """Stream chat completion using SSE"""
         try:
-            from app.core.security.input_sanitizer import sanitize_user_input
-            from app.core.security.context import tenant_context_var, user_id_var
             import json
+
+            from app.core.security.context import tenant_context_var, user_id_var
+            from app.core.security.input_sanitizer import sanitize_user_input
             
             tenant_context_var.set(tenant_context)
             user_id = request.user_id
@@ -299,8 +299,8 @@ class ChatOrchestrator:
     ) -> Dict[str, Any]:
         """Handle chat message with enhanced image intelligence and function calling"""
         try:
-            from app.core.security.input_sanitizer import sanitize_user_input
             from app.core.security.context import tenant_context_var, user_id_var
+            from app.core.security.input_sanitizer import sanitize_user_input
             
             tenant_context_var.set(tenant_context)
             user_id_var.set(user_id)

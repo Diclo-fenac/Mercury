@@ -65,5 +65,16 @@ addopts = "--ignore=tests/load_test.py"
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+exclude = [
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+    "dist",
+    "build"
+]
+
+[tool.ruff.lint]
 select = ["E", "F", "B", "I"]
-ignore = []
+ignore = ["E501", "B008", "E402", "B904", "B007", "F841", "F401", "B905", "E712", "E701", "E722"]

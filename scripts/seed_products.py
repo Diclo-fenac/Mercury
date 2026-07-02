@@ -4,8 +4,6 @@ Product Data Seeding Script
 Seeds real product data into Postgres for testing
 """
 import asyncio
-import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path

@@ -180,8 +180,8 @@ class Container:
         )
 
         # Tenant Service & Provisioner
-        from app.domain.tenants.service import TenantService
         from app.domain.tenants.provisioning import TenantProvisioner
+        from app.domain.tenants.service import TenantService
         self._services['tenant_service'] = TenantService(
             db=self._services['postgres'],
             cache=self._services['redis']

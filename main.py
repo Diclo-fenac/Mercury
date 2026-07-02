@@ -76,8 +76,9 @@ def create_app() -> FastAPI:
     
     # Mount Dashboard
     import os
-    from fastapi.staticfiles import StaticFiles
+
     from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
 
     dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dashboard")
     if os.path.exists(dashboard_path):
@@ -96,8 +97,9 @@ def create_app() -> FastAPI:
     
     # WebSocket endpoint mounting
     from fastapi import WebSocket, WebSocketDisconnect
-    from app.websocket.manager import WebSocketManager
+
     from app.websocket.handlers import register_websocket_handlers
+    from app.websocket.manager import WebSocketManager
     
     ws_manager = WebSocketManager()
     

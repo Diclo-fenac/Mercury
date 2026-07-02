@@ -8,7 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import select, update, text
+from sqlalchemy import text
+
 from app.infrastructure.db.postgres import PostgresClient
 from app.settings import get_settings
 

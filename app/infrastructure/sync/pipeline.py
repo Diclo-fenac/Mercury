@@ -2,8 +2,7 @@
 Sync Pipeline - Postgres → Typesense
 Builds product text, generates Gemini embedding, upserts to the search store.
 """
-import asyncio
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.utils.logger import get_logger
 

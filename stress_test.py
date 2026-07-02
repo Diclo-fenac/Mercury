@@ -1,8 +1,10 @@
+import argparse
 import asyncio
 import time
-import argparse
-import aiohttp
 from collections import Counter
+
+import aiohttp
+
 
 async def fetch(session, url):
     start = time.perf_counter()

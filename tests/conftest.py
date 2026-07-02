@@ -1,11 +1,12 @@
 """
 Test Configuration and Fixtures
 """
+import os
+import sys
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
-import sys
-import os
 
 # Add app to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -15,8 +16,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 def client(mock_search_service, mock_product_service, mock_user_service, mock_image_service, mock_conversation_service):
     """Create test client with mock container dependency overrides"""
     # Import here to avoid circular imports
+    from app.api.dependencies import (
+        TenantContext,
+        get_container_dependency,
+        get_current_user,
+        get_tenant_context,
+        require_auth,
+    )
     from main import app
-    from app.api.dependencies import require_auth, get_current_user, get_container_dependency, get_tenant_context, TenantContext
     
     # Override authentication and tenant dependencies for testing
     app.dependency_overrides[require_auth] = lambda: {"user_id": "test_user", "authenticated": True, "roles": ["user", "admin"]}

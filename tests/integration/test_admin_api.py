@@ -1,16 +1,16 @@
-import pytest
-from pathlib import Path
 import sys
-import uuid
-from httpx import AsyncClient, ASGITransport
+from pathlib import Path
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from main import app
+from app.api.dependencies import get_container_dependency
 from app.container import Container
-from app.api.dependencies import get_container_dependency, get_tenant_context, require_admin_key
 from app.infrastructure.id_generator import IDGenerator
+from main import app
 
 
 class TestAdminAPIIntegration:

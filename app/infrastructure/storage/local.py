@@ -3,12 +3,12 @@ Local File Storage Client
 Layer 6: Infrastructure - Data & State
 Pure file operations on the local disk
 """
-import os
-import shutil
-import base64
 import asyncio
+import base64
+import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
+
 from app.utils.logger import get_logger
 
 logger = get_logger("local_storage")

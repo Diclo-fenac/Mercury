@@ -6,10 +6,16 @@ Chat functionality with AI assistant
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.api.dependencies import PaginationParams, get_container_dependency, require_auth, get_tenant_context, TenantContext
+from app.api.dependencies import (
+    PaginationParams,
+    TenantContext,
+    get_container_dependency,
+    get_tenant_context,
+    require_auth,
+)
+from app.core.security.context import tenant_context_var, user_id_var
 from app.models.requests import ChatCompletionRequest, ChatToolsRequest
 from app.models.responses import ChatResponse
-from app.core.security.context import tenant_context_var, user_id_var
 
 router = APIRouter()
 

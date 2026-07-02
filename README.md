@@ -1,6 +1,6 @@
 # Mercury AI Assistant
 
-Mercury is a multi-tenant AI-powered search and recommendation system built with FastAPI, Typesense, Qdrant, PostgreSQL, Redis, and Google Gemini.
+Mercury is a multi-tenant AI-powered search and recommendation system built with FastAPI, Typesense, PostgreSQL, Redis, and Google Gemini.
 
 Designed to be truly plug-and-play for small e-commerce businesses, it features a highly optimized footprint for single-node deployments.
 

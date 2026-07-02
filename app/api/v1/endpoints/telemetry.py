@@ -1,8 +1,9 @@
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.api.dependencies import get_tenant_context, TenantContext, get_container_dependency
+from app.api.dependencies import TenantContext, get_container_dependency, get_tenant_context
 from app.models.responses import BaseResponse
 
 router = APIRouter()

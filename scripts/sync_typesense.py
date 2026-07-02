@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from app.infrastructure.db.models import Product
 from app.infrastructure.db.postgres import PostgresClient

@@ -3,7 +3,7 @@ Image Endpoints
 Image upload, analysis, and search functionality
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 
 from app.api.dependencies import get_container_dependency, require_auth
 from app.models.requests import ImageSearchRequest, ImageUploadRequest
@@ -194,7 +194,9 @@ async def get_image_analysis(
 
 import os
 from pathlib import Path as FilePath
+
 from fastapi.responses import FileResponse
+
 
 @router.get("/{image_id}/raw")
 async def get_raw_image(

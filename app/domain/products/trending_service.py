@@ -2,7 +2,6 @@
 Trending Products Service - Layer 5: Domain
 Handles trending products and deals based on actual database fields
 """
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from app.infrastructure.cache.redis import RedisClient

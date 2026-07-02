@@ -6,12 +6,9 @@ Place test images in tests/datasets/image_retrieval/
 
 Run: python tests/evaluate_image_accuracy.py
 """
-import os
-import json
-import asyncio
-from pathlib import Path
-from typing import Dict, List, Any
 from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List
 
 # Configuration
 DATASET_DIR = Path("tests/datasets/image_retrieval")
@@ -84,7 +81,7 @@ class ImageRetrievalEvaluator:
                 expected_id = query['expected_product_id']
                 
                 if not expected_id:
-                    print(f"    ⚠️ No expected match defined")
+                    print("    ⚠️ No expected match defined")
                     continue
                 
                 if expected_id in result_ids:
@@ -93,7 +90,7 @@ class ImageRetrievalEvaluator:
                     if rank == 1:
                         self.results['top1_matches'] += 1
                         self.results['by_category'][category]['top1'] += 1
-                        print(f"    ✅ Top-1 match!")
+                        print("    ✅ Top-1 match!")
                     elif rank <= 3:
                         self.results['top3_matches'] += 1
                         self.results['by_category'][category]['top3'] += 1
@@ -104,7 +101,7 @@ class ImageRetrievalEvaluator:
                         print(f"    ✅ Top-5 match (rank {rank})")
                 else:
                     self.results['no_match'] += 1
-                    print(f"    ❌ No match in top 5")
+                    print("    ❌ No match in top 5")
                     
             except Exception as e:
                 print(f"    ❌ Error: {e}")

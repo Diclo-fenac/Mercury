@@ -2,15 +2,11 @@
 Widget Endpoints - Layer 6: API
 Supports instant search suggestions and widget config retrieval using public search keys.
 """
-from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
 import asyncio
 
-from app.api.dependencies import (
-    get_container_dependency,
-    get_tenant_context,
-    TenantContext
-)
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.api.dependencies import TenantContext, get_container_dependency, get_tenant_context
 
 router = APIRouter()
 
@@ -93,8 +89,10 @@ async def instant_search(
         )
 
 
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
+
 
 class WidgetChatRequest(BaseModel):
     query: str = Field(..., description="The user's question or search query")

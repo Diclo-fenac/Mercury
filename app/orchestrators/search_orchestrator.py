@@ -10,8 +10,12 @@ from app.addons.search.hybrid import HybridSearch
 from app.domain.search.suggestions_service import SearchSuggestionsService
 from app.infrastructure.cache.redis import RedisClient
 from app.utils.metrics import (
-    SEARCH_TOTAL, SEARCH_LATENCY, ZERO_RESULT_QUERIES,
-    CACHE_HITS, CACHE_MISSES, CACHE_HIT_RATE
+    CACHE_HIT_RATE,
+    CACHE_HITS,
+    CACHE_MISSES,
+    SEARCH_LATENCY,
+    SEARCH_TOTAL,
+    ZERO_RESULT_QUERIES,
 )
 
 

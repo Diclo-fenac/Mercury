@@ -5,6 +5,7 @@ Generate embeddings locally using sentence-transformers (all-MiniLM-L6-v2) to el
 import asyncio
 import random
 from typing import List, Optional
+
 from app.utils.logger import get_logger
 
 logger = get_logger("local_embedder")
@@ -26,7 +27,6 @@ class LocalEmbedder:
         if self._initialized or self.model:
             return
             
-        import os
         from app.settings import get_settings
         settings = get_settings()
         if getattr(settings, 'MERCURY_MODE', 'standard') == 'lite':

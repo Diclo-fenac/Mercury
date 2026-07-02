@@ -2,8 +2,9 @@
 Locust load test for Mercury AI Assistant - Search & Product Search Stress Test
 Run: locust -f tests/load_test_search.py --host=http://localhost:8080
 """
-from locust import HttpUser, task, between
 import random
+
+from locust import HttpUser, between, task
 
 
 class SearchStressUser(HttpUser):

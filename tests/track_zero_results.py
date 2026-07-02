@@ -2,13 +2,10 @@
 Zero-result query tracking and analysis
 Run periodically to measure search success rates
 """
-import asyncio
-import json
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
+
 from app.orchestrators.search_orchestrator import SearchOrchestrator
-from app.addons.search.hybrid import HybridSearch
-from app.infrastructure.cache.redis import RedisClient
 
 
 class ZeroResultTracker:

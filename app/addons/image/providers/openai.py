@@ -1,7 +1,6 @@
-from typing import Any, Dict, Optional
 import json
-import base64
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 from app.addons.image.provider import VisionProvider
 from app.utils.logger import get_logger
@@ -52,7 +51,7 @@ class OpenAIVisionProvider(VisionProvider):
         
         try:
             image_url = self._prepare_image_url(image_data)
-            prompt = \"\"\"
+            prompt = """
             Analyze this image specifically for BARCODE DETECTION.
             
             Look for:
@@ -70,7 +69,7 @@ class OpenAIVisionProvider(VisionProvider):
             
             If no barcode is detected, return:
             {"is_barcode": false, "barcode_data": null, "barcode_type": null, "confidence": 1.0}
-            \"\"\"
+            """
             
             response = await self.client.chat.completions.create(
                 model=self.model_name,
@@ -115,7 +114,7 @@ class OpenAIVisionProvider(VisionProvider):
         
         try:
             image_url = self._prepare_image_url(image_data)
-            prompt = f\"\"\"
+            prompt = f"""
             Analyze this product image for e-commerce search optimization.
             
             IDENTIFY:
@@ -145,7 +144,7 @@ class OpenAIVisionProvider(VisionProvider):
                 "confidence": 0.0-1.0,
                 "description": "natural_language_description"
             }}
-            \"\"\"
+            """
             
             response = await self.client.chat.completions.create(
                 model=self.model_name,

@@ -5,9 +5,9 @@ Backs up Redis telemetry (trending searches and products) to PostgreSQL
 Intended to run every hour via cron.
 """
 import asyncio
-import sys
 import json
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 

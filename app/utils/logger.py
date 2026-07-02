@@ -1,11 +1,11 @@
 """
 Structured Logging Utility
 """
+import json
 import logging
 import sys
-import json
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 
 class JSONFormatter(logging.Formatter):

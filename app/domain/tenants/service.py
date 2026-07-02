@@ -3,16 +3,22 @@ Tenant Service - Layer 5: Domain
 Manages SaaS organizations, API keys, tenant configurations, and usage recording
 """
 import hashlib
-import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import delete, func, select, update
 
+from app.domain.tenants.models import (
+    APIKey,
+    Organization,
+    PinnedProduct,
+    Synonym,
+    TenantConfig,
+    UsageEvent,
+)
 from app.infrastructure.cache.redis import RedisClient
 from app.infrastructure.db.postgres import PostgresClient
-from app.domain.tenants.models import Organization, APIKey, TenantConfig, PinnedProduct, Synonym, UsageEvent
 
 
 class TenantService:

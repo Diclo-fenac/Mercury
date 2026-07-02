@@ -8,8 +8,8 @@ from typing import Any, Dict
 
 from fastapi import WebSocket
 
-from app.core.logging import StructuredLogger
 from app.container import Container
+from app.core.logging import StructuredLogger
 from app.websocket.manager import WebSocketManager
 
 logger = StructuredLogger("websocket_handlers")

@@ -5,7 +5,7 @@ Async PostgreSQL with SQLAlchemy
 """
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -147,7 +147,7 @@ class PostgresClient:
     
     async def upsert_product(self, product_data: Dict[str, Any]) -> bool:
         """Insert or update product"""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         def _parse_dt(val):
             if val is None or isinstance(val, datetime):

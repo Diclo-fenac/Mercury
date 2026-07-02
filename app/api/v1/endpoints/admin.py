@@ -3,14 +3,11 @@ Admin Endpoints for Merchant Onboarding, Keys, Custom Rules, Configs, and Analyt
 """
 import uuid
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
-from app.api.dependencies import (
-    get_container_dependency,
-    require_admin_key,
-    TenantContext
-)
+from app.api.dependencies import TenantContext, get_container_dependency, require_admin_key
 
 router = APIRouter()
 
@@ -318,7 +315,6 @@ async def sync_catalog(
             detail=f"Sync failed: {str(e)}"
         )
 
-from fastapi import UploadFile, File
 @router.post("/catalog/upload")
 async def upload_csv_catalog(
     file: UploadFile = File(...),

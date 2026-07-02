@@ -9,9 +9,9 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.container import Container
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.container import Container
 
 logger = get_logger("dependencies")
 security = HTTPBearer(auto_error=False)

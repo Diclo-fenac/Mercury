@@ -3,9 +3,9 @@ API Dependencies
 FastAPI dependency injection for services
 """
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, HTTPException, Query, status, Header
+from fastapi import Depends, Header, HTTPException, Query, status
 
 from app.container import get_container
 
@@ -177,6 +177,7 @@ class TenantContext:
 
 
 from fastapi import Request
+
 
 async def get_tenant_context(
     request: Request,

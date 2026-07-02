@@ -4,7 +4,18 @@ Main router that includes all endpoint modules
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import chat, conversations, health, images, products, users, search, admin, widget, telemetry
+from app.api.v1.endpoints import (
+    admin,
+    chat,
+    conversations,
+    health,
+    images,
+    products,
+    search,
+    telemetry,
+    users,
+    widget,
+)
 
 api_router = APIRouter()
 

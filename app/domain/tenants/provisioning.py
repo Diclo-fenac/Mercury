@@ -3,6 +3,7 @@ Tenant Provisioner - Layer 5: Domain
 Manages dynamic collection creation and deletion in Typesense for tenant isolation.
 """
 from typing import Any, Dict
+
 from app.infrastructure.search.typesense import TypesenseClient
 from app.utils.logger import get_logger
 

@@ -9,7 +9,7 @@ from app.api.dependencies import get_container_dependency
 from app.models.responses import HealthStatus
 from app.settings import get_settings
 from app.utils.logger import get_logger
-from app.utils.metrics import generate_latest, CONTENT_TYPE_LATEST
+from app.utils.metrics import CONTENT_TYPE_LATEST, generate_latest
 
 logger = get_logger("health")
 router = APIRouter()

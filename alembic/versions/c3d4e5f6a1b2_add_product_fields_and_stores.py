@@ -7,9 +7,10 @@ Create Date: 2026-04-27 11:05:00.000000
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = 'c3d4e5f6a1b2'
 down_revision: Union[str, Sequence[str], None] = 'b2c3d4e5f6a1'

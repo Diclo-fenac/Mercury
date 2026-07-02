@@ -2,10 +2,8 @@
 Comprehensive API Endpoint Tests
 Tests for all implemented endpoints
 """
+
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
-import json
 
 
 class TestSearchEndpoints:

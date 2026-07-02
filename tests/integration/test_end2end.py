@@ -4,11 +4,10 @@ End-to-End Integration Tests
 Tests real system functionality with real services
 NO MOCKS - Tests actual Postgres, Redis, Typesense integration
 """
-import asyncio
-import pytest
-import os
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent

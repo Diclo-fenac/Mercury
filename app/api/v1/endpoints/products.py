@@ -3,9 +3,15 @@ Product Endpoints
 Product information, recommendations, and related operations
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, BackgroundTasks
 
-from app.api.dependencies import PaginationParams, get_container_dependency, get_tenant_context, TenantContext
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, status
+
+from app.api.dependencies import (
+    PaginationParams,
+    TenantContext,
+    get_container_dependency,
+    get_tenant_context,
+)
 from app.models.requests import SearchRequest
 from app.models.responses import SearchResult
 

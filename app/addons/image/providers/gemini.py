@@ -1,9 +1,10 @@
-from typing import Any, Dict, Optional
 import base64
 import json
-from io import BytesIO
-from PIL import Image
 from datetime import datetime
+from io import BytesIO
+from typing import Any, Dict, Optional
+
+from PIL import Image
 
 from app.addons.image.provider import VisionProvider
 from app.utils.logger import get_logger

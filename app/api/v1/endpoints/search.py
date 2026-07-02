@@ -2,13 +2,18 @@
 Legacy Search Endpoints
 Maintains compatibility with /api/v1/search/... endpoints
 """
-from typing import Optional, Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+from typing import Any, Dict, Optional
 
-from app.api.dependencies import PaginationParams, get_container_dependency, get_tenant_context, TenantContext
-from app.models.requests import SearchRequest, ChatCompletionRequest, ChatCompletionMessage
-from app.models.responses import SearchResult
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+
+from app.api.dependencies import (
+    TenantContext,
+    get_container_dependency,
+    get_tenant_context,
+)
+from app.models.requests import ChatCompletionMessage, ChatCompletionRequest, SearchRequest
+from app.models.responses import SearchResult
 
 router = APIRouter()
 
@@ -53,7 +58,7 @@ async def public_chat(
             raise HTTPException(status_code=500, detail="Chat failed")
             
         return {"success": True, "answer": result.get("response", "")}
-    except Exception as e:
+    except Exception:
         return {"success": False, "answer": "I'm sorry, I cannot process your request right now."}
 
 @router.post("/", response_model=SearchResult, deprecated=True)

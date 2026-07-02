@@ -2,11 +2,10 @@
 User Endpoints
 User profile management, preferences, and activity tracking
 """
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 
-from app.api.dependencies import PaginationParams, get_container_dependency, require_auth, validate_user_id
+from app.api.dependencies import get_container_dependency, require_auth, validate_user_id
 from app.models.responses import UserProfileResponse
 
 router = APIRouter()
