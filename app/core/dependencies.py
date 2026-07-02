@@ -11,20 +11,20 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.services.container import ServiceContainer
+from app.container import Container
 
 logger = get_logger("dependencies")
 security = HTTPBearer(auto_error=False)
 
 # Global service container
-_service_container: Optional[ServiceContainer] = None
+_service_container: Optional[Container] = None
 
 @lru_cache()
-def get_service_container() -> ServiceContainer:
+def get_service_container() -> Container:
     """Get or create service container singleton"""
     global _service_container
     if _service_container is None:
-        _service_container = ServiceContainer()
+        _service_container = Container()
     return _service_container
 
 async def get_redis_service():

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUMIÈRE - Premium Tech</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased min-h-screen flex flex-col">
+
+    <!-- Store Navbar -->
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center">
+                    <span class="text-2xl font-black tracking-tighter text-indigo-600">LUMIÈRE</span>
+                </div>
+                
+                <!-- Navigation Links -->
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#" class="text-sm font-medium text-gray-900 hover:text-indigo-600">New Arrivals</a>
+                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Electronics</a>
+                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Accessories</a>
+                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Sale</a>
+                </nav>
+
+                <!-- Search Widget Placeholder -->
+                <div class="flex-1 max-w-md mx-8 relative" id="search-container">
+                    <!-- The script will inject the search widget exactly here -->
+                    <script src="/widget/mercury-search.min.js" 
+                            data-api-key="stress_test_key_123" 
+                            data-endpoint="">
+                    </script>
+                </div>
+                
+                <!-- Cart Icon -->
+                <div class="flex items-center">
+                    <button class="p-2 text-gray-400 hover:text-gray-500">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="flex-1 flex flex-col">
+        <div class="relative bg-gray-900 overflow-hidden h-[500px]">
+            <img src="https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&q=80&w=2070" alt="Hero background" class="absolute inset-0 w-full h-full object-cover opacity-50">
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-80"></div>
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
+                <div class="text-center md:text-left">
+                    <h1 class="text-4xl tracking-tight font-extrabold text-white sm:text-5xl md:text-6xl">
+                        <span class="block">The Future of</span>
+                        <span class="block text-indigo-400">Premium Tech</span>
+                    </h1>
+                    <p class="mt-3 max-w-md text-base text-gray-300 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+                        Discover the latest cutting-edge electronics, smart devices, and accessories designed to elevate your everyday life.
+                    </p>
+                    <div class="mt-5 max-w-md sm:flex md:mt-8">
+                        <div class="rounded-md shadow">
+                            <a href="#" class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10">
+                                Shop Now
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fake Product Grid -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+            <h2 class="text-2xl font-extrabold text-gray-900 mb-6">Trending Now</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- These are just placeholder cards for the storefront illusion -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
+                    <div class="p-4">
+                        <h3 class="text-sm text-gray-700">Wireless Noise-Canceling Headphones</h3>
+                        <p class="mt-1 text-lg font-medium text-gray-900">$299.00</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
+                    <div class="p-4">
+                        <h3 class="text-sm text-gray-700">Ultra-Slim 4K Monitor</h3>
+                        <p class="mt-1 text-lg font-medium text-gray-900">$450.00</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
+                    <div class="p-4">
+                        <h3 class="text-sm text-gray-700">Mechanical Keyboard Pro</h3>
+                        <p class="mt-1 text-lg font-medium text-gray-900">$129.00</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
+                    <div class="p-4">
+                        <h3 class="text-sm text-gray-700">Smart Home Hub</h3>
+                        <p class="mt-1 text-lg font-medium text-gray-900">$89.00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

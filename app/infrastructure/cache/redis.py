@@ -327,6 +327,28 @@ class RedisClient:
             logger.error(f"Redis SISMEMBER error for key {key}, member {member}: {e}")
             return False
     
+    # ==================== Sorted Set Operations ====================
+    
+    async def zincrby(self, key: str, amount: float, member: str) -> float:
+        """Increment the score of a member in a sorted set"""
+        if not self._client:
+            return 0.0
+        try:
+            return await self._client.zincrby(key, amount, member)
+        except Exception as e:
+            logger.error(f"Redis ZINCRBY error for key {key}: {e}")
+            return 0.0
+            
+    async def zrevrange(self, key: str, start: int, end: int, withscores: bool = False) -> List[Any]:
+        """Return a range of members in a sorted set, by score, from high to low"""
+        if not self._client:
+            return []
+        try:
+            return await self._client.zrevrange(key, start, end, withscores=withscores)
+        except Exception as e:
+            logger.error(f"Redis ZREVRANGE error for key {key}: {e}")
+            return []
+
     # ==================== Application-Specific Methods ====================
     
     async def cache_conversation(

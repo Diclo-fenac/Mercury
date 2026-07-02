@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from app.infrastructure.cache.redis import RedisClient
-from app.infrastructure.db.firestore import FirestoreClient
+from app.infrastructure.db.postgres import PostgresClient
 from app.utils.logger import get_logger
 
 logger = get_logger("trending_products")
@@ -15,115 +15,85 @@ logger = get_logger("trending_products")
 class TrendingProductsService:
     """Service for trending products and deals using available database fields"""
     
-    def __init__(self, cache: RedisClient, firestore: FirestoreClient):
+    def __init__(self, cache: RedisClient, db: PostgresClient):
         self.cache = cache
-        self.firestore = firestore
+        self.db = db
         self.trending_cache_ttl = 1800  # 30 minutes
         self.deals_cache_ttl = 900  # 15 minutes
     
     async def get_trending_products(
         self,
+        tenant_id: str = "default",
         category: Optional[str] = None,
         limit: int = 20,
         days: int = 7
     ) -> Dict[str, Any]:
         """
-        Get trending products based on available database fields:
-        - Rating (40%): Higher rated products trend more
-        - Discount (30%): Products with good discounts trend more  
-        - Availability (20%): Products with good stock trend more
-        - Recency (10%): Newer products get slight boost
+        Get trending products based on telemetry (clicks).
+        Uses a cold-start fallback if no telemetry is available for the tenant.
         """
         try:
-            # Check cache first
-            cache_key = f"trending_products:{category or 'all'}:{days}"
+            # 1. Try to get telemetry from Redis
+            telemetry_key = f"telemetry:{tenant_id}:trending_products:{days}d"
+            if category:
+                telemetry_key += f":{category}"
+                
             if self.cache:
-                cached = await self.cache.get_json(cache_key)
+                cached = await self.cache.get_json(telemetry_key)
                 if cached:
                     return {
                         "success": True,
                         "products": cached[:limit],
-                        "criteria": "rating_discount_availability_recency",
+                        "criteria": "telemetry",
                         "period_days": days,
-                        "algorithm": "Rating(40%) + Discount(30%) + Availability(20%) + Recency(10%)"
+                        "algorithm": "Click Telemetry",
+                        "total_found": len(cached)
                     }
-            
-            # Query products from Firestore
+
+            # 2. Cold-Start Fallback (Catalog data)
+            fallback_key = f"fallback_trending:{tenant_id}:{category or 'all'}:{days}"
+            if self.cache:
+                cached_fallback = await self.cache.get_json(fallback_key)
+                if cached_fallback:
+                    return {
+                        "success": True,
+                        "products": cached_fallback[:limit],
+                        "criteria": "fallback",
+                        "period_days": days,
+                        "algorithm": "Basic Catalog Data",
+                        "total_found": len(cached_fallback)
+                    }
+
             filters = {}
+            if tenant_id != "default":
+                filters["tenant_id"] = tenant_id
             if category:
-                filters['category'] = category
+                filters["category"] = category
+
+            products = await self.db.search_products(filters, limit * 2)
             
-            # Get products and calculate trending scores
-            products = await self.firestore.query_collection('products', filters, limit * 3)
-            
-            # Calculate trending score for each product
-            trending_products = []
-            current_time = datetime.now()
-            
+            # Simple fallback sorting
             for product in products:
-                # Rating score (0-5 scale, normalize to 0-1)
-                rating = product.get("rating", 0)
-                rating_score = min(rating / 5.0, 1.0) if rating else 0
+                rating = product.get("rating", 0) or 0
+                discount = product.get("price", {}).get("discount_percent", 0) or 0
+                product["trending_score"] = round((rating * 0.6) + (discount * 0.01), 3)
                 
-                # Discount score (0-100% scale, normalize to 0-1)
-                discount_percent = product.get("price", {}).get("discount_percent", 0)
-                discount_score = min(discount_percent / 100.0, 1.0) if discount_percent else 0
-                
-                # Availability score (based on total stock across stores)
-                availability = product.get("availability", [])
-                total_stock = sum(store.get("quantity", 0) for store in availability)
-                # Normalize stock (assume 100+ is max score)
-                availability_score = min(total_stock / 100.0, 1.0) if total_stock else 0
-                
-                # Recency score (newer products get boost)
-                created_at = product.get("created_at")
-                recency_score = 0
-                if created_at:
-                    try:
-                        created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                        days_old = (current_time - created_date).days
-                        # Products less than 30 days old get recency boost
-                        recency_score = max(0, (30 - days_old) / 30.0) if days_old <= 30 else 0
-                    except:
-                        recency_score = 0
-                
-                # Weighted trending score
-                trending_score = (
-                    (rating_score * 0.4) +      # 40% rating
-                    (discount_score * 0.3) +    # 30% discount
-                    (availability_score * 0.2) + # 20% availability
-                    (recency_score * 0.1)       # 10% recency
-                )
-                
-                if trending_score > 0:
-                    product["trending_score"] = round(trending_score, 3)
-                    product["trending_factors"] = {
-                        "rating_score": round(rating_score, 3),
-                        "discount_score": round(discount_score, 3),
-                        "availability_score": round(availability_score, 3),
-                        "recency_score": round(recency_score, 3)
-                    }
-                    trending_products.append(product)
-            
-            # Sort by trending score
-            trending_products.sort(key=lambda x: x.get("trending_score", 0), reverse=True)
-            trending_products = trending_products[:limit]
-            
-            # Cache results
-            if trending_products and self.cache:
-                await self.cache.set_json(cache_key, trending_products, self.trending_cache_ttl)
-            
+            products.sort(key=lambda x: x.get("trending_score", 0), reverse=True)
+            products = products[:limit]
+
+            if products and self.cache:
+                await self.cache.set_json(fallback_key, products, self.trending_cache_ttl)
+
             return {
                 "success": True,
-                "products": trending_products,
-                "criteria": "rating_discount_availability_recency",
+                "products": products,
+                "criteria": "fallback",
                 "period_days": days,
-                "algorithm": "Rating(40%) + Discount(30%) + Availability(20%) + Recency(10%)",
-                "total_found": len(trending_products)
+                "algorithm": "Basic Catalog Data",
+                "total_found": len(products)
             }
-            
         except Exception as e:
-            logger.error("get_trending_products_error", category=category, error=str(e))
+            logger.error(f"get_trending_products_error for category {category}: {e}")
             raise Exception(f"Failed to get trending products: {str(e)}")
     
     async def get_deals(
@@ -151,13 +121,13 @@ class TrendingProductsService:
                         "algorithm": "((actual_price - selling_price) / actual_price) × 100"
                     }
             
-            # Query deals from Firestore
+            # Query deals from Postgres
             filters = {}
             if category:
                 filters['category'] = category
             
             # Get all products and filter by discount
-            products = await self.firestore.query_collection('products', filters, limit * 3)
+            products = await self.db.search_products(filters, limit * 3)
             
             deals = []
             for product in products:
@@ -198,7 +168,7 @@ class TrendingProductsService:
             }
             
         except Exception as e:
-            logger.error("get_deals_error", category=category, error=str(e))
+            logger.error(f"get_deals_error for category {category}: {e}")
             raise Exception(f"Failed to get deals: {str(e)}")
     
     async def get_flash_deals(self, limit: int = 10) -> Dict[str, Any]:
@@ -219,7 +189,7 @@ class TrendingProductsService:
                     }
             
             # Get products with high discounts
-            products = await self.firestore.query_collection('products', {}, limit * 3)
+            products = await self.db.search_products({}, limit * 3)
             
             flash_deals = []
             for product in products:
@@ -262,7 +232,7 @@ class TrendingProductsService:
             }
             
         except Exception as e:
-            logger.error("get_flash_deals_error", error=str(e))
+            logger.error(f"get_flash_deals_error: {e}")
             raise Exception(f"Failed to get flash deals: {str(e)}")
     
     def _calculate_avg_discount(self, products: List[Dict[str, Any]]) -> float:

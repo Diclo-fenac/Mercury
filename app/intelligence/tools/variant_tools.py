@@ -146,7 +146,7 @@ class VariantTools:
             # This would typically check real inventory
             # For now, we'll simulate based on product data
             
-            # Get product from Firestore
+            # Get product from Postgres
             product = await self.hybrid_search.db.get_product_by_id(product_id)
             
             if not product:

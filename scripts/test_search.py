@@ -16,11 +16,6 @@ except ImportError as e:
     print(f"❌ Failed to import TypesenseClient: {e}")
     TypesenseClient = None
 
-try:
-    from app.infrastructure.vector.qdrant import QdrantClient
-except ImportError as e:
-    print(f"❌ Failed to import QdrantClient: {e}")
-    QdrantClient = None
 
 try:
     from app.addons.embeddings.gemini import GeminiEmbeddings
@@ -81,36 +76,6 @@ async def test_typesense():
         return False
 
 
-async def test_qdrant():
-    """Test Qdrant connection"""
-    print("\n=== Testing Qdrant ===")
-    
-    if not QdrantClient or not get_settings:
-        print("❌ Qdrant client or Settings not available")
-        return False
-    
-    settings = get_settings()
-    
-    client = QdrantClient(
-        host=settings.QDRANT_HOST,
-        port=settings.QDRANT_PORT,
-        collection_name=settings.QDRANT_COLLECTION_NAME
-    )
-    
-    try:
-        await client.connect()
-        print("✅ Qdrant connected")
-        
-        # Check collection
-        info = await client.get_collection_info(client.collection_name)
-        if info:
-            print(f"✅ Collection 'products' exists with {info.get('vectors_count', 0)} vectors")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Qdrant error: {e}")
-        return False
 
 
 async def test_embeddings():
@@ -158,14 +123,14 @@ async def test_rrf():
         {'id': '3', 'title': 'Product 3', 'price': 150}
     ]
     
-    qdrant_results = [
+    vector_results = [
         {'id': '2', 'score': 0.9, 'payload': {'title': 'Product 2', 'price': 200}},
         {'id': '1', 'score': 0.8, 'payload': {'title': 'Product 1', 'price': 100}},
         {'id': '4', 'score': 0.7, 'payload': {'title': 'Product 4', 'price': 300}}
     ]
     
     try:
-        fused = rrf.fuse_results(typesense_results, qdrant_results)
+        fused = rrf.fuse_results(typesense_results, vector_results)
         print(f"✅ RRF fused {len(fused)} results")
         
         if fused:
@@ -196,12 +161,6 @@ async def check_dependencies():
         print("❌ typesense - Missing (pip install typesense)")
         missing_deps.append("typesense")
     
-    try:
-        import qdrant_client
-        print("✅ qdrant-client - Available")
-    except ImportError:
-        print("❌ qdrant-client - Missing (pip install qdrant-client)")
-        missing_deps.append("qdrant-client")
     
     try:
         import google.generativeai
@@ -235,7 +194,6 @@ async def main():
     
     results = {
         'Typesense': await test_typesense(),
-        'Qdrant': await test_qdrant(),
         'Embeddings': await test_embeddings(),
         'RRF': await test_rrf()
     }

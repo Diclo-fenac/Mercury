@@ -6,15 +6,17 @@ Chat functionality with AI assistant
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.api.dependencies import PaginationParams, get_container_dependency, require_auth
+from app.api.dependencies import PaginationParams, get_container_dependency, require_auth, get_tenant_context, TenantContext
 from app.models.requests import ChatCompletionRequest, ChatToolsRequest
 from app.models.responses import ChatResponse
+from app.core.security.context import tenant_context_var, user_id_var
 
 router = APIRouter()
 
 @router.post("/completions", response_model=ChatResponse)
 async def chat_completion(
     request: ChatCompletionRequest,
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency),
     current_user = Depends(require_auth)
 ):
@@ -35,8 +37,12 @@ async def chat_completion(
                 detail="Access denied"
             )
 
+        # Set request-scoped context variables
+        tenant_context_var.set(tenant)
+        user_id_var.set(user_id)
+
         # Map new model to orchestrator
-        result = await chat_orchestrator.handle_completion(request)
+        result = await chat_orchestrator.handle_completion(request, tenant)
         
         if not result.get('success'):
             raise HTTPException(
@@ -62,6 +68,7 @@ async def chat_completion(
 @router.post("/stream")
 async def chat_stream(
     request: ChatCompletionRequest,
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency),
     current_user = Depends(require_auth)
 ):
@@ -81,8 +88,12 @@ async def chat_stream(
                 detail="Access denied"
             )
 
+        # Set request-scoped context variables
+        tenant_context_var.set(tenant)
+        user_id_var.set(user_id)
+
         return StreamingResponse(
-            chat_orchestrator.stream_completion(request),
+            chat_orchestrator.stream_completion(request, tenant),
             media_type="text/event-stream"
         )
         

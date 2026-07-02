@@ -5,24 +5,25 @@ Pure business logic
 from typing import Any, Dict, Optional
 
 from app.infrastructure.cache.redis import RedisClient
-from app.infrastructure.db.firestore import FirestoreClient
+from app.infrastructure.db.postgres import PostgresClient
 
 
 class UserService:
     """User business logic"""
     
-    def __init__(self, firestore: FirestoreClient, cache: RedisClient):
-        self.db = firestore
+    def __init__(self, db: PostgresClient, cache: RedisClient):
+        self.db = db
         self.cache = cache
     
     async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user profile with caching"""
-        cached = await self.cache.get_json(f"user_profile:{user_id}")
-        if cached:
-            return cached
+        if self.cache:
+            cached = await self.cache.get_json(f"user_profile:{user_id}")
+            if cached:
+                return cached
         
-        profile = await self.db.get_document('users', user_id)
-        if profile:
+        profile = await self.db.get_user_profile(user_id)
+        if profile and self.cache:
             await self.cache.set_json(f"user_profile:{user_id}", profile, ttl=3600)
         
         return profile
@@ -31,11 +32,11 @@ class UserService:
         """Update user preferences"""
         from app.infrastructure.id_generator import IDGenerator
         
-        success = await self.db.update_document('users', user_id, {
+        success = await self.db.update_user(user_id, {
             'preferences': preferences,
             'updated_at': IDGenerator.timestamp()
         })
-        if success:
+        if success and self.cache:
             await self.cache.delete(f"user_profile:{user_id}")
         return success
     
@@ -51,5 +52,5 @@ class UserService:
         }
         
         # Save to user's activity subcollection
-        activity_id = await self.db.add_to_subcollection('users', user_id, 'activities', activity_data)
+        activity_id = await self.db.log_user_activity(activity_data)
         return activity_id is not None

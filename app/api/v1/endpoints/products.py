@@ -3,10 +3,9 @@ Product Endpoints
 Product information, recommendations, and related operations
 """
 from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, BackgroundTasks
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-
-from app.api.dependencies import PaginationParams, get_container_dependency
+from app.api.dependencies import PaginationParams, get_container_dependency, get_tenant_context, TenantContext
 from app.models.requests import SearchRequest
 from app.models.responses import SearchResult
 
@@ -15,6 +14,8 @@ router = APIRouter()
 @router.post("/search", response_model=SearchResult)
 async def search_products(
     request: SearchRequest,
+    background_tasks: BackgroundTasks,
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency)
 ):
     """Search products via search orchestrator with advanced filters and hybrid retrieval"""
@@ -26,7 +27,6 @@ async def search_products(
                 detail="Search service not available"
             )
         
-        # Extract user_id from context or top level
         user_id = request.user_context.user_id if request.user_context else request.user_id
         
         result = await search_orchestrator.handle(
@@ -37,7 +37,8 @@ async def search_products(
             offset=(request.pagination.page - 1) * request.pagination.limit if request.pagination else 0,
             sort=request.sort.dict() if request.sort else None,
             search_type=request.search_type,
-            include_suggestions=request.include.suggestions if request.include else False
+            include_suggestions=request.include.suggestions if request.include else False,
+            tenant_context=tenant
         )
         
         if not result.get('success'):
@@ -46,6 +47,19 @@ async def search_products(
                 detail="Search failed"
             )
         
+        # Record usage event in background
+        tenant_service = container.get('tenant_service')
+        if tenant_service:
+            background_tasks.add_task(
+                tenant_service.record_usage,
+                org_id=tenant.organization_id,
+                event_type="search_query",
+                query_text=request.query,
+                latency_ms=result.get("meta", {}).get("latency_ms", 0),
+                result_count=result.get("total_results", 0),
+                api_key_id=getattr(tenant, "key_id", None)
+            )
+
         return SearchResult(
             query=request.query,
             results=result.get("results", []),
@@ -70,6 +84,7 @@ async def search_products(
 async def get_search_suggestions(
     q: str = Query(..., min_length=1, max_length=100, description="Search query"),
     limit: int = Query(default=10, ge=1, le=20, description="Number of suggestions"),
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency)
 ):
     """Get search suggestions via search orchestrator"""
@@ -83,7 +98,8 @@ async def get_search_suggestions(
         
         result = await search_orchestrator.get_suggestions(
             query=q,
-            limit=limit
+            limit=limit,
+            tenant_context=tenant
         )
         
         if not result.get('success'):
@@ -106,151 +122,6 @@ async def get_search_suggestions(
             detail=f"Failed to get suggestions: {str(e)}"
         )
 
-@router.get("/trending")
-async def get_trending_products(
-    category: Optional[str] = Query(None, description="Filter by category"),
-    days: int = Query(default=7, ge=1, le=30, description="Trending period in days"),
-    pagination: PaginationParams = Depends(),
-    container = Depends(get_container_dependency)
-):
-    """Get trending products via product orchestrator"""
-    try:
-        product_orchestrator = container.get('product_orchestrator')
-        if not product_orchestrator:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Product service not available"
-            )
-        
-        result = await product_orchestrator.get_trending_products(
-            category=category,
-            limit=pagination.limit,
-            days=days
-        )
-        
-        if not result.get('success'):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to get trending products"
-            )
-        
-        products = result.get("products", [])
-        total = len(products) # In real app, get total from DB
-        
-        return {
-            "trending_products": products,
-            "category": category,
-            "period_days": days,
-            "pagination": {
-                "page": pagination.page,
-                "per_page": pagination.limit,
-                "total": total,
-                "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get trending products: {str(e)}"
-        )
-
-@router.get("/deals")
-async def get_deals(
-    category: Optional[str] = Query(None, description="Filter by category"),
-    min_discount: float = Query(default=20.0, ge=0, le=100, description="Minimum discount percentage"),
-    pagination: PaginationParams = Depends(),
-    container = Depends(get_container_dependency)
-):
-    """Get product deals via product orchestrator"""
-    try:
-        product_orchestrator = container.get('product_orchestrator')
-        if not product_orchestrator:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Product service not available"
-            )
-        
-        result = await product_orchestrator.get_deals(
-            category=category,
-            min_discount=min_discount,
-            limit=pagination.limit
-        )
-        
-        if not result.get('success'):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to get deals"
-            )
-        
-        deals = result.get("deals", [])
-        total = len(deals)
-        
-        return {
-            "deals": deals,
-            "category": category,
-            "min_discount": min_discount,
-            "pagination": {
-                "page": pagination.page,
-                "per_page": pagination.limit,
-                "total": total,
-                "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get deals: {str(e)}"
-        )
-
-@router.get("/flash-deals")
-async def get_flash_deals(
-    pagination: PaginationParams = Depends(),
-    container = Depends(get_container_dependency)
-):
-    """Get flash deals via product orchestrator"""
-    try:
-        product_orchestrator = container.get('product_orchestrator')
-        if not product_orchestrator:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Product service not available"
-            )
-        
-        result = await product_orchestrator.get_flash_deals(pagination.limit)
-        
-        if not result.get('success'):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to get flash deals"
-            )
-        
-        deals = result.get("deals", [])
-        total = len(deals)
-        
-        return {
-            "flash_deals": deals,
-            "pagination": {
-                "page": pagination.page,
-                "per_page": pagination.limit,
-                "total": total,
-                "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
-            },
-            "expires_soon": result.get("expires_soon", True)
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get flash deals: {str(e)}"
-        )
 
 @router.get("/{product_id}")
 async def get_product(
@@ -308,7 +179,7 @@ async def get_product_recommendations(
         allowed_types = ['similar', 'complementary', 'substitute', 'variant']
         if recommendation_type not in allowed_types:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"recommendation_type must be one of {allowed_types}"
             )
 

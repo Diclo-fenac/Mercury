@@ -4,8 +4,8 @@ Combines semantic and keyword search with variant discovery
 """
 from typing import Any, Dict, List, Optional
 
-from app.infrastructure.db.firestore import FirestoreClient
-from app.infrastructure.vector.qdrant import QdrantClient
+from app.infrastructure.db.postgres import PostgresClient
+from app.infrastructure.search.typesense import TypesenseClient
 from app.utils.logger import get_logger
 
 logger = get_logger("hybrid_search")
@@ -14,9 +14,10 @@ logger = get_logger("hybrid_search")
 class HybridSearch:
     """Hybrid search combining semantic and keyword with variant discovery"""
     
-    def __init__(self, qdrant: QdrantClient, firestore: FirestoreClient):
-        self.vector_db = qdrant
-        self.db = firestore
+    def __init__(self, typesense: TypesenseClient, db: PostgresClient, embeddings=None):
+        self.typesense = typesense
+        self.db = db
+        self.embeddings = embeddings  # GeminiEmbeddings (text-embedding-002) / LocalEmbedder
         
         # Tag priority order for strict variant matching (LOCKED per requirements)
         self.VARIANT_TAG_PRIORITY = {
@@ -43,34 +44,60 @@ class HybridSearch:
         query: str, 
         query_vector: Optional[List[float]] = None,
         filters: Dict[str, Any] = None, 
-        limit: int = 10
+        limit: int = 10,
+        collection: str = "products"
     ) -> List[Dict[str, Any]]:
-        """Hybrid search - semantic + keyword"""
+        """Hybrid search - semantic + keyword using Typesense"""
         results = []
-        
-        # Try semantic search if vector provided
-        if query_vector and self.vector_db:
+
+        # Auto-embed query if no vector provided and embeddings are available
+        if query_vector is None and self.embeddings and query:
             try:
-                vector_results = await self.vector_db.search(
-                    collection_name='products',
-                    vector=query_vector,
-                    limit=limit
-                )
-                
-                # Get full product details from Firestore
-                for result in vector_results:
-                    product_id = result.get('payload', {}).get('product_id') or result.get('id')
-                    if product_id:
-                        product = await self.db.get_product_by_id(str(product_id))
-                        if product:
-                            product['similarity_score'] = result.get('score', 0)
-                            results.append(product)
+                query_vector = await self.embeddings.embed_query(query)
             except Exception as e:
-                # Fall back to keyword search if vector search fails
-                logger.warning(f"Vector search failed, falling back to keyword search: {e}")
+                logger.warning(f"Failed to embed query, falling back to keyword search: {e}")
+        
+        # Try Typesense hybrid search
+        if query_vector and self.typesense:
+            try:
+                vector_q = f"embedding:({query_vector}, k:{limit})"
+                res = await self.typesense.search(
+                    collection=collection,
+                    query=query,
+                    vector_query=vector_q,
+                    per_page=limit
+                )
+                if res.get('success'):
+                    for doc in res.get('documents', []):
+                        product_id = doc.get('id')
+                        if product_id:
+                            product = await self.db.get_product_by_id(str(product_id))
+                            if product:
+                                product['similarity_score'] = doc.get('vector_distance', 0)
+                                results.append(product)
+            except Exception as e:
+                logger.warning(f"Typesense hybrid search failed, falling back to keyword search: {e}")
                 results = []
         
-        # If no vector results, use keyword search
+        # Fallback to Typesense keyword search
+        if not results and self.typesense:
+            try:
+                res = await self.typesense.search(
+                    collection=collection,
+                    query=query,
+                    per_page=limit
+                )
+                if res.get('success'):
+                    for doc in res.get('documents', []):
+                        product_id = doc.get('id')
+                        if product_id:
+                            product = await self.db.get_product_by_id(str(product_id))
+                            if product:
+                                results.append(product)
+            except Exception as e:
+                logger.warning(f"Typesense keyword search fallback failed: {e}")
+
+        # Final fallback to direct Postgres search
         if not results:
             results = await self.db.search_products(filters or {}, limit)
         
@@ -104,7 +131,7 @@ class HybridSearch:
             # Step 3: Build strict variant search filters
             variant_filters = self._build_variant_filters(original_product, identity_filters)
             
-            # Step 4: Search for variants using Firestore (more reliable for exact matching)
+            # Step 4: Search for variants using Postgres (more reliable for exact matching)
             variant_candidates = await self.db.search_products(variant_filters, limit * 2)
             
             # Step 5: Apply strict variant validation
@@ -310,9 +337,9 @@ class HybridSearch:
         # Sort by score (highest first)
         return sorted(variants, key=lambda x: x.get('variant_score', 0), reverse=True)
     async def search_by_text(self, query: str, filters: Dict[str, Any] = None, limit: int = 10) -> List[Dict[str, Any]]:
-        """Text-based search using Firestore"""
+        """Text-based search using Postgres"""
         try:
-            return await self.db.query_collection('products', filters or {}, limit)
+            return await self.db.search_products(filters or {}, limit)
         except Exception as e:
             logger.error(f"Search error: {e}")
             return []

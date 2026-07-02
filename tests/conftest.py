@@ -12,11 +12,67 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
 @pytest.fixture
-def client():
-    """Create test client"""
+def client(mock_search_service, mock_product_service, mock_user_service, mock_image_service, mock_conversation_service):
+    """Create test client with mock container dependency overrides"""
     # Import here to avoid circular imports
     from main import app
-    return TestClient(app)
+    from app.api.dependencies import require_auth, get_current_user, get_container_dependency, get_tenant_context, TenantContext
+    
+    # Override authentication and tenant dependencies for testing
+    app.dependency_overrides[require_auth] = lambda: {"user_id": "test_user", "authenticated": True, "roles": ["user", "admin"]}
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": "test_user", "authenticated": True, "roles": ["user", "admin"]}
+    
+    dummy_tenant = TenantContext(
+        organization_id="00000000-0000-0000-0000-000000000000",
+        organization_slug="default-org",
+        key_type="public_search",
+        scopes=["search"],
+        plan="free",
+        config={
+            "enable_semantic": True,
+            "enable_personalization": False,
+            "rrf_keyword_weight": 0.6,
+            "rrf_vector_weight": 0.4,
+            "out_of_stock_behavior": "demote"
+        },
+        collection_name="products"
+    )
+    app.dependency_overrides[get_tenant_context] = lambda: dummy_tenant
+    
+    # Configure mock container
+    mock_container = MagicMock()
+    
+    # Mock recommendation orchestrator
+    mock_rec_service = AsyncMock()
+    mock_rec_service.get_personalized_recommendations = AsyncMock(return_value={
+        "success": True,
+        "recommendations": [],
+        "personalization_type": "hybrid",
+        "strategies_used": []
+    })
+    mock_rec_service.get_product_recommendations = AsyncMock(return_value={
+        "success": True,
+        "recommendations": []
+    })
+    
+    # Mock chat orchestrator
+    mock_chat_service = AsyncMock()
+    
+    mock_container.get.side_effect = lambda service_name: {
+        'search_orchestrator': mock_search_service,
+        'product_orchestrator': mock_product_service,
+        'user_orchestrator': mock_user_service,
+        'recommendation_orchestrator': mock_rec_service,
+        'image_orchestrator': mock_image_service,
+        'conversation_orchestrator': mock_conversation_service,
+        'chat_orchestrator': mock_chat_service
+    }.get(service_name)
+    
+    app.dependency_overrides[get_container_dependency] = lambda: mock_container
+    
+    yield TestClient(app)
+    
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -31,11 +87,11 @@ def mock_cache():
 
 
 @pytest.fixture
-def mock_firestore():
-    """Create mock Firestore client"""
-    firestore = AsyncMock()
-    firestore.collection = MagicMock()
-    return firestore
+def mock_postgres():
+    """Create mock Postgres client"""
+    postgres = AsyncMock()
+    postgres.collection = MagicMock()
+    return postgres
 
 
 @pytest.fixture
@@ -47,9 +103,23 @@ def mock_search_service():
         "products": [],
         "total": 0
     })
-    service.get_suggestions = AsyncMock(return_value=[])
-    service.get_trending_searches = AsyncMock(return_value=[])
-    service.get_popular_searches = AsyncMock(return_value=[])
+    service.get_suggestions = AsyncMock(return_value={
+        "success": True,
+        "suggestions": []
+    })
+    service.get_trending_searches = AsyncMock(return_value={
+        "success": True,
+        "searches": []
+    })
+    service.get_popular_searches = AsyncMock(return_value={
+        "success": True,
+        "searches": []
+    })
+    service.handle = AsyncMock(return_value={
+        "success": True,
+        "results": [],
+        "total_results": 0
+    })
     return service
 
 
@@ -58,6 +128,14 @@ def mock_product_service():
     """Create mock product service"""
     service = AsyncMock()
     service.get_product_by_id = AsyncMock(return_value={
+        "success": True,
+        "product": {
+            "id": "test_id",
+            "title": "Test Product",
+            "price": {"selling": 100}
+        }
+    })
+    service.get_product_details = AsyncMock(return_value={
         "success": True,
         "product": {
             "id": "test_id",
@@ -92,10 +170,15 @@ def mock_user_service():
     service = AsyncMock()
     service.get_user_profile = AsyncMock(return_value={
         "success": True,
-        "data": {
+        "profile": {
+            "user_id": "test_user",
             "preferences": {},
             "activity_summary": {}
         }
+    })
+    service.get_user_preferences = AsyncMock(return_value={
+        "success": True,
+        "preferences": {}
     })
     service.get_user_activity = AsyncMock(return_value={
         "success": True,
@@ -138,6 +221,19 @@ def mock_image_service():
         "success": True,
         "analysis": {}
     })
+    service.search_by_image = AsyncMock(return_value={
+        "success": True,
+        "results": [],
+        "image_analysis": {}
+    })
+    service.get_image_metadata = AsyncMock(return_value={
+        "success": True,
+        "image": {
+            "id": "test_image_id",
+            "url": "http://example.com/image.jpg",
+            "analysis": {"description": "Test image"}
+        }
+    })
     return service
 
 
@@ -149,7 +245,19 @@ def mock_conversation_service():
         "success": True,
         "conversations": []
     })
+    service.get_user_conversations = AsyncMock(return_value={
+        "success": True,
+        "conversations": [],
+        "total": 0
+    })
     service.get_conversation = AsyncMock(return_value={
+        "success": True,
+        "conversation": {
+            "id": "test_conv",
+            "messages": []
+        }
+    })
+    service.get_conversation_details = AsyncMock(return_value={
         "success": True,
         "conversation": {
             "id": "test_conv",
@@ -217,7 +325,7 @@ def sample_search_query():
 def sample_image_data():
     """Sample base64 image data"""
     return "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8VAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k="
-}
+
 
 
 @pytest.fixture

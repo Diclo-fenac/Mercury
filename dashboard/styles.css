@@ -1,0 +1,98 @@
+:root {
+  --color-bg:              #0E0F2E;
+  --color-surface:         #14153B;
+  --color-surface-2:       #1A1B4B;
+  --color-surface-glass:   oklch(from #1A1B4B l c h / 0.72);
+  --color-border:          oklch(1 0 0 / 0.07);
+  --color-divider:         oklch(1 0 0 / 0.05);
+
+  --color-text:            #F0F4FF;
+  --color-text-muted:      #7A8BAD;
+  --color-text-faint:      #3A4460;
+
+  --color-accent:          #C8F135;
+  --color-accent-hover:    #B0D920;
+  --color-accent-text:     #0E1A2B;
+  --color-accent-glow:     oklch(from #C8F135 l c h / 0.10);
+
+  --color-teal:            #014A51;
+  --color-teal-light:      #0D7A85;
+  --color-purple:          #A97AE0;
+  --color-lavender:        #C5B8F5;
+
+  --color-success:         #C8F135;
+  --color-warning:         #FF9F0A;
+  --color-error:           #FF453A;
+
+  --shadow-sm: 0 1px 3px oklch(0.06 0.03 260 / 0.35);
+  --shadow-md: 0 4px 16px oklch(0.06 0.03 260 / 0.45);
+  --shadow-lg: 0 16px 40px oklch(0.06 0.03 260 / 0.55);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  --transition: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] {
+  --color-bg:        #F4FDE8;
+  --color-surface:   #FFFFFF;
+  --color-surface-2: #EAF9D0;
+  --color-text:      #0E1A2B;
+  --color-text-muted:#4A5E78;
+  --color-accent:    #014A51;
+  --color-accent-text: #F0F4FF;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+[x-cloak] { display: none !important; }
+
+/* Scrollbar styling for main area only */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-2);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+}
+
+/* Skeleton animation */
+@keyframes shimmer { 
+  0%  { background-position: -200% 0 }
+  100%{ background-position:  200% 0 }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, 
+    var(--color-surface-2) 25%, 
+    var(--color-surface) 50%, 
+    var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-color: transparent !important;
+  color: transparent !important;
+}
+.skeleton * {
+  visibility: hidden;
+}

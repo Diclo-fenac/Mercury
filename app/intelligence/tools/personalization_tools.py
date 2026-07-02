@@ -332,7 +332,7 @@ class PersonalizationTools:
                 "preferred_brands": long_term.get('preferred_brands', []),
                 "preferred_colors": long_term.get('preferred_colors', []),
                 "budget_range": long_term.get('budget_range', {}),
-                "source": "firestore_profile"
+                "source": "postgres_profile"
             }
             formatted["context_sources"].append("long_term_preferences")
         

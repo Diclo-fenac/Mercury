@@ -1,0 +1,171 @@
+from typing import Any, Dict, Optional
+import base64
+import json
+from io import BytesIO
+from PIL import Image
+from datetime import datetime
+
+from app.addons.image.provider import VisionProvider
+from app.utils.logger import get_logger
+
+logger = get_logger("vision_gemini")
+
+class GeminiVisionProvider(VisionProvider):
+    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.client = None
+        self.mock_mode = False
+
+    async def initialize(self) -> None:
+        try:
+            if not self.api_key or self.api_key in ["your-google-api-key", "your-gemini-api-key", "dummy", "mock", ""] or not self.api_key.strip():
+                logger.warning("Google API key not found or placeholder, Gemini vision will run in mock mode")
+                self.mock_mode = True
+                return
+            
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            self.client = genai
+            self.mock_mode = False
+            logger.info("Gemini vision client initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini: {e}. Falling back to mock mode.")
+            self.mock_mode = True
+
+    def _prepare_image(self, image_data: str) -> Image.Image:
+        if image_data.startswith('data:image/'):
+            image_data = image_data.split(',', 1)[1]
+        image_bytes = base64.b64decode(image_data)
+        return Image.open(BytesIO(image_bytes))
+
+    async def detect_barcode(self, image_data: str) -> Dict[str, Any]:
+        if self.mock_mode or not self.client:
+            return {
+                "success": True,
+                "is_barcode": False,
+                "barcode_data": None,
+                "barcode_type": None,
+                "confidence": 1.0,
+                "engine": "mock"
+            }
+        
+        try:
+            image = self._prepare_image(image_data)
+            prompt = """
+            Analyze this image specifically for BARCODE DETECTION.
+            
+            Look for:
+            - UPC barcodes (vertical black/white lines with numbers below)
+            - EAN barcodes (similar to UPC, often 13 digits)
+            - QR codes (square black/white patterns)
+            
+            Return ONLY a JSON response:
+            {
+                "is_barcode": true/false,
+                "barcode_data": "extracted_code_or_null",
+                "barcode_type": "UPC|EAN|QR|null",
+                "confidence": 0.0-1.0
+            }
+            
+            If no barcode is detected, return:
+            {"is_barcode": false, "barcode_data": null, "barcode_type": null, "confidence": 1.0}
+            """
+            model = self.client.GenerativeModel(self.model_name)
+            response = model.generate_content([prompt, image])
+            
+            response_text = response.text.strip()
+            if response_text.startswith('```json'):
+                response_text = response_text[7:-3]
+            elif response_text.startswith('```'):
+                response_text = response_text[3:-3]
+            
+            result = json.loads(response_text)
+            return {
+                "success": True,
+                "is_barcode": result.get('is_barcode', False),
+                "barcode_data": result.get('barcode_data'),
+                "barcode_type": result.get('barcode_type'),
+                "confidence": result.get('confidence', 0.0)
+            }
+        except Exception as e:
+            logger.error(f"Gemini barcode detection error: {e}")
+            return {"success": False, "error": str(e), "is_barcode": False, "barcode_data": None, "barcode_type": None}
+
+    async def analyze_product_features(self, image_data: str, user_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if self.mock_mode or not self.client:
+            return {
+                "success": True,
+                "category": "Clothing and Accessories",
+                "sub_category": "T-Shirt",
+                "product_type": "Casual T-Shirt",
+                "brand": "Mercury",
+                "attributes": {
+                    "color": "blue",
+                    "pattern": "solid",
+                    "fabric": "cotton",
+                    "size_indicators": ["L"],
+                    "other_features": ["crew neck"]
+                },
+                "confidence": 0.9,
+                "description": "A stylish blue cotton t-shirt from Mercury (Offline Mode Mock Analysis)",
+                "analysis_timestamp": datetime.now().isoformat()
+            }
+        
+        try:
+            image = self._prepare_image(image_data)
+            prompt = f"""
+            Analyze this product image for e-commerce search optimization.
+            
+            IDENTIFY:
+            1. **Product Category**: Clothing and Accessories, Electronics, Home & Kitchen, etc.
+            2. **Product Type**: T-shirt, smartphone, etc.
+            3. **Brand**: Any visible brand names or logos
+            4. **Key Attributes**:
+               - For Clothing: Color, Pattern, Fabric, Fit, Size indicators
+               - For Electronics: Brand, model, color, type
+               - For FMCG: Brand, flavor, packaging type
+            
+            USER CONTEXT: {user_context or 'None provided'}
+            
+            Return JSON:
+            {{
+                "category": "main_category",
+                "sub_category": "specific_type", 
+                "product_type": "specific_product",
+                "brand": "detected_brand_or_null",
+                "attributes": {{
+                    "color": "primary_color",
+                    "pattern": "pattern_type_or_null",
+                    "fabric": "material_type_or_null",
+                    "size_indicators": ["visible_size_info"],
+                    "other_features": ["additional_attributes"]
+                }},
+                "confidence": 0.0-1.0,
+                "description": "natural_language_description"
+            }}
+            """
+            model = self.client.GenerativeModel(self.model_name)
+            response = model.generate_content([prompt, image])
+            
+            response_text = response.text.strip()
+            if response_text.startswith('```json'):
+                response_text = response_text[7:-3]
+            elif response_text.startswith('```'):
+                response_text = response_text[3:-3]
+            
+            result = json.loads(response_text)
+            return {
+                "success": True,
+                "category": result.get('category'),
+                "sub_category": result.get('sub_category'),
+                "product_type": result.get('product_type'),
+                "brand": result.get('brand'),
+                "attributes": result.get('attributes', {}),
+                "confidence": result.get('confidence', 0.0),
+                "description": result.get('description', ''),
+                "analysis_timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Gemini product feature analysis error: {e}")
+            return {"success": False, "error": str(e), "confidence": 0.0}

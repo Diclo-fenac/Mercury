@@ -42,7 +42,7 @@ class ProductInfo(BaseModel):
     sub_category: Optional[str] = Field(None, description="Product sub-category")
     price: Optional[Dict[str, Any]] = Field(None, description="Price information")
     rating: Optional[float] = Field(None, description="Product rating")
-    stock: Optional[str] = Field(None, description="Stock status")
+    stock: Optional[Any] = Field(None, description="Stock status")
     images: Optional[List[str]] = Field(None, description="Product images")
     tags: Optional[Dict[str, Any]] = Field(None, description="Product tags")
     availability: Optional[List[Dict[str, Any]]] = Field(None, description="Store availability")
@@ -51,6 +51,7 @@ class ProductInfo(BaseModel):
 
 class SearchMeta(BaseModel):
     """Search execution metadata"""
+    search_id: Optional[str] = Field(None, description="Unique search ID for click telemetry")
     latency_ms: int = Field(..., description="Execution time in milliseconds")
     cache_hit: bool = Field(default=False, description="Whether results came from cache")
     search_mode: str = Field(default="hybrid", description="Search mode used (keyword, semantic, hybrid)")

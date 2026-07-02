@@ -18,11 +18,12 @@ class ReciprocalRankFusion:
     def fuse_results(
         self,
         typesense_results: List[Dict[str, Any]],
-        qdrant_results: List[Dict[str, Any]],
+        other_results: Optional[List[Dict[str, Any]]] = None,
         typesense_weight: float = 0.6,
-        qdrant_weight: float = 0.4
+        other_weight: float = 0.4
     ) -> List[Dict[str, Any]]:
         """Fuse results using RRF formula"""
+        other_results = other_results or []
         
         # Create score maps
         scores = {}
@@ -36,31 +37,31 @@ class ReciprocalRankFusion:
                     'product': result,
                     'rrf_score': rrf_score,
                     'typesense_rank': rank,
-                    'qdrant_rank': None,
+                    'other_rank': None,
                     'sources': ['typesense']
                 }
         
-        # Process Qdrant results
-        for rank, result in enumerate(qdrant_results, 1):
+        # Process other results
+        for rank, result in enumerate(other_results, 1):
             product_id = str(result.get('id'))  # Ensure string
             if product_id:
-                rrf_score = qdrant_weight / (self.k + rank)
+                rrf_score = other_weight / (self.k + rank)
                 
                 if product_id in scores:
                     # Product found in both - combine scores
                     scores[product_id]['rrf_score'] += rrf_score
-                    scores[product_id]['qdrant_rank'] = rank
-                    scores[product_id]['sources'].append('qdrant')
+                    scores[product_id]['other_rank'] = rank
+                    scores[product_id]['sources'].append('other')
                     scores[product_id]['similarity_score'] = result.get('score', 0)
                 else:
-                    # Product only in Qdrant
+                    # Product only in other
                     scores[product_id] = {
                         'product': result.get('payload', {}),
                         'rrf_score': rrf_score,
                         'typesense_rank': None,
-                        'qdrant_rank': rank,
+                        'other_rank': rank,
                         'similarity_score': result.get('score', 0),
-                        'sources': ['qdrant']
+                        'sources': ['other']
                     }
         
         # Sort by RRF score
@@ -70,7 +71,7 @@ class ReciprocalRankFusion:
             reverse=True
         )
         
-        logger.info(f"Fused {len(fused_results)} results from {len(typesense_results)} Typesense + {len(qdrant_results)} Qdrant")
+        logger.info(f"Fused {len(fused_results)} results from {len(typesense_results)} Typesense + {len(other_results)} Other")
         
         return fused_results
     
@@ -167,7 +168,7 @@ class ReciprocalRankFusion:
                     'rrf_score': result['rrf_score'],
                     'final_rank': i + 1,
                     'typesense_rank': result.get('typesense_rank'),
-                    'qdrant_rank': result.get('qdrant_rank'),
+                    'other_rank': result.get('other_rank'),
                     'similarity_score': result.get('similarity_score'),
                     'sources': result['sources'],
                     'preference_boost': result.get('preference_boost', 0),

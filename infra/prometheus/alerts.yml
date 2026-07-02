@@ -1,0 +1,38 @@
+groups:
+  - name: mercury_alerts
+    rules:
+      - alert: HighSearchLatency
+        expr: histogram_quantile(0.95, sum(rate(mercury_search_latency_seconds_bucket[5m])) by (le)) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Search Latency"
+          description: "p95 search latency is over 1 second for 5 minutes."
+      
+      - alert: HighErrorRate
+        expr: sum(rate(fastapi_responses_total{status=~"5.."}[5m])) / sum(rate(fastapi_responses_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx Error Rate"
+          description: "More than 5% of requests are failing with 5xx status."
+      
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="mercury-assistant"} > 800000000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Memory Usage"
+          description: "Mercury app is using over 800MB of RAM."
+          
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service Unavailability"
+          description: "A configured service target is down."

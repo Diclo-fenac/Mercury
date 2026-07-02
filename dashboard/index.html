@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercury Merchant Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans antialiased" x-data="dashboardApp()">
+
+    <!-- Login Screen (Shown if not authenticated) -->
+    <div x-show="!isAuthenticated" class="min-h-screen flex items-center justify-center bg-gray-100" style="display: none;">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h1 class="text-2xl font-bold mb-6 text-center text-indigo-600">Mercury Dashboard</h1>
+            <p class="text-sm text-gray-600 mb-4 text-center">Enter your Admin API Key to continue</p>
+            
+            <div x-show="authError" class="mb-4 p-3 bg-red-100 text-red-700 text-sm rounded-md" x-text="authError"></div>
+            
+            <form @submit.prevent="login">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Admin API Key</label>
+                    <input type="password" x-model="adminKeyInput" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" 
+                           placeholder="sk_...">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" :disabled="isLoading">
+                    <span x-show="!isLoading">Login</span>
+                    <span x-show="isLoading">Verifying...</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Layout (Shown if authenticated) -->
+    <div x-show="isAuthenticated" class="flex h-screen overflow-hidden" style="display: none;">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-indigo-600">Mercury</h2>
+                <p class="text-xs text-gray-500 mt-1">Merchant Panel</p>
+            </div>
+            <nav class="mt-4 px-4 space-y-1">
+                <template x-for="item in navItems">
+                    <a href="#" 
+                       @click.prevent="currentView = item.id"
+                       :class="{ 'bg-indigo-50 text-indigo-700': currentView === item.id, 'text-gray-600 hover:bg-gray-50 hover:text-gray-900': currentView !== item.id }"
+                       class="group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <span x-text="item.name"></span>
+                    </a>
+                </template>
+            </nav>
+            <div class="absolute bottom-0 w-64 p-4 border-t border-gray-200">
+                <button @click="logout" class="w-full text-left text-sm text-red-600 hover:text-red-800 font-medium px-3 py-2">
+                    Log out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-8 bg-gray-50">
+            <!-- Toast Notification -->
+            <div x-show="toast.visible" 
+                 x-transition
+                 class="fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 transition-all duration-300"
+                 :class="{ 'bg-green-500 text-white': toast.type === 'success', 'bg-red-500 text-white': toast.type === 'error' }">
+                <p x-text="toast.message" class="text-sm font-medium"></p>
+            </div>
+
+            <!-- View: Analytics -->
+            <div x-show="currentView === 'analytics'" style="display: none;">
+                <h1 class="text-2xl font-semibold text-gray-900 mb-6">Search Analytics</h1>
+                
+                <!-- Overview Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <p class="text-sm font-medium text-gray-500">Total Searches (30d)</p>
+                        <p class="text-3xl font-bold text-indigo-600 mt-2" x-text="analyticsData.total_searches || 0"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Top Queries -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Top Queries</h3>
+                        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-300">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Query</th>
+                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    <template x-for="query in (analyticsData.top_queries || [])">
+                                        <tr>
+                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900" x-text="query.term"></td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500" x-text="query.count"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!(analyticsData.top_queries || []).length">
+                                        <tr><td colspan="2" class="py-4 text-center text-sm text-gray-500">No data available yet</td></tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Zero Results -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">Zero-Result Queries</h3>
+                            <button @click="currentView = 'synonyms'" class="text-sm text-indigo-600 hover:text-indigo-800">Add Synonym</button>
+                        </div>
+                        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-300">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Query</th>
+                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white">
+                                    <template x-for="query in (analyticsData.zero_results || [])">
+                                        <tr>
+                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-red-600" x-text="query.term"></td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500" x-text="query.count"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!(analyticsData.zero_results || []).length">
+                                        <tr><td colspan="2" class="py-4 text-center text-sm text-gray-500">No zero-result queries</td></tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Keys -->
+            <div x-show="currentView === 'keys'">
+                <h1 class="text-2xl font-semibold text-gray-900 mb-6">API Keys</h1>
+                <div class="bg-white shadow rounded-lg p-6 max-w-3xl">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Your Keys</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Admin Key</label>
+                        <div class="flex">
+                            <input type="password" readonly :value="adminKey" class="flex-1 bg-gray-50 px-3 py-2 border border-gray-300 rounded-l-md text-sm">
+                            <button @click="copyToClipboard(adminKey)" class="bg-gray-100 hover:bg-gray-200 border border-l-0 border-gray-300 px-4 py-2 rounded-r-md text-sm font-medium">Copy</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Full access to modify your catalog and settings. Keep this secret.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Catalog -->
+            <div x-show="currentView === 'catalog'" style="display: none;">
+                <h1 class="text-2xl font-semibold text-gray-900 mb-6">Catalog Management</h1>
+                
+                <!-- Upload Section -->
+                <div class="bg-white shadow rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Upload Products (CSV)</h3>
+                    <div class="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-500 transition-colors">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="flex text-sm text-gray-600 justify-center">
+                                <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                    <span>Upload a file</span>
+                                    <input id="file-upload" type="file" class="sr-only" accept=".csv" @change="uploadCatalog">
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500">CSV files only</p>
+                        </div>
+                    </div>
+                    <div x-show="isUploading" class="mt-4 flex items-center justify-center text-sm text-indigo-600">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Uploading and indexing products...
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Index Status</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-md">
+                            <p class="text-sm font-medium text-gray-500">Total Indexed Products</p>
+                            <p class="text-2xl font-semibold text-indigo-600 mt-1" x-text="catalogStats.product_count || 0"></p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-md">
+                            <p class="text-sm font-medium text-gray-500">Collection Name</p>
+                            <p class="text-md font-mono text-gray-800 mt-1" x-text="catalogStats.collection_name || 'N/A'"></p>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-right">
+                        <button @click="fetchCatalogStats" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Refresh Stats</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- View: Synonyms -->
+            <div x-show="currentView === 'synonyms'" style="display: none;">
+                <h1 class="text-2xl font-semibold text-gray-900 mb-6">Search Rules: Synonyms</h1>
+                <div class="bg-white shadow rounded-lg p-6 mb-8 max-w-3xl">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Synonym</h3>
+                    <form @submit.prevent="addSynonym">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Search Term</label>
+                                <input type="text" x-model="newSynonym.term" required placeholder="e.g. laptop"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Synonyms (comma separated)</label>
+                                <input type="text" x-model="newSynonym.synonyms" required placeholder="e.g. notebook, macbook"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-sm font-medium">Add Rule</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="/dashboard/static/app.js"></script>
+</body>
+</html>

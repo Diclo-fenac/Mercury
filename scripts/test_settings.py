@@ -22,10 +22,7 @@ try:
     print(f"TYPESENSE_PORT: {settings.TYPESENSE_PORT}")
     print(f"TYPESENSE_API_KEY: {settings.TYPESENSE_API_KEY}")
     
-    # Test Qdrant settings
-    print(f"QDRANT_HOST: {settings.QDRANT_HOST}")
-    print(f"QDRANT_PORT: {settings.QDRANT_PORT}")
-    print(f"QDRANT_COLLECTION_NAME: {settings.QDRANT_COLLECTION_NAME}")
+
     
     # Test Google settings
     print(f"GOOGLE_API_KEY: {'***' if settings.GOOGLE_API_KEY else 'Not set'}")

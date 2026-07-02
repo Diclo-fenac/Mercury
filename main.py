@@ -44,9 +44,22 @@ def create_app() -> FastAPI:
         lifespan=lifespan
     )
     
+    origins = settings.ALLOWED_ORIGINS
+    if "*" in origins:
+        if settings.DEBUG:
+            origins = [
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://localhost:8000",
+                "http://127.0.0.1:8000",
+            ]
+        else:
+            logger.warning("Wildcard '*' in ALLOWED_ORIGINS is not allowed in production with allow_credentials=True.")
+            origins = []
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -54,8 +67,52 @@ def create_app() -> FastAPI:
     
     app.add_middleware(VersioningMiddleware)
     
+    # Add global exception handler
+    from app.middleware.error_handler import global_exception_handler
+    app.add_exception_handler(Exception, global_exception_handler)
+    
     # Include main API router with all endpoints
     app.include_router(api_router, prefix="/api/v1")
+    
+    # Mount Dashboard
+    import os
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dashboard")
+    if os.path.exists(dashboard_path):
+        app.mount("/dashboard/static", StaticFiles(directory=dashboard_path), name="dashboard_static")
+        
+        @app.get("/dashboard", include_in_schema=False)
+        async def serve_dashboard():
+            return FileResponse(os.path.join(dashboard_path, "index.html"))
+            
+        @app.get("/dashboard/demo", include_in_schema=False)
+        async def serve_demo():
+            return FileResponse(os.path.join(dashboard_path, "demo.html"))
+    
+    # Serve static widget scripts
+    app.mount("/widget", StaticFiles(directory="widget"), name="widget")
+    
+    # WebSocket endpoint mounting
+    from fastapi import WebSocket, WebSocketDisconnect
+    from app.websocket.manager import WebSocketManager
+    from app.websocket.handlers import register_websocket_handlers
+    
+    ws_manager = WebSocketManager()
+    
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        await ws_manager.connect(websocket)
+        try:
+            from app.core.dependencies import get_service_container
+            legacy_container = get_service_container()
+            await register_websocket_handlers(websocket, ws_manager, legacy_container)
+        except WebSocketDisconnect:
+            ws_manager.disconnect(websocket)
+        except Exception as e:
+            logger.error(f"WebSocket session error: {e}")
+            ws_manager.disconnect(websocket)
     
     @app.get("/")
     async def root():
@@ -74,9 +131,13 @@ if __name__ == "__main__":
     import uvicorn
     settings = get_settings()
     
+    # Use multiple workers in production to fix tail latency under high concurrency
+    workers = 1 if settings.DEBUG else 4
+    
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=settings.PORT,
-        reload=settings.DEBUG
+        reload=settings.DEBUG,
+        workers=workers
     )

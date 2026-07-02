@@ -1,0 +1,836 @@
+/**
+ * Mercury Search Widget
+ * Drop-in search and AI shopping assistant widget.
+ */
+(function() {
+  // Global container class definition
+  const MercurySearch = {
+    apiKey: null,
+    apiBase: '',
+    config: {},
+    modalElement: null,
+    overlayElement: null,
+    targetInput: null,
+    sessionConversationId: null,
+
+    init: async function(options) {
+      this.apiKey = options.apiKey;
+      this.apiBase = options.apiBase || window.location.origin;
+      this.sessionConversationId = 'session_' + Math.random().toString(36).substring(2, 15);
+
+      if (!this.apiKey) {
+        console.error('MercurySearch: apiKey option is required');
+        return;
+      }
+
+      // Fetch widget config
+      await this.fetchConfig();
+
+      // Inject custom styling
+      this.injectStyles();
+
+      // Setup DOM elements
+      this.setupDOM();
+
+      // Bind to input selector
+      if (options.selector) {
+        this.bindInput(options.selector);
+      }
+    },
+
+    fetchConfig: async function() {
+      try {
+        const response = await fetch(`${this.apiBase}/api/v1/widget/config`, {
+          headers: {
+            'X-API-Key': this.apiKey
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.config = data.config;
+        }
+      } catch (err) {
+        console.error('MercurySearch: Failed to fetch config', err);
+        // Fallback default config
+        this.config = {
+          widget_primary_color: '#6366f1',
+          widget_font_family: 'Inter',
+          widget_position: 'center',
+          widget_placeholder: 'Search products...',
+          out_of_stock_behavior: 'demote'
+        };
+      }
+    },
+
+    injectStyles: function() {
+      const primaryColor = this.config.widget_primary_color || '#6366f1';
+      const font = this.config.widget_font_family || 'Inter';
+
+      const styleTag = document.createElement('style');
+      styleTag.innerHTML = `
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        
+        :root {
+          --mercury-primary: ${primaryColor};
+          --mercury-primary-rgb: 99, 102, 241;
+          --mercury-font: '${font}', 'Outfit', sans-serif;
+          --mercury-bg: #0f172a;
+          --mercury-card-bg: rgba(30, 41, 59, 0.7);
+          --mercury-border: rgba(255, 255, 255, 0.08);
+          --mercury-text: #f8fafc;
+          --mercury-text-muted: #94a3b8;
+        }
+
+        .mercury-modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(8, 10, 18, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          z-index: 999999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mercury-modal-overlay.mercury-open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .mercury-modal-container {
+          width: 92%;
+          max-width: 900px;
+          height: 82vh;
+          max-height: 650px;
+          background: rgba(15, 23, 42, 0.85);
+          border: 1px solid var(--mercury-border);
+          border-radius: 24px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(28px);
+          -webkit-backdrop-filter: blur(28px);
+          font-family: var(--mercury-font);
+          color: var(--mercury-text);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          transform: scale(0.96) translateY(8px);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .mercury-modal-overlay.mercury-open .mercury-modal-container {
+          transform: scale(1) translateY(0);
+        }
+
+        /* Header styling */
+        .mercury-modal-header {
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--mercury-border);
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .mercury-search-wrapper {
+          flex-grow: 1;
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .mercury-search-icon {
+          position: absolute;
+          left: 16px;
+          color: var(--mercury-text-muted);
+          width: 20px;
+          height: 20px;
+        }
+
+        .mercury-search-input {
+          width: 100%;
+          padding: 14px 16px 14px 48px;
+          background: rgba(30, 41, 59, 0.5);
+          border: 1px solid var(--mercury-border);
+          border-radius: 14px;
+          color: var(--mercury-text);
+          font-size: 16px;
+          outline: none;
+          font-family: var(--mercury-font);
+          transition: all 0.2s ease;
+        }
+
+        .mercury-search-input:focus {
+          border-color: var(--mercury-primary);
+          box-shadow: 0 0 0 3px rgba(var(--mercury-primary-rgb), 0.2);
+          background: rgba(30, 41, 59, 0.7);
+        }
+
+        .mercury-close-btn {
+          background: transparent;
+          border: none;
+          color: var(--mercury-text-muted);
+          cursor: pointer;
+          font-size: 24px;
+          line-height: 1;
+          padding: 8px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+
+        .mercury-close-btn:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--mercury-text);
+        }
+
+        /* Body styling */
+        .mercury-modal-body {
+          flex-grow: 1;
+          display: flex;
+          overflow: hidden;
+        }
+
+        /* Navigation tabs */
+        .mercury-tabs-sidebar {
+          width: 200px;
+          border-right: 1px solid var(--mercury-border);
+          padding: 16px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .mercury-tab-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          background: transparent;
+          border: none;
+          color: var(--mercury-text-muted);
+          text-align: left;
+          border-radius: 10px;
+          cursor: pointer;
+          font-family: var(--mercury-font);
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .mercury-tab-btn:hover {
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--mercury-text);
+        }
+
+        .mercury-tab-btn.active {
+          background: rgba(var(--mercury-primary-rgb), 0.15);
+          color: var(--mercury-primary);
+        }
+
+        /* Content pane */
+        .mercury-content-pane {
+          flex-grow: 1;
+          overflow-y: auto;
+          padding: 24px;
+          display: none;
+          position: relative;
+        }
+
+        .mercury-content-pane.active {
+          display: block;
+        }
+
+        /* Search Results layout */
+        .mercury-suggestions-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .mercury-product-card {
+          display: flex;
+          gap: 16px;
+          padding: 16px;
+          background: var(--mercury-card-bg);
+          border: 1px solid var(--mercury-border);
+          border-radius: 16px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .mercury-product-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(var(--mercury-primary-rgb), 0.4);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+          background: rgba(30, 41, 59, 0.85);
+        }
+
+        .mercury-product-image {
+          width: 70px;
+          height: 70px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+          object-fit: cover;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+        }
+
+        .mercury-product-info {
+          flex-grow: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .mercury-product-title {
+          font-size: 15px;
+          font-weight: 600;
+          margin: 0 0 4px 0;
+        }
+
+        .mercury-product-meta {
+          font-size: 13px;
+          color: var(--mercury-text-muted);
+          margin-bottom: 6px;
+        }
+
+        .mercury-product-price-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .mercury-product-price {
+          font-weight: 700;
+          color: var(--mercury-primary);
+          font-size: 15px;
+        }
+
+        .mercury-badge {
+          font-size: 11px;
+          padding: 3px 8px;
+          border-radius: 20px;
+          font-weight: 500;
+        }
+
+        .mercury-badge-instock {
+          background: rgba(34, 197, 94, 0.15);
+          color: #4ade80;
+        }
+
+        .mercury-badge-outstock {
+          background: rgba(239, 68, 68, 0.15);
+          color: #f87171;
+        }
+
+        /* AI chat view styling */
+        .mercury-chat-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .mercury-chat-messages {
+          flex-grow: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding-bottom: 80px;
+        }
+
+        .mercury-chat-bubble {
+          max-width: 80%;
+          padding: 14px 18px;
+          border-radius: 18px;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .mercury-chat-bubble.user {
+          align-self: flex-end;
+          background: var(--mercury-primary);
+          color: white;
+          border-bottom-right-radius: 4px;
+        }
+
+        .mercury-chat-bubble.assistant {
+          align-self: flex-start;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--mercury-border);
+          border-bottom-left-radius: 4px;
+        }
+
+        /* Loading spinner */
+        .mercury-loader-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          align-self: flex-start;
+          margin-left: 10px;
+        }
+
+        .mercury-spinner {
+          width: 8px;
+          height: 8px;
+          background-color: var(--mercury-text-muted);
+          border-radius: 50%;
+          animation: mercury-bounce 1.4s infinite ease-in-out both;
+        }
+
+        .mercury-spinner:nth-child(1) { animation-delay: -0.32s; }
+        .mercury-spinner:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes mercury-bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1.0); }
+        }
+
+        .mercury-chat-input-bar {
+          position: absolute;
+          bottom: 20px;
+          left: 20px;
+          right: 20px;
+          display: flex;
+          gap: 12px;
+          background: rgba(15, 23, 42, 0.95);
+          padding-top: 10px;
+        }
+
+        .mercury-chat-input {
+          flex-grow: 1;
+          padding: 14px 18px;
+          background: rgba(30, 41, 59, 0.5);
+          border: 1px solid var(--mercury-border);
+          border-radius: 14px;
+          color: var(--mercury-text);
+          font-family: var(--mercury-font);
+          outline: none;
+          font-size: 14px;
+          transition: all 0.2s ease;
+        }
+
+        .mercury-chat-input:focus {
+          border-color: var(--mercury-primary);
+        }
+
+        .mercury-chat-send-btn {
+          padding: 0 20px;
+          background: var(--mercury-primary);
+          color: white;
+          border: none;
+          border-radius: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: var(--mercury-font);
+          font-size: 14px;
+          transition: opacity 0.2s ease;
+        }
+
+        .mercury-chat-send-btn:hover {
+          opacity: 0.9;
+        }
+
+        .mercury-empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--mercury-text-muted);
+        }
+
+        .mercury-empty-state svg {
+          width: 48px;
+          height: 48px;
+          margin-bottom: 16px;
+          stroke: var(--mercury-text-muted);
+        }
+      `;
+      document.head.appendChild(styleTag);
+    },
+
+    setupDOM: function() {
+      // Create root container
+      const root = document.createElement('div');
+      root.id = 'mercury-search-widget-root';
+      
+      // Modal structure
+      root.innerHTML = `
+        <div class="mercury-modal-overlay" id="mercury-overlay">
+          <div class="mercury-modal-container">
+            <div class="mercury-modal-header">
+              <div class="mercury-search-wrapper">
+                <svg class="mercury-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" class="mercury-search-input" id="mercury-input" placeholder="${this.config.widget_placeholder || 'Search products...'}">
+              </div>
+              <button class="mercury-close-btn" id="mercury-close">&times;</button>
+            </div>
+            
+            <div class="mercury-modal-body">
+              <div class="mercury-tabs-sidebar">
+                <button class="mercury-tab-btn active" id="mercury-tab-search">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                  Search Results
+                </button>
+                <button class="mercury-tab-btn" id="mercury-tab-chat">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                  </svg>
+                  AI Assistant
+                </button>
+              </div>
+
+              <!-- Search Results Pane -->
+              <div class="mercury-content-pane active" id="mercury-pane-search">
+                <div class="mercury-suggestions-list" id="mercury-results-container">
+                  <div class="mercury-empty-state">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <p>Start typing to see product matches...</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI Chat Pane -->
+              <div class="mercury-content-pane" id="mercury-pane-chat" style="height: 100%; position: relative;">
+                <div class="mercury-chat-container">
+                  <div class="mercury-chat-messages" id="mercury-chat-messages">
+                    <div class="mercury-chat-bubble assistant">
+                      Hello! I am your AI Shopping Assistant. Ask me anything about our products, or describe what you're looking for! (e.g. "what running shoes do you have?")
+                    </div>
+                  </div>
+                  <div class="mercury-chat-input-bar">
+                    <input type="text" class="mercury-chat-input" id="mercury-chat-input" placeholder="Ask AI Assistant...">
+                    <button class="mercury-chat-send-btn" id="mercury-chat-send">Ask</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(root);
+
+      this.overlayElement = document.getElementById('mercury-overlay');
+      this.modalElement = root.querySelector('.mercury-modal-container');
+
+      // Bind basic modal events
+      document.getElementById('mercury-close').addEventListener('click', () => this.close());
+      this.overlayElement.addEventListener('click', (e) => {
+        if (e.target === this.overlayElement) this.close();
+      });
+
+      // Bind Tab switches
+      const tabSearch = document.getElementById('mercury-tab-search');
+      const tabChat = document.getElementById('mercury-tab-chat');
+      const paneSearch = document.getElementById('mercury-pane-search');
+      const paneChat = document.getElementById('mercury-pane-chat');
+
+      tabSearch.addEventListener('click', () => {
+        tabSearch.classList.add('active');
+        tabChat.classList.remove('active');
+        paneSearch.classList.add('active');
+        paneChat.classList.remove('active');
+      });
+
+      tabChat.addEventListener('click', () => {
+        tabChat.classList.add('active');
+        tabSearch.classList.remove('active');
+        paneChat.classList.add('active');
+        paneSearch.classList.remove('active');
+      });
+
+      // Bind Search input keyboard listener
+      let debounceTimeout = null;
+      const searchInput = document.getElementById('mercury-input');
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(debounceTimeout);
+        if (query.length === 0) {
+          this.renderEmptyState();
+          return;
+        }
+
+        debounceTimeout = setTimeout(() => {
+          this.executeSearch(query);
+        }, 150);
+      });
+
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const query = searchInput.value.trim();
+          if (query.length > 0) {
+            // Check if it is a complex query to trigger AI
+            if (this.isComplexQuery(query)) {
+              // Switch to chat tab and send message
+              tabChat.click();
+              this.sendChatMessage(query);
+            } else {
+              this.executeSearch(query);
+            }
+          }
+        }
+      });
+
+      // Bind Chat listeners
+      const chatInput = document.getElementById('mercury-chat-input');
+      const chatSend = document.getElementById('mercury-chat-send');
+      
+      chatSend.addEventListener('click', () => {
+        const query = chatInput.value.trim();
+        if (query) {
+          this.sendChatMessage(query);
+          chatInput.value = '';
+        }
+      });
+
+      chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const query = chatInput.value.trim();
+          if (query) {
+            this.sendChatMessage(query);
+            chatInput.value = '';
+          }
+        }
+      });
+    },
+
+    bindInput: function(selector) {
+      const inputs = document.querySelectorAll(selector);
+      inputs.forEach(input => {
+        input.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.open();
+        });
+        input.addEventListener('focus', (e) => {
+          e.preventDefault();
+          this.open();
+        });
+      });
+    },
+
+    open: function() {
+      this.overlayElement.classList.add('mercury-open');
+      setTimeout(() => {
+        document.getElementById('mercury-input').focus();
+      }, 50);
+    },
+
+    close: function() {
+      this.overlayElement.classList.remove('mercury-open');
+    },
+
+    isComplexQuery: function(query) {
+      const complexKeywords = ['how', 'why', 'what', 'which', 'recommend', 'best', 'good for', 'comparison', 'vs', 'difference', 'compare'];
+      const queryLower = query.toLowerCase();
+      const hasKeyword = complexKeywords.some(keyword => queryLower.includes(keyword));
+      const hasLength = query.split(' ').length > 4;
+      return hasKeyword || hasLength;
+    },
+
+    executeSearch: async function(query) {
+      const resultsContainer = document.getElementById('mercury-results-container');
+      resultsContainer.innerHTML = `
+        <div class="mercury-loader-wrapper" style="justify-content: center; padding: 40px;">
+          <div class="mercury-spinner"></div>
+          <div class="mercury-spinner"></div>
+          <div class="mercury-spinner"></div>
+        </div>
+      `;
+
+      try {
+        const response = await fetch(`${this.apiBase}/api/v1/widget/search/instant?q=${encodeURIComponent(query)}`, {
+          headers: {
+            'X-API-Key': this.apiKey
+          }
+        });
+        const data = await response.json();
+        
+        if (data.success && data.suggestions && data.suggestions.length > 0) {
+          this.renderProducts(data.suggestions);
+        } else {
+          resultsContainer.innerHTML = `
+            <div class="mercury-empty-state">
+              <p>No product matches found for "${query}"</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        console.error('MercurySearch: search failed', err);
+        resultsContainer.innerHTML = `
+          <div class="mercury-empty-state">
+            <p>Error performing search. Please try again.</p>
+          </div>
+        `;
+      }
+    },
+
+    renderProducts: function(products) {
+      const resultsContainer = document.getElementById('mercury-results-container');
+      resultsContainer.innerHTML = '';
+
+      products.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'mercury-product-card';
+        card.innerHTML = `
+          <div class="mercury-product-image">📦</div>
+          <div class="mercury-product-info">
+            <h3 class="mercury-product-title">${p.title}</h3>
+            <div class="mercury-product-meta">${p.brand || 'General'} &bull; ${p.category || 'Product'}</div>
+            <div class="mercury-product-price-row">
+              <span class="mercury-product-price">$${(p.price || 0).toFixed(2)}</span>
+              <span class="mercury-badge ${p.in_stock ? 'mercury-badge-instock' : 'mercury-badge-outstock'}">
+                ${p.in_stock ? 'In Stock' : 'Out of Stock'}
+              </span>
+            </div>
+          </div>
+        `;
+        
+        card.addEventListener('click', () => {
+          if (window.MercurySearchOnSelect) {
+            window.MercurySearchOnSelect(p);
+          } else {
+            console.log('MercurySearch Selected product:', p);
+            alert(`Selected product: ${p.title} ($${p.price})`);
+          }
+          this.close();
+        });
+
+        resultsContainer.appendChild(card);
+      });
+    },
+
+    renderEmptyState: function() {
+      const resultsContainer = document.getElementById('mercury-results-container');
+      resultsContainer.innerHTML = `
+        <div class="mercury-empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <p>Start typing to see product matches...</p>
+        </div>
+      `;
+    },
+
+    sendChatMessage: async function(message) {
+      const messagesContainer = document.getElementById('mercury-chat-messages');
+      
+      // Render user bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'mercury-chat-bubble user';
+      userBubble.textContent = message;
+      messagesContainer.appendChild(userBubble);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      // Render assistant loader
+      const loader = document.createElement('div');
+      loader.className = 'mercury-loader-wrapper';
+      loader.id = 'mercury-chat-loader';
+      loader.innerHTML = `
+        <div class="mercury-spinner"></div>
+        <div class="mercury-spinner"></div>
+        <div class="mercury-spinner"></div>
+      `;
+      messagesContainer.appendChild(loader);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      try {
+        const response = await fetch(`${this.apiBase}/api/v1/widget/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': this.apiKey
+          },
+          body: JSON.stringify({
+            query: message,
+            conversation_id: this.sessionConversationId
+          })
+        });
+        const data = await response.json();
+        
+        // Remove loader
+        const loaderEl = document.getElementById('mercury-chat-loader');
+        if (loaderEl) loaderEl.remove();
+
+        if (data.success) {
+          // Render assistant bubble text
+          const assistantBubble = document.createElement('div');
+          assistantBubble.className = 'mercury-chat-bubble assistant';
+          assistantBubble.textContent = data.response;
+          messagesContainer.appendChild(assistantBubble);
+
+          // If products returned, render matching product cards inside the chat
+          if (data.products && data.products.length > 0) {
+            const productGrid = document.createElement('div');
+            productGrid.style.display = 'grid';
+            productGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(180px, 1fr))';
+            productGrid.style.gap = '10px';
+            productGrid.style.marginTop = '10px';
+            productGrid.style.width = '100%';
+
+            data.products.forEach(p => {
+              const card = document.createElement('div');
+              card.className = 'mercury-product-card';
+              card.style.flexDirection = 'column';
+              card.style.padding = '12px';
+              card.style.gap = '8px';
+              card.style.width = 'auto';
+              
+              card.innerHTML = `
+                <div class="mercury-product-title" style="font-size: 13px; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 34px;">${p.title}</div>
+                <div class="mercury-product-price-row">
+                  <span class="mercury-product-price" style="font-size: 13px;">$${(p.selling_price || 0).toFixed(2)}</span>
+                  <span class="mercury-badge ${p.stock ? 'mercury-badge-instock' : 'mercury-badge-outstock'}" style="font-size: 9px; padding: 2px 6px;">
+                    ${p.stock ? 'In Stock' : 'Out Stock'}
+                  </span>
+                </div>
+              `;
+              
+              card.addEventListener('click', () => {
+                if (window.MercurySearchOnSelect) {
+                  window.MercurySearchOnSelect(p);
+                } else {
+                  alert(`Selected: ${p.title}`);
+                }
+                this.close();
+              });
+
+              productGrid.appendChild(card);
+            });
+            messagesContainer.appendChild(productGrid);
+          }
+        } else {
+          const errBubble = document.createElement('div');
+          errBubble.className = 'mercury-chat-bubble assistant';
+          errBubble.textContent = "I'm sorry, I encountered an issue processing your query. Please try searching or ask again.";
+          messagesContainer.appendChild(errBubble);
+        }
+      } catch (err) {
+        console.error('MercurySearch: chat failed', err);
+        const loaderEl = document.getElementById('mercury-chat-loader');
+        if (loaderEl) loaderEl.remove();
+
+        const errBubble = document.createElement('div');
+        errBubble.className = 'mercury-chat-bubble assistant';
+        errBubble.textContent = "Failed to connect to the assistant server. Please check your network.";
+        messagesContainer.appendChild(errBubble);
+      }
+      
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  };
+
+  // Expose to window
+  window.MercurySearch = MercurySearch;
+})();

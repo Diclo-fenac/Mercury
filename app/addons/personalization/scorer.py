@@ -40,7 +40,7 @@ class PersonalizationScorer:
         try:
             logger.info(f"🎯 Scoring {len(products)} products for user {user_id}")
             
-            # Get behavioral context (Firestore + Redis merge)
+            # Get behavioral context (Postgres + Redis merge)
             context = await self.get_behavioral_context(user_id, session_id)
             
             if not context:
@@ -72,18 +72,17 @@ class PersonalizationScorer:
     
     async def get_behavioral_context(self, user_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Build behavioral context using Firestore + Redis merge logic
-        Session constraints (Redis) override long-term preferences (Firestore)
+        Build behavioral context using Postgres + Redis merge logic
+        Session constraints (Redis) override long-term preferences (Postgres)
         """
         try:
-            # Step 1: Get long-term preferences from Firestore (hints)
-            long_term_context = await self._get_long_term_context(user_id)
-            
-            # Step 2: Get session constraints from Redis (rules)
-            session_context = await self._get_session_context(user_id, session_id)
-            
-            # Step 3: Get cross-session snapshot from Redis (read-optimized)
-            cross_session_context = await self._get_cross_session_context(user_id)
+            import asyncio
+            # Fetch contexts concurrently to reduce latency
+            long_term_context, session_context, cross_session_context = await asyncio.gather(
+                self._get_long_term_context(user_id),
+                self._get_session_context(user_id, session_id),
+                self._get_cross_session_context(user_id)
+            )
             
             # Step 4: Merge contexts with session rules taking precedence
             merged_context = self._merge_contexts(long_term_context, session_context, cross_session_context)
@@ -96,7 +95,7 @@ class PersonalizationScorer:
             return {}
     
     async def _get_long_term_context(self, user_id: str) -> Dict[str, Any]:
-        """Get long-term preferences from Firestore (hints)"""
+        """Get long-term preferences from Postgres (hints)"""
         try:
             profile = await self.user_service.get_user_profile(user_id)
             if not profile:
@@ -106,7 +105,7 @@ class PersonalizationScorer:
                 'preferences': profile.get('preferences', {}),
                 'behavior': profile.get('behavior', {}),
                 'stats': profile.get('stats', {}),
-                'source': 'firestore_long_term'
+                'source': 'postgres_long_term'
             }
             
         except Exception as e:
@@ -167,7 +166,7 @@ class PersonalizationScorer:
     ) -> Dict[str, Any]:
         """
         Merge contexts with session rules overriding long-term preferences
-        Example: "User prefers Amul (firestore) but session says vegan (Redis) → suggest soy alternatives"
+        Example: "User prefers Amul (postgres) but session says vegan (Redis) → suggest soy alternatives"
         """
         merged = {
             'long_term_preferences': long_term.get('preferences', {}),

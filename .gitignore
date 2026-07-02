@@ -1,6 +1,8 @@
 # --- Project Specific ---
-config/firebase-config.json
 config/google_cred.json
+*service-account*.json
+*service_account*.json
+*.json.key
 .env
 .env.local
 .env.*.local
@@ -56,6 +58,16 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# --- Mercury Startup ---
+.mercury/
+
 # --- Logs ---
 logs/
 *.log
+
+# --- Local Data & Uploads ---
+data/
+uploads/
+hey
+scratch/
+node_modules/

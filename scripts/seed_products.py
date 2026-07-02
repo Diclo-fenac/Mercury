@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Product Data Seeding Script
-Seeds real product data into Firestore and Qdrant for testing
+Seeds real product data into Postgres for testing
 """
 import asyncio
 import json
@@ -14,8 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.infrastructure.db.firestore import FirestoreClient
-from app.infrastructure.vector.qdrant import QdrantClient
+from app.infrastructure.db.postgres import PostgresClient
 from app.infrastructure.id_generator import IDGenerator
 from app.utils.logger import get_logger
 
@@ -195,46 +194,39 @@ SAMPLE_PRODUCTS = [
     }
 ]
 
+
 class ProductSeeder:
-    """Seeds product data into Firestore and Qdrant"""
+    """Seeds product data into PostgreSQL"""
     
     def __init__(self):
-        self.firestore = None
-        self.qdrant = None
+        self.db = None
         self.id_gen = IDGenerator()
+        self.vector_dim = 768
     
     async def initialize_services(self):
         """Initialize database services"""
         try:
-            # Initialize Firestore
-            self.firestore = FirestoreClient(
-                project_id=os.getenv('FIREBASE_PROJECT_ID'),
-                credentials_path=os.getenv('FIREBASE_CREDENTIALS_PATH', 'config/firebase-config.json')
+            from app.settings import get_settings
+            settings = get_settings()
+            # Initialize PostgreSQL
+            self.db = PostgresClient(
+                database_url=settings.DATABASE_URL
             )
-            await self.firestore.connect()
-            logger.info("✅ Firestore connected")
-            
-            # Initialize Qdrant
-            self.qdrant = QdrantClient(
-                host=os.getenv('QDRANT_HOST', 'localhost'),
-                port=int(os.getenv('QDRANT_PORT', 6333)),
-                api_key=os.getenv('QDRANT_API_KEY')
-            )
-            await self.qdrant.connect()
-            logger.info("✅ Qdrant connected")
+            await self.db.connect()
+            logger.info("✅ PostgreSQL connected")
             
         except Exception as e:
             logger.error(f"❌ Failed to initialize services: {e}")
             raise
     
     async def seed_products(self, overwrite: bool = False):
-        """Seed products into both Firestore and Qdrant"""
+        """Seed products into PostgreSQL"""
         try:
             logger.info("🌱 Starting product seeding...")
             
             # Check if products already exist
             if not overwrite:
-                existing = await self.firestore.query_collection('products', limit=1)
+                existing = await self.db.query_collection('products', limit=1)
                 if existing:
                     logger.info("Products already exist. Use --overwrite to replace them.")
                     return
@@ -246,49 +238,50 @@ class ProductSeeder:
                     # Generate product ID
                     product_id = self.id_gen.product_id()
                     
-                    # Add metadata
-                    product_data.update({
+                    # Transform product_data to Postgres schema format
+                    postgres_product = {
                         'id': product_id,
-                        'created_at': self.id_gen.timestamp(),
-                        'updated_at': self.id_gen.timestamp(),
-                        'is_active': True,
-                        'view_count': 0,
-                        'purchase_count': 0
-                    })
+                        'name': product_data['name'],
+                        'title': product_data['name'],
+                        'brand': product_data['brand'],
+                        'category': product_data['category'],
+                        'sub_category': product_data.get('subcategory') or product_data.get('sub_category'),
+                        'description': product_data['description'],
+                        'url': product_data.get('image_url'),
+                        'price': {
+                            'actual': product_data.get('original_price', product_data['price']),
+                            'selling': product_data['price'],
+                            'discount_percent': product_data.get('discount_percentage', 0.0)
+                        },
+                        'price_history': [{'date': datetime.now().isoformat(), 'price': product_data['price']}],
+                        'tags': product_data.get('tags', []),
+                        'images': [product_data['image_url']] if product_data.get('image_url') else [],
+                        'availability': [{
+                            'store_id': 'WM_STORE_001',
+                            'aisle': 'A1',
+                            'shelf': '1',
+                            'quantity': product_data.get('stock_quantity', 10),
+                            'is_backstock': False
+                        }],
+                        'metadata': {
+                            'features': product_data.get('features', []),
+                            'review_count': product_data.get('review_count', 0),
+                        },
+                        'rating': product_data.get('rating', 0.0),
+                        'stock': product_data.get('in_stock', True),
+                        'online_available': True,
+                        'uploaded_at': datetime.now().isoformat()
+                    }
                     
-                    # Save to Firestore
-                    success = await self.firestore.set_document('products', product_id, product_data)
+                    # Save to PostgreSQL
+                    success = await self.db.set_document('products', product_id, postgres_product)
                     if not success:
-                        logger.error(f"Failed to save product {product_data['name']} to Firestore")
+                        logger.error(f"Failed to save product {product_data['name']} to PostgreSQL")
                         continue
                     
-                    # Create vector for Qdrant
-                    text_content = f"{product_data['name']} {product_data['description']} {product_data['brand']} {' '.join(product_data['tags'])}"
-                    
-                    # Generate simple vector (in real implementation, use embedding model)
-                    vector = self._generate_simple_vector(text_content)
-                    
-                    # Save to Qdrant
-                    qdrant_success = await self.qdrant.upsert_points(
-                        collection_name='products',
-                        points=[{
-                            'id': product_id,
-                            'vector': vector,
-                            'payload': {
-                                'name': product_data['name'],
-                                'category': product_data['category'],
-                                'brand': product_data['brand'],
-                                'price': product_data['price'],
-                                'rating': product_data['rating']
-                            }
-                        }]
-                    )
-                    
-                    if qdrant_success:
+                    if success:
                         seeded_count += 1
                         logger.info(f"✅ Seeded: {product_data['name']}")
-                    else:
-                        logger.error(f"Failed to save product {product_data['name']} to Qdrant")
                 
                 except Exception as e:
                     logger.error(f"Failed to seed product {product_data.get('name', 'unknown')}: {e}")
@@ -326,29 +319,17 @@ class ProductSeeder:
         try:
             logger.info("🔍 Verifying seeded data...")
             
-            # Check Firestore
-            products = await self.firestore.query_collection('products', limit=20)
-            logger.info(f"Firestore: Found {len(products)} products")
+            # Check PostgreSQL
+            products = await self.db.query_collection('products', limit=20)
+            logger.info(f"PostgreSQL: Found {len(products)} products")
             
-            # Check Qdrant (optional)
-            qdrant_count = 0
-            if self.qdrant:
-                try:
-                    collection_info = await self.qdrant.get_collection_info('products')
-                    if collection_info:
-                        qdrant_count = collection_info.get('points_count', 0)
-                        logger.info(f"Qdrant: Collection has {qdrant_count} points")
-                    else:
-                        logger.warning("Qdrant: Collection 'products' not found")
-                except Exception as e:
-                    logger.warning(f"Qdrant verification failed: {e}")
-            
+
             # Sample some products
             if products:
                 sample = products[:3]
                 logger.info("Sample products:")
                 for product in sample:
-                    logger.info(f"  - {product.get('name', 'Unknown')} (${product.get('price', 0)})")
+                    logger.info(f"  - {product.get('name', 'Unknown')} (${product.get('price', {}).get('selling', 0) if isinstance(product.get('price'), dict) else product.get('price', 0)})")
             
             return len(products) > 0
             
@@ -358,10 +339,8 @@ class ProductSeeder:
     
     async def cleanup(self):
         """Cleanup connections"""
-        if self.firestore:
-            await self.firestore.close()
-        if self.qdrant:
-            await self.qdrant.close()
+        if self.db:
+            await self.db.close()
 
 async def main():
     """Main seeding function"""

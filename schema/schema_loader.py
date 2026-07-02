@@ -1,18 +1,18 @@
 """
-Firestore Schema Loader
-Loads cached schema information without connecting to Firestore
+Postgres Schema Loader
+Loads cached schema information without connecting to Postgres
 """
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 
-class FirestoreSchema:
-    """Cached Firestore schema information"""
+class PostgresSchema:
+    """Cached Postgres schema information"""
     
     def __init__(self, schema_path: str = None):
         if schema_path is None:
-            schema_path = Path(__file__).parent / "firestore_schema.json"
+            schema_path = Path(__file__).parent / "postgres_schema.json"
         
         with open(schema_path, 'r') as f:
             self._schema = json.load(f)
@@ -76,4 +76,4 @@ class FirestoreSchema:
 
 
 # Global instance
-schema = FirestoreSchema()
+schema = PostgresSchema()

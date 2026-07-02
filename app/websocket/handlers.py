@@ -9,7 +9,7 @@ from typing import Any, Dict
 from fastapi import WebSocket
 
 from app.core.logging import StructuredLogger
-from app.services.container import ServiceContainer
+from app.container import Container
 from app.websocket.manager import WebSocketManager
 
 logger = StructuredLogger("websocket_handlers")
@@ -17,7 +17,7 @@ logger = StructuredLogger("websocket_handlers")
 async def register_websocket_handlers(
     websocket: WebSocket, 
     manager: WebSocketManager, 
-    container: ServiceContainer
+    container: Container
 ):
     """Register all WebSocket event handlers and start message loop"""
     

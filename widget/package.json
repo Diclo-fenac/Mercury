@@ -1,0 +1,11 @@
+{
+  "name": "mercury-widget",
+  "version": "1.0.0",
+  "description": "Zero-dependency Mercury Search Widget",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --minify --outfile=mercury-search.min.js --loader:.css=text"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.0"
+  }
+}

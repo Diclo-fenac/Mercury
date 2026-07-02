@@ -13,10 +13,6 @@ dependencies = [
     "pydantic-settings>=2.1.0",
     "redis[hiredis]>=5.0.0",
     "google-genai>=0.1.0",
-    "google-cloud-firestore>=2.13.0",
-    "google-cloud-storage>=2.10.0",
-    "firebase-admin>=6.2.0",
-    "qdrant-client>=1.7.0",
     "typesense>=0.18.0",
     "Pillow>=10.1.0",
     "langdetect>=1.0.9",
@@ -28,6 +24,13 @@ dependencies = [
     "structlog>=23.2.0",
     "orjson>=3.9.0",
     "ujson>=5.8.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.12.0",
+    "prometheus-client>=0.19.0",
+    "locust>=2.20.0",
+    "google-generativeai>=0.8.0",
+    "minio>=7.2.20",
 ]
 
 [project.optional-dependencies]
@@ -57,6 +60,7 @@ line_length = 100
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--ignore=tests/load_test.py"
 
 [tool.ruff]
 line-length = 100

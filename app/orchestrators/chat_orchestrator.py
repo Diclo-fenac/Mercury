@@ -57,191 +57,151 @@ class ChatOrchestrator:
         self._register_tools()
     
     def _register_tools(self):
-        """Register function calling tools with enhanced image intelligence"""
-        # Product tools
+        """Register only the three approved tools with LLM"""
+        # Clear any existing tools in self.llm.tools
+        self.llm.tools.clear()
+        
+        # 1. Register search_products
         self.llm.register_tool(
             'search_products',
-            self.product_tools.search_products,
-            'Search for products by query and optional category',
+            self._tool_search_products,
+            'Search the product catalog. Returns matching products as a list.',
             {
                 'type': 'object',
                 'properties': {
                     'query': {'type': 'string', 'description': 'Search query'},
-                    'category': {'type': 'string', 'description': 'Optional category'},
+                    'category': {'type': 'string', 'description': 'Optional category filter'},
                     'limit': {'type': 'integer', 'default': 5}
                 },
                 'required': ['query']
             }
         )
         
+        # 2. Register get_variants
         self.llm.register_tool(
-            'get_product_details',
-            self.product_tools.get_product_details,
-            'Get detailed information about a specific product',
+            'get_variants',
+            self._tool_get_variants,
+            'Find strict variants of a product (same product, differing only in size or color).',
             {
                 'type': 'object',
                 'properties': {
-                    'product_id': {'type': 'string', 'description': 'Product ID'}
+                    'product_id': {'type': 'string', 'description': 'The product ID'}
                 },
                 'required': ['product_id']
             }
         )
         
-        self.llm.register_tool(
-            'get_trending',
-            self.product_tools.get_trending,
-            'Get trending products',
-            {
-                'type': 'object',
-                'properties': {
-                    'category': {'type': 'string', 'description': 'Optional category'},
-                    'limit': {'type': 'integer', 'default': 5}
-                }
-            }
-        )
-        
-        # User tools
+        # 3. Register get_user_preferences
         self.llm.register_tool(
             'get_user_preferences',
-            self.user_tools.get_user_preferences,
-            'Get user preferences and shopping history',
+            self._tool_get_user_preferences,
+            "Retrieve the current user's shopping preferences for personalization. Strips PII.",
             {
                 'type': 'object',
-                'properties': {
-                    'user_id': {'type': 'string', 'description': 'User ID'}
-                },
-                'required': ['user_id']
+                'properties': {}
             }
         )
+
+    async def _tool_search_products(self, query: str, category: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
+        """Search products scoped by the active tenant"""
+        from app.core.security.context import tenant_context_var, user_id_var
+        from app.container import get_container
         
-        # Enhanced image intelligence tools
-        if self.image_tools:
-            image_tool_definitions = self.image_tools.get_tool_definitions()
+        tenant = tenant_context_var.get()
+        user_id = user_id_var.get() or "guest"
+        
+        container = get_container()
+        search_orchestrator = container.get("search_orchestrator")
+        if not search_orchestrator:
+            return [{"error": "Search service not available"}]
             
-            self.llm.register_tool(
-                'analyze_product_image',
-                self.image_tools.analyze_product_image,
-                image_tool_definitions['analyze_product_image']['description'],
-                image_tool_definitions['analyze_product_image']['parameters']
-            )
+        result = await search_orchestrator.handle(
+            query=query,
+            user_id=user_id,
+            filters={"category": category} if category else {},
+            limit=limit,
+            tenant_context=tenant
+        )
+        
+        products = result.get("results", [])
+        return [
+            {
+                'id': p.get('id'),
+                'title': p.get('title'),
+                'price': p.get('price', {}).get('selling') or p.get('selling_price'),
+                'category': p.get('category'),
+                'brand': p.get('brand'),
+                'rating': p.get('rating')
+            }
+            for p in products
+        ]
+
+    async def _tool_get_variants(self, product_id: str) -> List[Dict[str, Any]]:
+        """Get product variants scoped by active tenant collection"""
+        from app.core.security.context import tenant_context_var
+        tenant = tenant_context_var.get()
+        
+        if not self.variant_tools:
+            return [{"error": "Variant service not available"}]
             
-            self.llm.register_tool(
-                'detect_barcode',
-                self.image_tools.detect_barcode,
-                image_tool_definitions['detect_barcode']['description'],
-                image_tool_definitions['detect_barcode']['parameters']
-            )
+        # Get variants from service
+        collection = tenant.collection_name if tenant else "products"
+        
+        # Call the underlying hybrid search find_strict_variants
+        variants = await self.variant_tools.hybrid_search.find_strict_variants(
+            product_id=product_id,
+            user_preferences={},
+            limit=10,
+            collection=collection
+        )
+        
+        return [
+            {
+                'id': p.get('id'),
+                'title': p.get('title'),
+                'price': p.get('price', {}).get('selling') or p.get('selling_price'),
+                'brand': p.get('brand'),
+                'size': p.get('size'),
+                'color': p.get('color'),
+                'stock': p.get('stock')
+            }
+            for p in variants
+        ]
+
+    async def _tool_get_user_preferences(self) -> Dict[str, Any]:
+        """Get user preferences and explicitly strip PII"""
+        from app.core.security.context import user_id_var
+        user_id = user_id_var.get()
+        if not user_id:
+            return {}
             
-            self.llm.register_tool(
-                'get_cached_analysis',
-                self.image_tools.get_cached_analysis,
-                image_tool_definitions['get_cached_analysis']['description'],
-                image_tool_definitions['get_cached_analysis']['parameters']
-            )
+        profile = await self.users.get_user_profile(user_id)
+        if not profile:
+            return {}
             
-    def set_variant_tools(self, variant_tools: VariantTools):
-        """Set variant tools (called by container during initialization)"""
-        self.variant_tools = variant_tools
-        # Re-register tools to include variant tools
-        self._register_variant_tools()
-    
-    def set_personalization_tools(self, personalization_tools: PersonalizationTools):
-        """Set personalization tools (called by container during initialization)"""
-        self.personalization_tools = personalization_tools
-        # Register personalization tools
-        self._register_personalization_tools()
-    
-    def set_workflow_tools(self, workflow_tools):
-        """Set workflow tools (called by container during initialization)"""
-        self.workflow_tools = workflow_tools
-        # Register workflow tools
-        self._register_workflow_tools()
-    
+        prefs = profile.get('preferences', {})
+        # Strip PII — only return category/brand/price preferences
+        safe_prefs = {
+            "favorite_categories": prefs.get("favorite_categories", []) or prefs.get("categories", []),
+            "preferred_brands": prefs.get("preferred_brands", []) or prefs.get("brands", []),
+            "price_range": prefs.get("price_range", {}),
+            "min_rating": prefs.get("min_rating", 3.0),
+        }
+        return safe_prefs
+
     def _register_variant_tools(self):
-        """Register variant discovery tools"""
-        if self.variant_tools:
-            variant_tool_definitions = self.variant_tools.get_tool_definitions()
-            
-            self.llm.register_tool(
-                'find_product_variants',
-                self.variant_tools.find_product_variants,
-                variant_tool_definitions['find_product_variants']['description'],
-                variant_tool_definitions['find_product_variants']['parameters']
-            )
-            
-            self.llm.register_tool(
-                'suggest_product_substitutes',
-                self.variant_tools.suggest_product_substitutes,
-                variant_tool_definitions['suggest_product_substitutes']['description'],
-                variant_tool_definitions['suggest_product_substitutes']['parameters']
-            )
-            
-            self.llm.register_tool(
-                'check_product_availability',
-                self.variant_tools.check_product_availability,
-                variant_tool_definitions['check_product_availability']['description'],
-                variant_tool_definitions['check_product_availability']['parameters']
-            )
-            
-            logger.info("✅ Variant discovery tools registered")
+        """Register variant discovery tools (disabled in favor of restricted tools)"""
+        pass
     
     def _register_personalization_tools(self):
-        """Register behavioral personalization tools"""
-        if self.personalization_tools:
-            personalization_tool_definitions = self.personalization_tools.get_tool_definitions()
-            
-            self.llm.register_tool(
-                'apply_behavioral_personalization',
-                self.personalization_tools.apply_behavioral_personalization,
-                personalization_tool_definitions['apply_behavioral_personalization']['description'],
-                personalization_tool_definitions['apply_behavioral_personalization']['parameters']
-            )
-            
-            self.llm.register_tool(
-                'set_session_constraints',
-                self.personalization_tools.set_session_constraints,
-                personalization_tool_definitions['set_session_constraints']['description'],
-                personalization_tool_definitions['set_session_constraints']['parameters']
-            )
-            
-            self.llm.register_tool(
-                'get_behavioral_context',
-                self.personalization_tools.get_behavioral_context,
-                personalization_tool_definitions['get_behavioral_context']['description'],
-                personalization_tool_definitions['get_behavioral_context']['parameters']
-            )
-            
-            logger.info("✅ Behavioral personalization tools registered")
-    
+        """Register behavioral personalization tools (disabled in favor of restricted tools)"""
+        pass
+        
     def _register_workflow_tools(self):
-        """Register autonomous workflow orchestration tools"""
-        if self.workflow_tools:
-            workflow_tool_definitions = self.workflow_tools.get_tool_definitions()
-            
-            self.llm.register_tool(
-                'execute_autonomous_workflow',
-                self.workflow_tools.execute_autonomous_workflow,
-                workflow_tool_definitions['execute_autonomous_workflow']['description'],
-                workflow_tool_definitions['execute_autonomous_workflow']['parameters']
-            )
-            
-            self.llm.register_tool(
-                'suggest_next_actions',
-                self.workflow_tools.suggest_next_actions,
-                workflow_tool_definitions['suggest_next_actions']['description'],
-                workflow_tool_definitions['suggest_next_actions']['parameters']
-            )
-            
-            self.llm.register_tool(
-                'get_workflow_status',
-                self.workflow_tools.get_workflow_status,
-                workflow_tool_definitions['get_workflow_status']['description'],
-                workflow_tool_definitions['get_workflow_status']['parameters']
-            )
-            
-            logger.info("✅ Autonomous workflow tools registered")
+        """Register autonomous workflow orchestration tools (disabled in favor of restricted tools)"""
+        pass
     
-    async def handle_completion(self, request: Any) -> Dict[str, Any]:
+    async def handle_completion(self, request: Any, tenant_context: Optional[Any] = None) -> Dict[str, Any]:
         """Handle OpenAI-style chat completion request"""
         try:
             user_id = request.user_id
@@ -258,7 +218,8 @@ class ChatOrchestrator:
                 user_id=user_id,
                 conversation_id=conversation_id,
                 message_type='text',
-                image_data=request.image_data
+                image_data=request.image_data,
+                tenant_context=tenant_context
             )
             
             return result
@@ -267,17 +228,29 @@ class ChatOrchestrator:
             logger.error(f"Chat completion failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def stream_completion(self, request: Any):
+    async def stream_completion(self, request: Any, tenant_context: Optional[Any] = None):
         """Stream chat completion using SSE"""
         try:
+            from app.core.security.input_sanitizer import sanitize_user_input
+            from app.core.security.context import tenant_context_var, user_id_var
+            import json
+            
+            tenant_context_var.set(tenant_context)
+            user_id = request.user_id
+            user_id_var.set(user_id)
+            
+            message = request.messages[-1].content if request.messages else ""
+            sanitized_message, is_suspicious = sanitize_user_input(message)
+            
+            if is_suspicious:
+                yield f"data: {json.dumps({'choices': [{'delta': {'content': sanitized_message}}]})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            
             # Simple mock streaming for now
             # In production, this would use self.llm.generate_stream
-            message = request.messages[-1].content if request.messages else ""
-            
-            # Just a placeholder for actual streaming logic
-            full_text = f"Streaming response for: {message}"
+            full_text = f"Streaming response for: {sanitized_message}"
             import asyncio
-            import json
             
             for chunk in full_text.split():
                 data = json.dumps({"choices": [{"delta": {"content": chunk + " "}}]})
@@ -311,16 +284,43 @@ class ChatOrchestrator:
             return await func(**parameters)
         return func(**parameters)
 
+    async def process_chat_message(self, *args, **kwargs) -> Dict[str, Any]:
+        """Alias for WebSocket handlers compatibility"""
+        return await self.handle(*args, **kwargs)
+
     async def handle(
         self, 
         message: str, 
         user_id: str, 
         conversation_id: str,
         message_type: str = 'text',
-        image_data: Optional[str] = None
+        image_data: Optional[str] = None,
+        tenant_context: Optional[Any] = None
     ) -> Dict[str, Any]:
         """Handle chat message with enhanced image intelligence and function calling"""
         try:
+            from app.core.security.input_sanitizer import sanitize_user_input
+            from app.core.security.context import tenant_context_var, user_id_var
+            
+            tenant_context_var.set(tenant_context)
+            user_id_var.set(user_id)
+            
+            # Apply input sanitizer
+            sanitized_message, is_suspicious = sanitize_user_input(message)
+            if is_suspicious:
+                return {
+                    "success": True,
+                    "response": sanitized_message,
+                    "conversation_id": conversation_id,
+                    "message_id": "blocked",
+                    "function_called": None,
+                    "image_analysis": None,
+                    "features_used": {
+                        "blocked": True,
+                        "reason": "input_sanitization"
+                    }
+                }
+            
             logger.info(f"🎯 Processing {message_type} message for user {user_id}")
             
             # CRITICAL: Ensure conversation exists before saving messages
@@ -338,7 +338,7 @@ class ChatOrchestrator:
             
             # Enhanced image handling with new intelligence capabilities
             image_analysis = None
-            enhanced_message = message
+            enhanced_message = sanitized_message
             
             if message_type == 'image' and image_data and self.image_tools:
                 logger.info("🖼️ Processing image with enhanced intelligence")
@@ -354,7 +354,7 @@ class ChatOrchestrator:
                     image_analysis = image_result
                     
                     # Build enhanced message with analysis results
-                    enhanced_message = self._build_enhanced_image_message(message, image_result)
+                    enhanced_message = self._build_enhanced_image_message(sanitized_message, image_result)
                     
                     logger.info(f"✅ Enhanced image analysis completed: {image_result.get('analysis_type')}")
                 else:
@@ -365,10 +365,10 @@ class ChatOrchestrator:
                         if upload_result.get('success'):
                             basic_analysis = await self.llm.analyze_image(image_data)
                             if basic_analysis:
-                                enhanced_message = f"{message}\n\nImage analysis: {basic_analysis}"
+                                enhanced_message = f"{sanitized_message}\n\nImage analysis: {basic_analysis}"
             
             # Generate response with function calling
-            result = await self.llm.generate_with_tools(enhanced_message, context)
+            result = await self.llm.generate_with_tools(enhanced_message, context, tenant_context)
             
             if not result.get('success'):
                 return {"success": False, "error": result.get('error', 'Failed to generate response')}
@@ -386,7 +386,7 @@ class ChatOrchestrator:
             )
             
             # Save assistant message
-            await self.conversations.save_message(
+            assistant_message_id = await self.conversations.save_message(
                 conversation_id, user_id, response_text, role='assistant',
                 metadata={
                     'function_called': result.get('function_called'),
@@ -402,6 +402,7 @@ class ChatOrchestrator:
                 "success": True,
                 "response": response_text,
                 "conversation_id": conversation_id,
+                "message_id": assistant_message_id,
                 "function_called": result.get('function_called'),
                 "image_analysis": image_analysis,
                 "features_used": {

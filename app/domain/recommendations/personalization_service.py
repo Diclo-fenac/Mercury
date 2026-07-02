@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import structlog
 
 from app.infrastructure.cache import CacheClient
-from app.infrastructure.database import FirestoreClient
+from app.infrastructure.db.postgres import PostgresClient
 
 logger = structlog.get_logger(__name__)
 
@@ -15,9 +15,9 @@ logger = structlog.get_logger(__name__)
 class PersonalizationService:
     """Service for personalized product recommendations"""
     
-    def __init__(self, cache: CacheClient, firestore: FirestoreClient):
+    def __init__(self, cache: CacheClient, db: PostgresClient):
         self.cache = cache
-        self.firestore = firestore
+        self.db = db
         self.recommendations_cache_ttl = 3600  # 1 hour
     
     async def get_personalized_recommendations(
@@ -30,13 +30,14 @@ class PersonalizationService:
         try:
             # Check cache first
             cache_key = f"recommendations:{user_id}:{category or 'all'}"
-            cached = await self.cache.get_json(cache_key)
-            if cached:
-                return {
-                    "success": True,
-                    "recommendations": cached[:limit],
-                    "personalization_type": "cached"
-                }
+            if self.cache:
+                cached = await self.cache.get_json(cache_key)
+                if cached:
+                    return {
+                        "success": True,
+                        "recommendations": cached[:limit],
+                        "personalization_type": "cached"
+                    }
             
             # Get user profile and activity
             user_profile = await self._get_user_profile(user_id)
@@ -83,7 +84,7 @@ class PersonalizationService:
                 unique_recs = [r for r in unique_recs if r.get("category") == category]
             
             # Cache results
-            if unique_recs:
+            if unique_recs and self.cache:
                 await self.cache.set_json(cache_key, unique_recs, self.recommendations_cache_ttl)
             
             return {
@@ -150,15 +151,16 @@ class PersonalizationService:
         """Get products frequently bought together"""
         try:
             cache_key = f"frequently_bought_together:{product_id}"
-            cached = await self.cache.get_json(cache_key)
-            if cached:
-                return {
-                    "success": True,
-                    "products": cached[:limit]
-                }
+            if self.cache:
+                cached = await self.cache.get_json(cache_key)
+                if cached:
+                    return {
+                        "success": True,
+                        "products": cached[:limit]
+                    }
             
             # Query co-purchase data
-            query = self.firestore.collection("co_purchases").where(
+            query = self.db.collection("co_purchases").where(
                 "product_id", "==", product_id
             )
             
@@ -172,7 +174,7 @@ class PersonalizationService:
                 
                 if co_product_id and frequency > 0:
                     # Get product details
-                    product_doc = await self.firestore.collection("products").document(
+                    product_doc = await self.db.collection("products").document(
                         co_product_id
                     ).get()
                     
@@ -185,7 +187,7 @@ class PersonalizationService:
             products.sort(key=lambda x: x.get("co_purchase_frequency", 0), reverse=True)
             products = products[:limit]
             
-            if products:
+            if products and self.cache:
                 await self.cache.set_json(cache_key, products, self.recommendations_cache_ttl)
             
             return {
@@ -198,9 +200,9 @@ class PersonalizationService:
             return {"success": False, "products": []}
     
     async def _get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user profile from Firestore"""
+        """Get user profile from Postgres"""
         try:
-            doc = await self.firestore.collection("users").document(user_id).get()
+            doc = await self.db.collection("users").document(user_id).get()
             if doc.exists:
                 return doc.to_dict()
             return None
@@ -211,7 +213,7 @@ class PersonalizationService:
     async def _get_user_activity(self, user_id: str) -> Dict[str, Any]:
         """Get user activity data"""
         try:
-            doc = await self.firestore.collection("user_activity").document(user_id).get()
+            doc = await self.db.collection("user_activity").document(user_id).get()
             if doc.exists:
                 return doc.to_dict()
             return {}
@@ -261,7 +263,7 @@ class PersonalizationService:
                 product_id = product.get("id")
                 if product_id:
                     # Query similar products
-                    query = self.firestore.collection("products").where(
+                    query = self.db.collection("products").where(
                         "category", "==", product.get("category")
                     )
                     
@@ -290,7 +292,7 @@ class PersonalizationService:
             recommendations = []
             
             for category in favorite_categories[:3]:
-                query = self.firestore.collection("products").where(
+                query = self.db.collection("products").where(
                     "category", "==", category
                 ).order_by("views", direction="DESCENDING")
                 
@@ -320,7 +322,7 @@ class PersonalizationService:
             
             # Find users with overlapping category preferences
             for category in favorite_categories[:3]:
-                query = self.firestore.collection("users").where(
+                query = self.db.collection("users").where(
                     "preferences.favorite_categories", "array-contains", category
                 )
                 
@@ -343,7 +345,7 @@ class PersonalizationService:
     ) -> Dict[str, Any]:
         """Get trending products as fallback"""
         try:
-            query = self.firestore.collection("products")
+            query = self.db.collection("products")
             
             if category:
                 query = query.where("category", "==", category)

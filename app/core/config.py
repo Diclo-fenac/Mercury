@@ -24,27 +24,14 @@ class Settings(BaseSettings):
     
     # Google Cloud & AI
     GOOGLE_API_KEY: str = Field(env="GOOGLE_API_KEY")
-    GOOGLE_CLOUD_PROJECT: Optional[str] = Field(env="GOOGLE_CLOUD_PROJECT")
-    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(env="GOOGLE_APPLICATION_CREDENTIALS")
-    
-    # Firestore
-    FIRESTORE_COLLECTION: str = Field(default="products", env="FIRESTORE_COLLECTION")
-    FIREBASE_CREDENTIALS_PATH: Optional[str] = Field(env="FIREBASE_CREDENTIALS_PATH")
-    
-    # Google Cloud Storage
-    GCS_BUCKET_NAME: str = Field(default="mercury-images", env="GCS_BUCKET_NAME")
-    
-    # Qdrant Vector Database
-    QDRANT_HOST: str = Field(default="localhost", env="QDRANT_HOST")
-    QDRANT_PORT: int = Field(default=6333, env="QDRANT_PORT")
-    QDRANT_COLLECTION_NAME: str = Field(default="products", env="QDRANT_COLLECTION_NAME")
-    QDRANT_API_KEY: Optional[str] = Field(env="QDRANT_API_KEY")
+    GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_PROJECT")
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(default=None, env="GOOGLE_APPLICATION_CREDENTIALS")
     
     # Redis Configuration
     REDIS_HOST: str = Field(default="localhost", env="REDIS_HOST")
     REDIS_PORT: int = Field(default=6379, env="REDIS_PORT")
     REDIS_DB: int = Field(default=0, env="REDIS_DB")
-    REDIS_PASSWORD: Optional[str] = Field(env="REDIS_PASSWORD")
+    REDIS_PASSWORD: Optional[str] = Field(default=None, env="REDIS_PASSWORD")
     REDIS_URL: Optional[str] = Field(default=None, env="REDIS_URL")
     
     # Cache TTL settings (in seconds)
@@ -52,7 +39,7 @@ class Settings(BaseSettings):
     CONTEXT_CACHE_TTL: int = Field(default=1800, env="CONTEXT_CACHE_TTL")
     
     # Weather API
-    WEATHER_API_KEY: Optional[str] = Field(env="WEATHER_API_KEY")
+    WEATHER_API_KEY: Optional[str] = Field(default=None, env="WEATHER_API_KEY")
     
     # CORS settings
     ALLOWED_ORIGINS: List[str] = Field(default=["*"], env="ALLOWED_ORIGINS")
@@ -86,5 +73,5 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance"""
     # Load .env file from project root
-    env_path = Path(__file__).parent.parent.parent.parent / '.env'
+    env_path = Path(__file__).parent.parent.parent / '.env'
     return Settings(_env_file=env_path if env_path.exists() else None)

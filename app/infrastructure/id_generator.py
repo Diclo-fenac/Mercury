@@ -2,8 +2,25 @@
 ID Generator - Infrastructure Layer
 Handles ID and timestamp generation
 """
+import os
+import time
 import uuid
 from datetime import datetime
+
+
+def uuid7() -> str:
+    """
+    Generate a UUID v7 (time-ordered).
+    Layout: 48-bit unix_ms | 4-bit ver(7) | 12-bit rand_a | 2-bit var | 62-bit rand_b
+    """
+    ms = int(time.time() * 1000)
+    rand = int.from_bytes(os.urandom(10), 'big')
+    # rand_a: 12 bits, rand_b: 62 bits
+    rand_a = (rand >> 62) & 0xFFF
+    rand_b = rand & 0x3FFFFFFFFFFFFFFF
+    hi = (ms << 16) | (0x7 << 12) | rand_a
+    lo = (0b10 << 62) | rand_b
+    return str(uuid.UUID(int=(hi << 64) | lo))
 
 
 class IDGenerator:

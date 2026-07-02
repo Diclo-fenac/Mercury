@@ -94,84 +94,6 @@ class TestProductEndpoints:
     """Tests for product endpoints"""
     
     @pytest.mark.asyncio
-    async def test_get_trending_products(self, client):
-        """Test get trending products endpoint"""
-        response = client.get(
-            "/api/v1/products/trending",
-            params={"limit": 20, "days": 7}
-        )
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert "trending_products" in data
-            assert "total" in data
-            assert "period_days" in data
-    
-    @pytest.mark.asyncio
-    async def test_get_trending_products_by_category(self, client):
-        """Test trending products filtered by category"""
-        response = client.get(
-            "/api/v1/products/trending",
-            params={"category": "Electronics", "limit": 10}
-        )
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert data.get("category") == "Electronics"
-    
-    @pytest.mark.asyncio
-    async def test_get_deals(self, client):
-        """Test get deals endpoint"""
-        response = client.get(
-            "/api/v1/products/deals",
-            params={"min_discount": 20.0, "limit": 20}
-        )
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert "deals" in data
-            assert "total" in data
-            assert "average_discount" in data
-    
-    @pytest.mark.asyncio
-    async def test_get_deals_by_category(self, client):
-        """Test deals filtered by category"""
-        response = client.get(
-            "/api/v1/products/deals",
-            params={"category": "Electronics", "min_discount": 15.0}
-        )
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert data.get("category") == "Electronics"
-    
-    @pytest.mark.asyncio
-    async def test_get_flash_deals(self, client):
-        """Test get flash deals endpoint"""
-        response = client.get(
-            "/api/v1/products/flash-deals",
-            params={"limit": 10}
-        )
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert "flash_deals" in data
-            assert "total" in data
-    
-    @pytest.mark.asyncio
-    async def test_get_brand_deals(self, client):
-        """Test get deals for specific brand"""
-        response = client.get(
-            "/api/v1/products/deals/brand/Samsung",
-            params={"limit": 10}
-        )
-        assert response.status_code in [200, 404, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert data.get("brand") == "Samsung"
-            assert "deals" in data
-    
-    @pytest.mark.asyncio
     async def test_get_product_recommendations(self, client):
         """Test get product recommendations"""
         response = client.get(
@@ -231,56 +153,6 @@ class TestUserEndpoints:
             data = response.json()
             assert data.get("filtered_by") == "product_view"
     
-    @pytest.mark.asyncio
-    async def test_get_personalized_recommendations(self, client):
-        """Test get personalized recommendations endpoint"""
-        response = client.get(
-            "/api/v1/users/test_user/recommendations",
-            params={"limit": 10}
-        )
-        assert response.status_code in [200, 404, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert "recommendations" in data
-            assert "personalized" in data
-    
-    @pytest.mark.asyncio
-    async def test_get_personalized_recommendations_by_category(self, client):
-        """Test personalized recommendations filtered by category"""
-        response = client.get(
-            "/api/v1/users/test_user/recommendations",
-            params={"limit": 10, "category": "Electronics"}
-        )
-        assert response.status_code in [200, 404, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert data.get("category") == "Electronics"
-    
-    @pytest.mark.asyncio
-    async def test_get_similar_users_recommendations(self, client):
-        """Test get recommendations from similar users"""
-        response = client.get(
-            "/api/v1/users/test_user/recommendations/similar-users",
-            params={"limit": 10}
-        )
-        assert response.status_code in [200, 404, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert "recommendations" in data
-            assert "similar_users_count" in data
-    
-    @pytest.mark.asyncio
-    async def test_get_frequently_bought_together(self, client):
-        """Test get frequently bought together products"""
-        response = client.get(
-            "/api/v1/users/test_user/recommendations/frequently-bought-together/product_123",
-            params={"limit": 5}
-        )
-        assert response.status_code in [200, 404, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert "frequently_bought_together" in data
-            assert "product_id" in data
 
 
 class TestImageEndpoints:
@@ -296,7 +168,7 @@ class TestImageEndpoints:
             "create_chat_message": False
         }
         response = client.post(
-            "/api/v1/images/upload",
+            "/api/v1/images/",
             json=payload
         )
         assert response.status_code in [200, 400, 500]
@@ -316,7 +188,7 @@ class TestImageEndpoints:
             "create_chat_message": True
         }
         response = client.post(
-            "/api/v1/images/upload",
+            "/api/v1/images/",
             json=payload
         )
         assert response.status_code in [200, 400, 500]
@@ -360,7 +232,7 @@ class TestConversationEndpoints:
     async def test_get_conversations(self, client):
         """Test get user conversations"""
         response = client.get(
-            "/api/v1/conversations/test_user"
+            "/api/v1/conversations/"
         )
         assert response.status_code in [200, 404, 500]
         if response.status_code == 200:
@@ -372,7 +244,7 @@ class TestConversationEndpoints:
     async def test_get_conversation_detail(self, client):
         """Test get conversation details"""
         response = client.get(
-            "/api/v1/conversations/test_user/conv_123"
+            "/api/v1/conversations/conv_123"
         )
         assert response.status_code in [200, 404, 500]
         if response.status_code == 200:
@@ -388,7 +260,7 @@ class TestConversationEndpoints:
             "metadata": {"source": "api"}
         }
         response = client.post(
-            "/api/v1/conversations/test_user",
+            "/api/v1/conversations/",
             json=payload
         )
         assert response.status_code in [200, 201, 400, 500]
@@ -397,7 +269,7 @@ class TestConversationEndpoints:
     async def test_delete_conversation(self, client):
         """Test delete conversation"""
         response = client.delete(
-            "/api/v1/conversations/test_user/conv_123"
+            "/api/v1/conversations/conv_123"
         )
         assert response.status_code in [200, 204, 404, 500]
 
@@ -444,14 +316,6 @@ class TestErrorHandling:
         )
         assert response.status_code == 422
     
-    @pytest.mark.asyncio
-    async def test_invalid_discount_range(self, client):
-        """Test invalid discount range"""
-        response = client.get(
-            "/api/v1/products/deals",
-            params={"min_discount": 150}  # Exceeds 100
-        )
-        assert response.status_code == 422
 
 
 class TestRateLimiting:
@@ -481,7 +345,7 @@ class TestRateLimiting:
         
         for i in range(3):
             response = client.post(
-                "/api/v1/images/upload",
+                "/api/v1/images/",
                 json=payload
             )
             assert response.status_code in [200, 429, 500]
@@ -498,7 +362,7 @@ class TestDataValidation:
             "user_id": "test_user"
         }
         response = client.post(
-            "/api/v1/images/upload",
+            "/api/v1/images/",
             json=payload
         )
         assert response.status_code == 422

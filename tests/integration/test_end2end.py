@@ -2,7 +2,7 @@
 """
 End-to-End Integration Tests
 Tests real system functionality with real services
-NO MOCKS - Tests actual Firestore, Redis, Qdrant integration
+NO MOCKS - Tests actual Postgres, Redis, Typesense integration
 """
 import asyncio
 import pytest
@@ -21,7 +21,7 @@ from app.infrastructure.id_generator import IDGenerator
 class TestEnd2EndIntegration:
     """End-to-end integration tests with real services"""
     
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     async def container(self):
         """Initialize container with real services"""
         # Load environment
@@ -164,12 +164,12 @@ class TestEnd2EndIntegration:
     async def test_service_health_checks(self, container):
         """Test that all critical services are healthy"""
         # Get infrastructure services
-        firestore = container.get('firestore')
+        postgres = container.get('postgres')
         redis = container.get('redis')
         
-        # Test Firestore health
-        firestore_healthy = await firestore.health_check()
-        assert firestore_healthy is True, "Firestore service should be healthy"
+        # Test Postgres health
+        postgres_healthy = await postgres.health_check()
+        assert postgres_healthy is True, "PostgreSQL service should be healthy"
         
         # Test Redis health (if available)
         if redis:
@@ -220,7 +220,7 @@ class TestEnd2EndIntegration:
     async def test_data_persistence(self, container, id_gen):
         """Test that data actually persists to real databases"""
         conversation_orchestrator = container.get('conversation_orchestrator')
-        firestore = container.get('firestore')
+        postgres = container.get('postgres')
         
         user_id = f"test_user_{id_gen.timestamp()}"
         
@@ -229,20 +229,20 @@ class TestEnd2EndIntegration:
         assert result['success'] is True
         conversation_id = result['conversation_id']
         
-        # Verify it exists in Firestore directly
-        doc = await firestore.get_document('conversations', conversation_id)
+        # Verify it exists in Postgres directly
+        doc = await postgres.get_document('conversations', conversation_id)
         assert doc is not None
         assert doc['user_id'] == user_id
         assert doc['title'] == "Persistence Test"
         
         # Clean up
-        await firestore.delete_document('conversations', conversation_id)
+        await postgres.delete_document('conversations', conversation_id)
 
 
 class TestFailureInjection:
     """Test system behavior when services fail"""
     
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     async def container(self):
         """Initialize container"""
         from dotenv import load_dotenv

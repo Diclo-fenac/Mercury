@@ -20,11 +20,11 @@
         │
         ├──────────────┬──────────────┐
         ▼              ▼              ▼
-    ┌─────────┐   ┌─────────┐   ┌─────────┐
-    │Typesense│   │ Qdrant  │   │  Cache  │
-    │ (Fuzzy) │   │(Semantic)│   │ (Redis) │
-    │ 0.6 wt  │   │ 0.4 wt  │   │ 5m TTL  │
-    └─────────┘   └─────────┘   └─────────┘
+    ┌─────────┐                 ┌─────────┐
+    │Typesense│                 │  Cache  │
+    │ (Search)│                 │ (Redis) │
+    │         │                 │ 5m TTL  │
+    └─────────┘                 └─────────┘
         │              │
         └──────┬───────┘
                ▼
@@ -45,10 +45,9 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 
 Infrastructure Layer:
-  ✅ Typesense Client      → Fuzzy/keyword search with typo tolerance
-  ✅ Qdrant Client         → Vector similarity search
+  ✅ Typesense Client      → Fuzzy/keyword search and semantic search
   ✅ Redis Cache           → 5-minute TTL for fast queries
-  ✅ Firestore DB          → Product data storage
+  ✅ Postgres DB          → Product data storage
 
 Add-ons Layer:
   ✅ Gemini Embeddings     → 768-dim vectors for semantic search
@@ -79,7 +78,7 @@ Search Capabilities:
 
 Performance:
   ✅ <500ms response       → Target achieved
-  ✅ Parallel queries      → Typesense + Qdrant simultaneously
+  ✅ Search queries        → Typesense directly
   ✅ Smart caching         → 5-minute TTL, ~70% hit rate
   ✅ Connection pooling    → Reuse connections
   ✅ Async operations      → Non-blocking I/O
@@ -107,8 +106,7 @@ Formula:
 Example:
   Product in both sources:
     Typesense: rank=3, weight=0.6 → 0.6/(60+3) = 0.00952
-    Qdrant:    rank=1, weight=0.4 → 0.4/(60+1) = 0.00656
-    RRF score: 0.01608
+    RRF score: 0.00952
 
   After reranking:
     User prefers category: +20% → 0.01930
@@ -124,7 +122,6 @@ Achieved:      200-400ms average
 
 Breakdown:
   Typesense:   50-100ms
-  Qdrant:      100-200ms
   RRF:         10-20ms
   Reranking:   5-10ms
   Overhead:    20-50ms

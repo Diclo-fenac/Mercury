@@ -4,7 +4,7 @@ Main router that includes all endpoint modules
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import cache, chat, conversations, health, images, products, users
+from app.api.v1.endpoints import chat, conversations, health, images, products, users, search, admin, widget, telemetry
 
 api_router = APIRouter()
 
@@ -15,4 +15,7 @@ api_router.include_router(conversations.router, prefix="/conversations", tags=["
 api_router.include_router(products.router, prefix="/products", tags=["products"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(images.router, prefix="/images", tags=["images"])
-api_router.include_router(cache.router, prefix="/admin/cache", tags=["admin-cache"])
+api_router.include_router(search.router, prefix="/search", tags=["search"])
+api_router.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(widget.router, prefix="/widget", tags=["widget"])

@@ -24,7 +24,8 @@ PRODUCTS_SCHEMA = {
         {"name": "description", "type": "string", "optional": True},
         {"name": "rating", "type": "float"},  # Required field for default sorting
         {"name": "stock", "type": "string", "optional": True},
-        {"name": "selling_price", "type": "float", "optional": True}
+        {"name": "selling_price", "type": "float", "optional": True},
+        {"name": "embedding", "type": "float[]", "num_dim": 384}  # 384 dimensions for all-MiniLM-L6-v2
     ],
     "default_sorting_field": "rating"
 }

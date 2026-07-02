@@ -125,10 +125,11 @@ class TypesenseClient:
         query_by: str = "title,description,brand,category",
         filter_by: Optional[str] = None,
         sort_by: Optional[str] = None,
+        vector_query: Optional[str] = None,
         per_page: int = 10,
         page: int = 1
     ) -> Dict[str, Any]:
-        """Search documents with fuzzy matching"""
+        """Search documents with fuzzy/hybrid matching"""
         try:
             search_params = {
                 'q': query,
@@ -145,15 +146,37 @@ class TypesenseClient:
             
             if sort_by:
                 search_params['sort_by'] = sort_by
-            
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None,
-                lambda: self.client.collections[collection].documents.search(search_params)
-            )
+
+            if vector_query:
+                search_params['vector_query'] = vector_query
+                search_requests = {
+                    'searches': [
+                        {
+                            'collection': collection,
+                            **search_params
+                        }
+                    ]
+                }
+                loop = asyncio.get_event_loop()
+                multi_results = await loop.run_in_executor(
+                    None,
+                    lambda: self.client.multi_search.perform(search_requests, {})
+                )
+                result = multi_results.get('results', [{}])[0]
+            else:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: self.client.collections[collection].documents.search(search_params)
+                )
             
             hits = result.get('hits', [])
-            documents = [hit['document'] for hit in hits]
+            documents = []
+            for hit in hits:
+                doc = hit['document']
+                if 'vector_distance' in hit:
+                    doc['vector_distance'] = hit['vector_distance']
+                documents.append(doc)
             
             return {
                 "success": True,
@@ -217,3 +240,72 @@ class TypesenseClient:
         except Exception as e:
             logger.error(f"Error deleting collection: {e}")
             return False
+
+    async def get_suggestions(self, query: str, limit: int = 10, collection: str = "products") -> List[str]:
+        """Get search autocomplete suggestions by querying collection"""
+        try:
+            res = await self.search(
+                collection=collection,
+                query=query,
+                query_by="title,brand,category",
+                per_page=limit
+            )
+            if res.get("success"):
+                suggestions = []
+                for doc in res.get("documents", []):
+                    title = doc.get("title")
+                    if title and title not in suggestions:
+                        suggestions.append(title)
+                return suggestions[:limit]
+            return []
+        except Exception as e:
+            logger.error(f"Error getting suggestions: {e}")
+            return []
+
+
+
+    async def get_category_suggestions(self, query: str, limit: int = 5, collection: str = "products") -> List[Dict[str, str]]:
+        """Get category suggestions based on query"""
+        try:
+            res = await self.search(
+                collection=collection,
+                query=query,
+                query_by="category",
+                per_page=limit * 2
+            )
+            if res.get("success"):
+                categories = []
+                seen = set()
+                for doc in res.get("documents", []):
+                    cat = doc.get("category")
+                    if cat and cat not in seen:
+                        seen.add(cat)
+                        categories.append({"category": cat})
+                return categories[:limit]
+            return []
+        except Exception as e:
+            logger.error(f"Error getting category suggestions: {e}")
+            return []
+
+    async def get_brand_suggestions(self, query: str, limit: int = 5, collection: str = "products") -> List[Dict[str, str]]:
+        """Get brand suggestions based on query"""
+        try:
+            res = await self.search(
+                collection=collection,
+                query=query,
+                query_by="brand",
+                per_page=limit * 2
+            )
+            if res.get("success"):
+                brands = []
+                seen = set()
+                for doc in res.get("documents", []):
+                    brand = doc.get("brand")
+                    if brand and brand not in seen:
+                        seen.add(brand)
+                        brands.append({"brand": brand})
+                return brands[:limit]
+            return []
+        except Exception as e:
+            logger.error(f"Error getting brand suggestions: {e}")
+            return []

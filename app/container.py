@@ -51,9 +51,8 @@ class Container:
     async def _init_infrastructure(self) -> None:
         """Initialize infrastructure layer"""
         from app.infrastructure.cache.redis import RedisClient
-        from app.infrastructure.db.firestore import FirestoreClient
-        from app.infrastructure.storage.gcs import GCSClient
-        from app.infrastructure.vector.qdrant import QdrantClient
+        from app.infrastructure.db.postgres import PostgresClient
+        from app.infrastructure.storage.local import LocalStorageClient
         
         # Redis - try to connect, continue if fails
         try:
@@ -70,50 +69,64 @@ class Container:
             logger.warning(f"Redis not available: {e}")
             self._services['redis'] = None
         
-        # Firestore - with timeout and fallback to mock in debug
+        # PostgreSQL - primary database
         try:
-            self._services['firestore'] = FirestoreClient(
-                project_id=self.settings.GOOGLE_CLOUD_PROJECT,
-                credentials_path=self.settings.FIREBASE_CREDENTIALS_PATH,
-                collection_name=self.settings.FIRESTORE_COLLECTION
+            self._services['postgres'] = PostgresClient(
+                database_url=self.settings.DATABASE_URL
             )
-            await asyncio.wait_for(self._services['firestore'].connect(), timeout=5.0)
-            logger.info("Firestore connected")
+            await asyncio.wait_for(self._services['postgres'].connect(), timeout=10.0)
+            logger.info("PostgreSQL connected")
         except (asyncio.TimeoutError, Exception) as e:
-            logger.error(f"Firestore connection failed: {e}")
-            if self.settings.DEBUG:
-                logger.warning("⚠️ Falling back to MockFirestoreClient for local development")
-                from app.infrastructure.db.mock_firestore import MockFirestoreClient
-                self._services['firestore'] = MockFirestoreClient()
-                await self._services['firestore'].connect()
-            else:
-                raise Exception(f"Firestore is required but failed to connect: {e}")
+            logger.error(f"PostgreSQL connection failed: {e}")
+            raise Exception(f"PostgreSQL is required but failed to connect: {e}")
         
-        # Qdrant - with timeout
-        try:
-            self._services['qdrant'] = QdrantClient(
-                host=self.settings.QDRANT_HOST,
-                port=self.settings.QDRANT_PORT,
-                api_key=self.settings.QDRANT_API_KEY,
-                collection_name=self.settings.QDRANT_COLLECTION_NAME
-            )
-            await asyncio.wait_for(self._services['qdrant'].connect(), timeout=5.0)
-            logger.info("Qdrant connected")
-        except (asyncio.TimeoutError, Exception) as e:
-            logger.warning(f"Qdrant not available: {e}")
-            self._services['qdrant'] = None
         
-        # GCS - with timeout
+        # Typesense - with timeout
         try:
-            self._services['gcs'] = GCSClient(
-                bucket_name=self.settings.GCS_BUCKET_NAME,
-                credentials_path=self.settings.GOOGLE_APPLICATION_CREDENTIALS
+            from app.infrastructure.search.typesense import TypesenseClient
+            self._services['typesense'] = TypesenseClient(
+                host=self.settings.TYPESENSE_HOST,
+                port=self.settings.TYPESENSE_PORT,
+                api_key=self.settings.TYPESENSE_API_KEY,
             )
-            await asyncio.wait_for(self._services['gcs'].connect(), timeout=5.0)
-            logger.info("GCS connected")
+            await asyncio.wait_for(self._services['typesense'].connect(), timeout=5.0)
+            logger.info("Typesense connected")
         except (asyncio.TimeoutError, Exception) as e:
-            logger.warning(f"GCS not available: {e}")
-            self._services['gcs'] = None
+            logger.warning(f"Typesense not available: {e}")
+            self._services['typesense'] = None
+        
+        # Local or MinIO Storage
+        storage_connected = False
+        if self.settings.MINIO_ENDPOINT:
+            try:
+                from app.infrastructure.storage.minio import MinIOStorageClient
+                logger.info(f"Connecting to MinIO storage at {self.settings.MINIO_ENDPOINT}...")
+                self._services['storage'] = MinIOStorageClient(
+                    endpoint=self.settings.MINIO_ENDPOINT,
+                    access_key=self.settings.MINIO_ACCESS_KEY,
+                    secret_key=self.settings.MINIO_SECRET_KEY,
+                    bucket_name=self.settings.MINIO_BUCKET_NAME,
+                    secure=self.settings.MINIO_SECURE
+                )
+                await asyncio.wait_for(self._services['storage'].connect(), timeout=5.0)
+                storage_connected = True
+                logger.info("MinIO Storage connected successfully")
+            except Exception as e:
+                logger.warning(f"⚠️ MinIO storage connection failed: {e}. Falling back to Local Storage...")
+
+        if not storage_connected:
+            try:
+                self._services['storage'] = LocalStorageClient(
+                    base_dir="uploads"
+                )
+                await self._services['storage'].connect()
+                logger.info("Local Disk Storage connected (Fallback Mode)")
+            except Exception as e:
+                logger.error(f"❌ Local Storage connection failed: {e}")
+                self._services['storage'] = None
+
+        # GCS alias removed
+
         
         logger.info("Infrastructure layer initialized")
     
@@ -128,13 +141,13 @@ class Container:
         
         # Product Service
         self._services['product_service'] = ProductService(
-            firestore=self._services['firestore'],
+            db=self._services['postgres'],
             cache=self._services['redis']
         )
         
         # User Service
         self._services['user_service'] = UserService(
-            firestore=self._services['firestore'],
+            db=self._services['postgres'],
             cache=self._services['redis']
         )
         
@@ -144,7 +157,7 @@ class Container:
         # Trending Products Service
         self._services['trending_products_service'] = TrendingProductsService(
             cache=self._services['redis'],
-            firestore=self._services['firestore']
+            db=self._services['postgres']
         )
         
         # Recommendation Engine
@@ -155,23 +168,49 @@ class Container:
         
         # Conversation Service
         self._services['conversation_service'] = ConversationService(
-            firestore=self._services['firestore'],
+            db=self._services['postgres'],
             cache=self._services['redis']
+        )
+        
+        # Suggestions Service
+        from app.domain.search.suggestions_service import SearchSuggestionsService
+        self._services['suggestions_service'] = SearchSuggestionsService(
+            cache=self._services['redis'],
+            typesense=self._services.get('typesense')
+        )
+
+        # Tenant Service & Provisioner
+        from app.domain.tenants.service import TenantService
+        from app.domain.tenants.provisioning import TenantProvisioner
+        self._services['tenant_service'] = TenantService(
+            db=self._services['postgres'],
+            cache=self._services['redis']
+        )
+        self._services['tenant_provisioner'] = TenantProvisioner(
+            typesense=self._services.get('typesense')
         )
         
         logger.info("Domain services initialized")
     
     async def _init_addons(self) -> None:
         """Initialize add-ons layer"""
+        from app.addons.embeddings.local_embedder import LocalEmbedder
         from app.addons.image.processor import ImageProcessor
         from app.addons.memory.short_term import ShortTermMemory
         from app.addons.personalization.scorer import PersonalizationScorer
         from app.addons.search.hybrid import HybridSearch
-        
+
+        # Embeddings
+        self._services['embeddings'] = LocalEmbedder(
+            model_name="all-MiniLM-L6-v2"
+        )
+        await self._services['embeddings'].initialize()
+
         # Search
         self._services['hybrid_search'] = HybridSearch(
-            qdrant=self._services['qdrant'],
-            firestore=self._services['firestore']
+            typesense=self._services.get('typesense'),
+            db=self._services['postgres'],
+            embeddings=self._services['embeddings'],
         )
         
         # Memory
@@ -185,10 +224,49 @@ class Container:
             cache=self._services['redis']
         )
         
+        # Vision Provider
+        provider_type = getattr(self.settings, 'VISION_PROVIDER', 'gemini')
+        if provider_type == "openai":
+            from app.addons.image.providers.openai import OpenAIVisionProvider
+            provider = OpenAIVisionProvider(
+                api_key=getattr(self.settings, 'VISION_API_KEY', None),
+                api_base=getattr(self.settings, 'VISION_API_BASE', None),
+                model_name=getattr(self.settings, 'VISION_MODEL_NAME', 'gpt-4o-mini')
+            )
+        elif provider_type == "local":
+            from app.addons.image.providers.local import LocalVisionProvider
+            provider = LocalVisionProvider()
+        else:
+            from app.addons.image.providers.gemini import GeminiVisionProvider
+            # Use specific VISION_API_KEY if present, fallback to GOOGLE_API_KEY
+            api_key = getattr(self.settings, 'VISION_API_KEY', None) or getattr(self.settings, 'GOOGLE_API_KEY', None)
+            provider = GeminiVisionProvider(
+                api_key=api_key,
+                model_name=getattr(self.settings, 'VISION_MODEL_NAME', 'gemini-2.5-flash')
+            )
+            
+        await provider.initialize()
+        self._services['vision_provider'] = provider
+        
         # Image Processor
         self._services['image_processor'] = ImageProcessor(
-            storage=self._services['gcs'],
-            cache=self._services['redis']
+            storage=self._services['storage'],
+            cache=self._services['redis'],
+            provider=self._services['vision_provider']
+        )
+
+        # Wire sync pipeline: Postgres → Typesense
+        if self._services.get('postgres'):
+            self._services['postgres'].setup_sync(
+                embeddings=self._services['embeddings'],
+                typesense=self._services.get('typesense'),
+            )
+        
+        # Catalog Importer
+        from app.domain.tenants.importer import CatalogImporter
+        self._services['catalog_importer'] = CatalogImporter(
+            typesense=self._services.get('typesense'),
+            embeddings=self._services['embeddings']
         )
         
         logger.info("Add-ons layer initialized")
@@ -200,11 +278,15 @@ class Container:
         from app.intelligence.tools.user_tools import UserTools
         
         # LLM Engine
-        self._services['llm_engine'] = LLMEngine(
-            api_key=self.settings.GOOGLE_API_KEY,
-            project_id=self.settings.GOOGLE_CLOUD_PROJECT
-        )
-        await self._services['llm_engine'].initialize()
+        if getattr(self.settings, 'MERCURY_MODE', 'standard') != "lite" and self.settings.GOOGLE_API_KEY:
+            self._services['llm_engine'] = LLMEngine(
+                api_key=self.settings.GOOGLE_API_KEY,
+                project_id=self.settings.GOOGLE_CLOUD_PROJECT
+            )
+            await self._services['llm_engine'].initialize()
+        else:
+            logger.warning("SERVICE_UNAVAILABLE: Gemini API key missing or lite mode. Falling back to Search-only.")
+            self._services['llm_engine'] = None
         
         # Tools (without SearchTools - will be created after orchestrators)
         self._services['product_tools'] = ProductTools(
@@ -231,7 +313,9 @@ class Container:
         self._services['search_orchestrator'] = SearchOrchestrator(
             search=self._services['hybrid_search'],
             personalization=self._services['personalization_scorer'],
-            cache=self._services['redis']
+            cache=self._services['redis'],
+            suggestions_service=self._services.get('suggestions_service'),
+            tenant_service=self._services.get('tenant_service')
         )
         
         # Now create SearchTools, VariantTools, PersonalizationTools, and WorkflowTools after search_orchestrator exists
@@ -337,6 +421,12 @@ class Container:
     def get(self, service_name: str) -> Any:
         """Get service by name"""
         return self._services.get(service_name)
+    
+    async def get_service(self, service_name: str) -> Any:
+        """Get service by name (async alias for legacy dependency compatibility)"""
+        if not self._initialized:
+            await self.initialize()
+        return self.get(service_name)
     
     def is_initialized(self) -> bool:
         """Check if container is initialized"""

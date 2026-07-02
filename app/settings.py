@@ -18,27 +18,35 @@ class Settings(BaseSettings):
     VERSION: str = "4.0.0"
     DEBUG: bool = Field(default=False, env="DEBUG")
     PORT: int = Field(default=8000, env="PORT")
+    MERCURY_MODE: str = Field(default="standard", env="MERCURY_MODE")
     
     # Security
     SECRET_KEY: str = Field(env="SECRET_KEY")
     
     # Google Cloud & AI
-    GOOGLE_API_KEY: str = Field(env="GOOGLE_API_KEY")
+    GOOGLE_API_KEY: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
     GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_PROJECT")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(default=None, env="GOOGLE_APPLICATION_CREDENTIALS")
+    GEMINI_EMBEDDING_MODEL: str = Field(default="models/text-embedding-002", env="GEMINI_EMBEDDING_MODEL")
 
-    # Firestore
-    FIRESTORE_COLLECTION: str = Field(default="products", env="FIRESTORE_COLLECTION")
-    FIREBASE_CREDENTIALS_PATH: Optional[str] = Field(default=None, env="FIREBASE_CREDENTIALS_PATH")
+    # Vision settings
+    VISION_PROVIDER: str = Field(default="gemini", env="VISION_PROVIDER") # gemini | openai | local
+    VISION_API_KEY: Optional[str] = Field(default=None, env="VISION_API_KEY")
+    VISION_API_BASE: Optional[str] = Field(default=None, env="VISION_API_BASE")
+    VISION_MODEL_NAME: str = Field(default="gemini-2.5-flash", env="VISION_MODEL_NAME")
 
-    # Google Cloud Storage
-    GCS_BUCKET_NAME: str = Field(default="mercury-images", env="GCS_BUCKET_NAME")
+    # PostgreSQL Database
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://mercury:mercury_dev_password@localhost:5432/mercury",
+        env="DATABASE_URL"
+    )
 
-    # Qdrant Vector Database
-    QDRANT_HOST: str = Field(default="localhost", env="QDRANT_HOST")
-    QDRANT_PORT: int = Field(default=6333, env="QDRANT_PORT")
-    QDRANT_COLLECTION_NAME: str = Field(default="products", env="QDRANT_COLLECTION_NAME")
-    QDRANT_API_KEY: Optional[str] = Field(default=None, env="QDRANT_API_KEY")
+    # MinIO Storage
+    MINIO_ENDPOINT: Optional[str] = Field(default=None, env="MINIO_ENDPOINT")
+    MINIO_ACCESS_KEY: Optional[str] = Field(default="minioadmin", env="MINIO_ACCESS_KEY")
+    MINIO_SECRET_KEY: Optional[str] = Field(default="minioadmin", env="MINIO_SECRET_KEY")
+    MINIO_BUCKET_NAME: str = Field(default="mercury-uploads", env="MINIO_BUCKET_NAME")
+    MINIO_SECURE: bool = Field(default=False, env="MINIO_SECURE")
 
     # Typesense Search
     TYPESENSE_HOST: str = Field(default="localhost", env="TYPESENSE_HOST")
