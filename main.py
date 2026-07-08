@@ -123,6 +123,12 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health():
         return {"status": "healthy"}
+
+    @app.get("/metrics")
+    async def metrics():
+        from fastapi import Response
+        from app.utils.metrics import generate_latest, CONTENT_TYPE_LATEST
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
     
     return app
 

@@ -130,6 +130,7 @@ async def widget_chat(
         # 1. Fetch matching products using the tenant search pipeline (applies pins, synonyms, stock beh)
         search_res = await search_orchestrator.handle(
             query=sanitized_query,
+            user_id=request.conversation_id or "anonymous",
             filters={},
             limit=5,
             tenant_context=tenant_ctx

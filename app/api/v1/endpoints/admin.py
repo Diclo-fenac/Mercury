@@ -224,6 +224,18 @@ async def add_synonym(
             )
             session.add(syn)
             await session.commit()
+            
+        typesense_client = container.get("typesense")
+        if typesense_client:
+            collection_name = f"tenant_{tenant_ctx.organization_id}_products"
+            synonym_id = f"syn_{request.term.replace(' ', '_')}"
+            await typesense_client.upsert_synonym(
+                collection_name, 
+                synonym_id, 
+                [s.lower() for s in request.synonyms], 
+                root=request.term.lower()
+            )
+            
         return {"success": True}
     except Exception as e:
         raise HTTPException(
@@ -555,7 +567,8 @@ async def create_synonym(
 ):
     """Add a synonym rule"""
     tenant_service = container.get("tenant_service")
-    if not tenant_service:
+    typesense_client = container.get("typesense")
+    if not tenant_service or not typesense_client:
         raise HTTPException(status_code=500, detail="Service unavailable")
     
     term = payload.get("term")
@@ -564,6 +577,14 @@ async def create_synonym(
         raise HTTPException(status_code=400, detail="term and synonyms required")
         
     await tenant_service.add_synonym(tenant_ctx.organization_id, term, synonyms)
+    
+    # Push to Typesense natively
+    collection_name = f"tenant_{tenant_ctx.organization_id}_products"
+    synonym_id = f"syn_{term.replace(' ', '_')}"
+    # Bidirectional if root is empty, otherwise one-way
+    # To map "mobile" -> "smartphone", root="mobile", synonyms=["smartphone"]
+    await typesense_client.upsert_synonym(collection_name, synonym_id, synonyms, root=term)
+    
     return {"success": True}
 
 
@@ -575,10 +596,17 @@ async def delete_synonym(
 ):
     """Delete a synonym rule"""
     tenant_service = container.get("tenant_service")
+    typesense_client = container.get("typesense")
     if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
         
     await tenant_service.remove_synonym(tenant_ctx.organization_id, term)
+    
+    if typesense_client:
+        collection_name = f"tenant_{tenant_ctx.organization_id}_products"
+        synonym_id = f"syn_{term.replace(' ', '_')}"
+        await typesense_client.delete_synonym(collection_name, synonym_id)
+        
     return {"success": True}
 
 @router.get("/system/metrics")

@@ -22,10 +22,10 @@ async def register_websocket_handlers(
     """Register all WebSocket event handlers and start message loop"""
     
     # Get services
-    chat_service = await container.get_service("chat")
-    user_service = await container.get_service("user")
-    product_service = await container.get_service("product")
-    conversation_service = await container.get_service("conversation")
+    chat_service = await container.get_service("chat_orchestrator")
+    user_service = await container.get_service("user_service")
+    product_service = await container.get_service("search_orchestrator")
+    conversation_service = await container.get_service("conversation_orchestrator")
     redis_service = await container.get_service("redis")
     
     # Register event handlers
@@ -140,11 +140,7 @@ async def register_websocket_handlers(
                 message=message,
                 conversation_id=conversation_id,
                 message_type=message_type,
-                image_data=image_data,
-                metadata={
-                    "message_id": message_id,
-                    "websocket_session": id(websocket)
-                }
+                image_data=image_data
             )
             
             # Stop typing indicator
@@ -225,7 +221,7 @@ async def register_websocket_handlers(
             })
             
             # Perform search
-            result = await product_service.search_products(query, limit, rerank)
+            result = await product_service.search_products(query, user_id=user_id, limit=limit)
             
             if result.get("success"):
                 await manager.send_message(websocket, {
@@ -335,8 +331,7 @@ async def register_websocket_handlers(
                     message=message,
                     conversation_id=conversation_id,
                     message_type="image",
-                    image_data=file_data,
-                    metadata={"file_name": file_name, "file_type": file_type}
+                    image_data=file_data
                 )
                 
                 if chat_result.get("success"):

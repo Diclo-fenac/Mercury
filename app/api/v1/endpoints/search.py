@@ -146,9 +146,8 @@ async def search_products(
                 "suggestions": result.get("suggestions", []) if request.include and request.include.suggestions else None
             }
         )
-    except HTTPException:
-        raise
     except Exception as e:
+        logger.error(f"Search failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Search failed: {str(e)}"

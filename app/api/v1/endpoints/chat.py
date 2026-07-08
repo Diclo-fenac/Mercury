@@ -29,7 +29,7 @@ async def chat_completion(
     """OpenAI-style chat completions (batch mode)"""
     try:
         chat_orchestrator = container.get('chat_orchestrator')
-        if not chat_orchestrator:
+        if not chat_orchestrator or getattr(chat_orchestrator, 'llm', None) is None:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Chat service not available"
@@ -81,7 +81,7 @@ async def chat_stream(
     """Streaming chat completions using Server-Sent Events (SSE)"""
     try:
         chat_orchestrator = container.get('chat_orchestrator')
-        if not chat_orchestrator:
+        if not chat_orchestrator or getattr(chat_orchestrator, 'llm', None) is None:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Chat service not available"
