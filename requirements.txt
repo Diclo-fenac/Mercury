@@ -51,4 +51,6 @@ structlog>=23.2.0
 
 # Optional: for better performance
 orjson>=3.9.0
-ujson>=5.8.0psutil
+ujson>=5.8.0
+psutil
+minio

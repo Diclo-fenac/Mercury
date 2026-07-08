@@ -101,6 +101,15 @@ class ChatOrchestrator:
             }
         )
 
+    def set_variant_tools(self, tools: Any):
+        self.variant_tools = tools
+        
+    def set_personalization_tools(self, tools: Any):
+        self.personalization_tools = tools
+        
+    def set_workflow_tools(self, tools: Any):
+        self.workflow_tools = tools
+
     async def _tool_search_products(self, query: str, category: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
         """Search products scoped by the active tenant"""
         from app.container import get_container
