@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # Base models
@@ -39,7 +39,7 @@ class ContextConfig(BaseModel):
 class ChatCompletionRequest(BaseRequest):
     """Production-ready chat completion request"""
     model_version: str = Field(default="gemini-2.5-flash", description="Model version to use")
-    messages: List[ChatCompletionMessage] = Field(..., min_items=1, description="List of messages in the conversation")
+    messages: List[ChatCompletionMessage] = Field(..., min_length=1, description="List of messages in the conversation")
     conversation_id: Optional[str] = Field(None, description="Conversation identifier")
     stream: bool = Field(default=False, description="Whether to stream the response")
     temperature: float = Field(default=0.7, ge=0, le=2.0)
@@ -54,7 +54,7 @@ class ChatToolsRequest(BaseRequest):
     tool_name: Optional[str] = Field(None, description="Tool name (required for execute)")
     parameters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Parameters for tool execution")
 
-    @validator('operation')
+    @field_validator('operation')
     def validate_operation(cls, v):
         allowed = ['discover', 'execute']
         if v not in allowed:
@@ -82,14 +82,14 @@ class SortConfig(BaseModel):
     by: str = Field(default="relevance")
     order: str = Field(default="desc")
 
-    @validator('by')
+    @field_validator('by')
     def validate_by(cls, v):
         allowed = ['relevance', 'price', 'rating', 'discount', 'newest']
         if v not in allowed:
             raise ValueError(f'sort by must be one of {allowed}')
         return v
     
-    @validator('order')
+    @field_validator('order')
     def validate_order(cls, v):
         allowed = ['asc', 'desc']
         if v not in allowed:
@@ -123,7 +123,7 @@ class SearchRequest(BaseRequest):
     search_type: str = Field(default="hybrid", description="Search type: hybrid, keyword, semantic")
     include: Optional[IncludeConfig] = Field(default_factory=IncludeConfig)
 
-    @validator('search_type')
+    @field_validator('search_type')
     def validate_search_type(cls, v):
         allowed = ['hybrid', 'keyword', 'semantic']
         if v not in allowed:
@@ -145,7 +145,7 @@ class AdvancedSearchRequest(BaseRequest):
     sort_by: str = Field(default="relevance", description="Sort criteria")
     limit: int = Field(default=20, ge=1, le=100, description="Maximum number of results")
     
-    @validator('sort_by')
+    @field_validator('sort_by')
     def validate_sort_by(cls, v):
         allowed_sorts = ['relevance', 'price_low', 'price_high', 'rating', 'discount']
         if v not in allowed_sorts:
@@ -160,7 +160,7 @@ class ImageUploadRequest(BaseRequest):
     conversation_id: Optional[str] = Field(None, description="Conversation identifier")
     create_chat_message: bool = Field(default=False, description="Create chat message")
     
-    @validator('image_data')
+    @field_validator('image_data')
     def validate_image_data(cls, v):
         if not v or not v.startswith('data:image/'):
             raise ValueError('Invalid image data format. Must be data:image/...')
@@ -193,14 +193,14 @@ class ImageSearchRequest(BaseRequest):
     search_type: str = Field(default="exact_and_similar", description="Search type")
     limit: int = Field(default=10, ge=1, le=50, description="Maximum number of results")
     
-    @validator('search_type')
+    @field_validator('search_type')
     def validate_search_type(cls, v):
         allowed_types = ['exact_match', 'similar_style', 'exact_and_similar']
         if v not in allowed_types:
             raise ValueError(f'search_type must be one of {allowed_types}')
         return v
     
-    @validator('image_data')
+    @field_validator('image_data')
     def validate_image_requirement(cls, v, values):
         if not v and not values.get('image_id'):
             raise ValueError('Either image_data or image_id is required')

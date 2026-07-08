@@ -73,7 +73,7 @@ class RedisClient:
     async def close(self) -> None:
         """Close Redis connections"""
         if self._client:
-            await self._client.close()
+            await self._client.aclose()
         if self._pool:
             await self._pool.disconnect()
         

@@ -92,10 +92,10 @@ async def search_products(
         result = await search_orchestrator.handle(
             query=request.query,
             user_id=user_id,
-            filters=request.filters.dict() if request.filters else {},
+            filters=request.filters.model_dump() if request.filters else {},
             limit=request.pagination.limit if request.pagination else 20,
             offset=(request.pagination.page - 1) * request.pagination.limit if request.pagination else 0,
-            sort=request.sort.dict() if request.sort else None,
+            sort=request.sort.model_dump() if request.sort else None,
             search_type=request.search_type,
             include_suggestions=request.include.suggestions if request.include else False,
             tenant_context=tenant
