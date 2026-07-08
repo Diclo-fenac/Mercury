@@ -44,7 +44,7 @@ class ProductInfo(BaseModel):
     rating: Optional[float] = Field(None, description="Product rating")
     stock: Optional[Any] = Field(None, description="Stock status")
     images: Optional[List[str]] = Field(None, description="Product images")
-    tags: Optional[Dict[str, Any]] = Field(None, description="Product tags")
+    tags: Optional[Any] = Field(None, description="Product tags")
     availability: Optional[List[Dict[str, Any]]] = Field(None, description="Store availability")
     score: float = Field(0.0, description="Search relevance score")
     breakdown: Optional[ScoreBreakdown] = Field(None, description="Ranking score transparency")

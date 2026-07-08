@@ -17,6 +17,9 @@ class ConversationOrchestrator:
         """Get user's conversations"""
         try:
             conversations = await self.conversations.get_user_conversations(user_id, limit)
+            for conv in conversations:
+                if 'id' in conv and 'conversation_id' not in conv:
+                    conv['conversation_id'] = conv['id']
             return {
                 "success": True,
                 "conversations": conversations,

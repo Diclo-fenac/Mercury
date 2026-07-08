@@ -69,12 +69,16 @@ class HybridSearch:
                 )
                 if res.get('success'):
                     for doc in res.get('documents', []):
-                        product_id = doc.get('id')
-                        if product_id:
-                            product = await self.db.get_product_by_id(str(product_id))
-                            if product:
-                                product['similarity_score'] = doc.get('vector_distance', 0)
-                                results.append(product)
+                        if collection != "products":
+                            doc['similarity_score'] = doc.get('vector_distance', 0)
+                            results.append(doc)
+                        else:
+                            product_id = doc.get('id')
+                            if product_id:
+                                product = await self.db.get_product_by_id(str(product_id))
+                                if product:
+                                    product['similarity_score'] = doc.get('vector_distance', 0)
+                                    results.append(product)
             except Exception as e:
                 logger.warning(f"Typesense hybrid search failed, falling back to keyword search: {e}")
                 results = []
@@ -89,16 +93,19 @@ class HybridSearch:
                 )
                 if res.get('success'):
                     for doc in res.get('documents', []):
-                        product_id = doc.get('id')
-                        if product_id:
-                            product = await self.db.get_product_by_id(str(product_id))
-                            if product:
-                                results.append(product)
+                        if collection != "products":
+                            results.append(doc)
+                        else:
+                            product_id = doc.get('id')
+                            if product_id:
+                                product = await self.db.get_product_by_id(str(product_id))
+                                if product:
+                                    results.append(product)
             except Exception as e:
                 logger.warning(f"Typesense keyword search fallback failed: {e}")
 
-        # Final fallback to direct Postgres search
-        if not results:
+        # Final fallback to direct Postgres search (only for global collection)
+        if not results and collection == "products":
             results = await self.db.search_products(filters or {}, limit)
         
         return results[:limit]

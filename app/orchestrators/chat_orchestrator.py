@@ -57,6 +57,9 @@ class ChatOrchestrator:
     
     def _register_tools(self):
         """Register only the three approved tools with LLM"""
+        if not self.llm:
+            return
+            
         # Clear any existing tools in self.llm.tools
         self.llm.tools.clear()
         

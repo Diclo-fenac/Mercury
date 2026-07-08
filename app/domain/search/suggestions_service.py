@@ -65,9 +65,10 @@ class SearchSuggestionsService:
                 telemetry_key += f":{category}"
                 
             if self.cache:
-                cached = await self.cache.get_json(telemetry_key)
+                # Real telemetry is a sorted set (zset)
+                cached = await self.cache.zrevrange(telemetry_key, 0, limit - 1, withscores=True)
                 if cached:
-                    return cached[:limit]
+                    return [{"query": item[0], "score": item[1]} for item in cached]
             
             # 2. Cold-Start Fallback (no telemetry exists yet)
             fallback_key = f"fallback_trending_searches:{tenant_id}:{category or 'all'}:{days}"

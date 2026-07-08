@@ -72,12 +72,8 @@ class SearchOrchestrator:
             
             self._cache_total += 1
             
-            # 1. Synonym expansion
+            # 1. (Removed manual synonym expansion - relying on Typesense native synonyms)
             expanded_query = query
-            if self.tenant_service and tenant_context:
-                synonyms = await self.tenant_service.get_synonyms(tenant_context.organization_id, query)
-                if synonyms:
-                    expanded_query = f"{query} {' '.join(synonyms)}"
 
             # 2. Search products (with dynamic collection)
             collection = tenant_context.collection_name if tenant_context else "products"
@@ -204,14 +200,21 @@ class SearchOrchestrator:
         # Map target_position (1-indexed) -> item
         position_to_item = {pos: pinned_items[pid] for pid, pos in pin_map.items() if pid in pinned_items}
         
+        # Sort pins by target position
+        sorted_pins = sorted(position_to_item.items())
+        
+        final_results = []
         unpinned_idx = 0
-        for i in range(1, max_len + 1):
-            if i in position_to_item:
-                final_results.append(position_to_item[i])
-            elif unpinned_idx < len(unpinned_items):
+        
+        for pos, item in sorted_pins:
+            # Add unpinned items until we reach the target index (pos - 1)
+            while len(final_results) < pos - 1 and unpinned_idx < len(unpinned_items):
                 final_results.append(unpinned_items[unpinned_idx])
                 unpinned_idx += 1
-                
+            # Once we've padded up to the target index, or if we run out of unpinned items, append the pinned item
+            final_results.append(item)
+            
+        # Add any remaining unpinned items
         while unpinned_idx < len(unpinned_items):
             final_results.append(unpinned_items[unpinned_idx])
             unpinned_idx += 1
