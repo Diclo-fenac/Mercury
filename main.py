@@ -127,7 +127,8 @@ def create_app() -> FastAPI:
     @app.get("/metrics")
     async def metrics():
         from fastapi import Response
-        from app.utils.metrics import generate_latest, CONTENT_TYPE_LATEST
+
+        from app.utils.metrics import CONTENT_TYPE_LATEST, generate_latest
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
     
     return app

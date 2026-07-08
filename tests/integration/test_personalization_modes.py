@@ -21,6 +21,7 @@ from app.container import Container
 from app.infrastructure.id_generator import IDGenerator
 from main import create_app
 
+
 @pytest.fixture(scope="session")
 def setup_env():
     """Ensure environment is loaded"""
@@ -211,7 +212,12 @@ class TestMercuryModes:
                 app = create_app()
                 
                 # Add overrides similar to conftest to pass auth
-                from app.api.dependencies import require_auth, get_current_user, get_tenant_context, TenantContext
+                from app.api.dependencies import (
+                    TenantContext,
+                    get_current_user,
+                    get_tenant_context,
+                    require_auth,
+                )
                 app.dependency_overrides[require_auth] = lambda: {"user_id": "test_user", "authenticated": True}
                 app.dependency_overrides[get_current_user] = lambda: {"user_id": "test_user", "authenticated": True}
                 

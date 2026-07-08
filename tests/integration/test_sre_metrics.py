@@ -1,13 +1,15 @@
+import asyncio
+import json
+import os
+import time
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-import time
-import asyncio
-from unittest.mock import patch, MagicMock
-from app.infrastructure.cache.redis import RedisClient
-from app.core.config import Settings
-import json
 
-import os
+from app.core.config import Settings
+from app.infrastructure.cache.redis import RedisClient
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_env():
@@ -46,9 +48,10 @@ def client(setup_env):
 @pytest.fixture(autouse=True)
 def mock_auth():
     """Mock the require_admin_key dependency"""
-    from main import app
-    from app.api.dependencies import require_admin_key, get_tenant_context
     from fastapi import Request
+
+    from app.api.dependencies import get_tenant_context, require_admin_key
+    from main import app
     
     def override_require_admin_key(request: Request = None):
         from app.api.dependencies import TenantContext

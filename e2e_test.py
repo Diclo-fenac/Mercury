@@ -1,10 +1,11 @@
-import requests
-import time
-import json
 import asyncio
-import websockets
-import os
 import io
+import json
+import os
+import time
+
+import requests
+import websockets
 
 BASE_URL = "http://localhost:8000/api/v1"
 
@@ -13,6 +14,7 @@ print("Starting E2E Integration Test...")
 # 1. Onboard a merchant
 print("1. Onboard merchant")
 import uuid
+
 onboard_res = requests.post(f"{BASE_URL}/admin/onboard", json={
     "name": "E2E Test Store",
     "slug": f"e2e-store-{uuid.uuid4().hex[:6]}",
@@ -115,6 +117,7 @@ print("7. Upload product image")
 # Let's create a dummy image (e.g., 1x1 black pixel base64)
 # Since the endpoint expects a pydantic model with `image_data`, we send JSON
 import base64
+
 dummy_img = base64.b64encode(b"dummy image data").decode("utf-8")
 img_res = requests.post(f"{BASE_URL}/images/", json={
     "image_data": f"data:image/jpeg;base64,{dummy_img}",
@@ -142,7 +145,7 @@ print(f"   Image search res: {img_search_res.status_code}")
 print("9. WebSocket chat")
 async def test_websocket():
     # WebSocket auth requires sending type: auth, api_key: search_key
-    uri = f"ws://localhost:8000/ws"
+    uri = "ws://localhost:8000/ws"
     try:
         async with websockets.connect(uri) as ws:
             # Auth

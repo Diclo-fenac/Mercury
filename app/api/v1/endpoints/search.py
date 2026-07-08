@@ -2,10 +2,13 @@
 Legacy Search Endpoints
 Maintains compatibility with /api/v1/search/... endpoints
 """
+import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import (
     TenantContext,
