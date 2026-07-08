@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Google Cloud & AI
     GOOGLE_API_KEY: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
     GEMINI_API_KEY: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
+    GEMINI_MODEL_NAME: str = Field(default="gemini-1.5-pro", env="GEMINI_MODEL_NAME")
     GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_PROJECT")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(default=None, env="GOOGLE_APPLICATION_CREDENTIALS")
     GEMINI_EMBEDDING_MODEL: str = Field(default="models/text-embedding-002", env="GEMINI_EMBEDDING_MODEL")
