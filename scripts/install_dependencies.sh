@@ -32,7 +32,7 @@ echo ""
 echo "Checking installations..."
 
 # Check key packages
-packages=("fastapi" "typesense" "google-generativeai")
+packages=("fastapi" "typesense" "google-genai")
 all_good=true
 
 for package in "${packages[@]}"; do

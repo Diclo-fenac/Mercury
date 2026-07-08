@@ -1,56 +1,43 @@
-# FastAPI and ASGI server
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-websockets>=12.0
 
 # Async HTTP client
-httpx>=0.25.0
-
-# Pydantic for data validation
-pydantic>=2.5.0
-pydantic-settings>=2.1.0
-
-# Redis async client
-redis[hiredis]>=5.0.0
-
-# Google Cloud services
-google-genai>=0.1.0
-google-generativeai>=0.8.0
-
-# Local Embeddings
-sentence-transformers>=2.2.0
-torch>=2.0.0
-
-
-# Search engine
-typesense>=0.18.0
-
 # Database ORM, driver, and migrations
-sqlalchemy>=2.0.0
-asyncpg>=0.29.0
-alembic>=1.12.0
-
+# FastAPI and ASGI server
+# Google Cloud services
 # Image processing
-Pillow>=10.1.0
-
-# Monitoring
-prometheus-client>=0.19.0
-
 # Language detection and translation
-langdetect>=1.0.9
-deep-translator>=1.11.4
-
-# Utilities
-python-dotenv>=1.0.0
-python-multipart>=0.0.6
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-
+# Local Embeddings
+# Monitoring
 # Monitoring and logging
-structlog>=23.2.0
-
 # Optional: for better performance
-orjson>=3.9.0
-ujson>=5.8.0
-psutil
+# Pydantic for data validation
+# Redis async client
+# Search engine
+# Utilities
+Pillow>=10.1.0
+alembic>=1.12.0
+asyncpg>=0.29.0
+deep-translator>=1.11.4
+fastapi>=0.104.0
+google-genai>=0.1.0
+google-genai>=0.2.2
+httpx>=0.25.0
+langdetect>=1.0.9
 minio
+orjson>=3.9.0
+passlib[bcrypt]>=1.7.4
+prometheus-client>=0.19.0
+psutil
+pydantic-settings>=2.1.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+redis[hiredis]>=5.0.0
+sentence-transformers>=2.2.0
+sqlalchemy>=2.0.0
+structlog>=23.2.0
+torch>=2.0.0
+typesense>=0.18.0
+ujson>=5.8.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0

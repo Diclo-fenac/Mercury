@@ -163,11 +163,11 @@ async def check_dependencies():
     
     
     try:
-        import google.generativeai
-        print("✅ google-generativeai - Available")
+        import google.genai
+        print("✅ google-genai - Available")
     except ImportError:
-        print("❌ google-generativeai - Missing (pip install google-generativeai)")
-        missing_deps.append("google-generativeai")
+        print("❌ google-genai - Missing (pip install google-genai)")
+        missing_deps.append("google-genai")
     
     if missing_deps:
         print(f"\n⚠️  Missing dependencies: {', '.join(missing_deps)}")

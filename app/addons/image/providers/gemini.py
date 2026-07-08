@@ -25,9 +25,8 @@ class GeminiVisionProvider(VisionProvider):
                 self.mock_mode = True
                 return
             
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            self.client = genai
+            from google import genai
+            self.client = genai.Client(api_key=self.api_key)
             self.mock_mode = False
             logger.info("Gemini vision client initialized")
         except Exception as e:
@@ -72,8 +71,10 @@ class GeminiVisionProvider(VisionProvider):
             If no barcode is detected, return:
             {"is_barcode": false, "barcode_data": null, "barcode_type": null, "confidence": 1.0}
             """
-            model = self.client.GenerativeModel(self.model_name)
-            response = model.generate_content([prompt, image])
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image]
+            )
             
             response_text = response.text.strip()
             if response_text.startswith('```json'):
@@ -146,8 +147,10 @@ class GeminiVisionProvider(VisionProvider):
                 "description": "natural_language_description"
             }}
             """
-            model = self.client.GenerativeModel(self.model_name)
-            response = model.generate_content([prompt, image])
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image]
+            )
             
             response_text = response.text.strip()
             if response_text.startswith('```json'):
