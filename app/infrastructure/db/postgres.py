@@ -448,6 +448,7 @@ class PostgresClient:
         """Convert Conversation model to dict"""
         return {
             'id': conv.id,
+            'conversation_id': conv.id,
             'user_id': conv.user_id,
             'title': conv.title,
             'metadata': conv.extra_data,

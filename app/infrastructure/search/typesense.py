@@ -96,7 +96,37 @@ class TypesenseClient:
             return True
         except:
             return False
-    
+            
+    async def upsert_synonym(self, collection: str, synonym_id: str, synonyms: List[str], root: str = "") -> bool:
+        """Upsert a synonym in Typesense"""
+        try:
+            mapping = {"synonyms": synonyms}
+            if root:
+                mapping["root"] = root
+                
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: self.client.collections[collection].synonyms[synonym_id].upsert(mapping)
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error upserting synonym: {e}")
+            return False
+            
+    async def delete_synonym(self, collection: str, synonym_id: str) -> bool:
+        """Delete a synonym in Typesense"""
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: self.client.collections[collection].synonyms[synonym_id].delete()
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting synonym: {e}")
+            return False
+            
     async def index_documents(self, collection: str, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Bulk index documents"""
         try:
