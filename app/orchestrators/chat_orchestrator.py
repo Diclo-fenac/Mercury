@@ -200,18 +200,6 @@ class ChatOrchestrator:
         }
         return safe_prefs
 
-    def _register_variant_tools(self):
-        """Register variant discovery tools (disabled in favor of restricted tools)"""
-        pass
-    
-    def _register_personalization_tools(self):
-        """Register behavioral personalization tools (disabled in favor of restricted tools)"""
-        pass
-        
-    def _register_workflow_tools(self):
-        """Register autonomous workflow orchestration tools (disabled in favor of restricted tools)"""
-        pass
-    
     async def handle_completion(self, request: Any, tenant_context: Optional[Any] = None) -> Dict[str, Any]:
         """Handle OpenAI-style chat completion request"""
         try:
