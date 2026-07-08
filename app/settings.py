@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     
     # Google Cloud & AI
     GOOGLE_API_KEY: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
+    GEMINI_API_KEY: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
     GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_PROJECT")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(default=None, env="GOOGLE_APPLICATION_CREDENTIALS")
     GEMINI_EMBEDDING_MODEL: str = Field(default="models/text-embedding-002", env="GEMINI_EMBEDDING_MODEL")
@@ -52,6 +53,7 @@ class Settings(BaseSettings):
     TYPESENSE_HOST: str = Field(default="localhost", env="TYPESENSE_HOST")
     TYPESENSE_PORT: int = Field(default=8108, env="TYPESENSE_PORT")
     TYPESENSE_API_KEY: str = Field(default="xyz", env="TYPESENSE_API_KEY")
+    TYPESENSE_SEARCH_API_KEY: Optional[str] = Field(default=None, env="TYPESENSE_SEARCH_API_KEY")
 
     # Redis Configuration
     REDIS_HOST: str = Field(default="localhost", env="REDIS_HOST")
@@ -67,9 +69,11 @@ class Settings(BaseSettings):
     
     # CORS settings
     ALLOWED_ORIGINS: List[str] = Field(default=["*"], env="ALLOWED_ORIGINS")
+    WS_ALLOWED_ORIGINS: List[str] = Field(default=["*"], env="WS_ALLOWED_ORIGINS")
     
     # Logging
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    PROMETHEUS_ENABLED: bool = Field(default=True, env="PROMETHEUS_ENABLED")
     
     # File upload settings
     MAX_FILE_SIZE: int = Field(default=10 * 1024 * 1024, env="MAX_FILE_SIZE")  # 10MB
