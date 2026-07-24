@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Mercury AI Assistant"
     VERSION: str = "4.0.0"
     DEBUG: bool = Field(default=False, alias="DEBUG")
+    TEST_MODE: bool = Field(default=False, alias="MERCURY_TEST_MODE")
     PORT: int = Field(default=8000, alias="PORT")
     MERCURY_MODE: str = Field(default="standard", alias="MERCURY_MODE")
     
@@ -25,11 +26,15 @@ class Settings(BaseSettings):
     
     # Google Cloud & AI
     GOOGLE_API_KEY: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
-    GEMINI_API_KEY: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
+    GEMINI_API_KEY: str = Field(default="", alias="GEMINI_API_KEY")
     GEMINI_MODEL_NAME: str = Field(default="gemini-1.5-pro", alias="GEMINI_MODEL_NAME")
     GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(default=None, alias="GOOGLE_APPLICATION_CREDENTIALS")
-    GEMINI_EMBEDDING_MODEL: str = Field(default="models/text-embedding-002", alias="GEMINI_EMBEDDING_MODEL")
+    GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-2", alias="GEMINI_EMBEDDING_MODEL")
+    EMBEDDING_PROVIDER: str = Field(default="gemini", alias="EMBEDDING_PROVIDER")
+
+    # Intelligence settings
+    AI_PROVIDER: str = Field(default="gemini", alias="AI_PROVIDER")
 
     # Vision settings
     VISION_PROVIDER: str = Field(default="gemini", alias="VISION_PROVIDER") # gemini | openai | local
@@ -67,6 +72,15 @@ class Settings(BaseSettings):
     # Cache TTL settings (in seconds)
     CONVERSATION_CACHE_TTL: int = Field(default=3600, alias="CONVERSATION_CACHE_TTL")
     CONTEXT_CACHE_TTL: int = Field(default=1800, alias="CONTEXT_CACHE_TTL")
+
+    # Durable catalog indexing outbox
+    CATALOG_INDEX_WORKER_ENABLED: bool = Field(default=True, alias="CATALOG_INDEX_WORKER_ENABLED")
+    CATALOG_INDEX_POLL_INTERVAL_SECONDS: int = Field(
+        default=5, ge=1, alias="CATALOG_INDEX_POLL_INTERVAL_SECONDS"
+    )
+    CATALOG_INDEX_BATCH_SIZE: int = Field(default=100, ge=1, le=1000, alias="CATALOG_INDEX_BATCH_SIZE")
+    CATALOG_INDEX_LEASE_SECONDS: int = Field(default=60, ge=5, alias="CATALOG_INDEX_LEASE_SECONDS")
+    CATALOG_INDEX_MAX_ATTEMPTS: int = Field(default=10, ge=1, alias="CATALOG_INDEX_MAX_ATTEMPTS")
     
     # CORS settings
     ALLOWED_ORIGINS: List[str] = Field(default=["*"], alias="ALLOWED_ORIGINS")
@@ -86,6 +100,13 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = Field(default=60, alias="RATE_LIMIT_PER_MINUTE")
     
+    # MCP Settings
+    MCP_ENABLED: bool = Field(default=True, alias="MCP_ENABLED")
+    MCP_REGIONAL_ENDPOINT: str = Field(default="https://api.mercury.local", alias="MCP_REGIONAL_ENDPOINT")
+    MCP_OIDC_ISSUER: Optional[str] = Field(default=None, alias="MCP_OIDC_ISSUER")
+    MCP_OIDC_AUDIENCE: Optional[str] = Field(default=None, alias="MCP_OIDC_AUDIENCE")
+    MCP_TOKEN_EXPIRY_MINUTES: int = Field(default=60, alias="MCP_TOKEN_EXPIRY_MINUTES")
+
     # Feature Flags
     FEATURE_FLAGS: List[str] = Field(default=["vector-search", "semantic-ranking"], alias="FEATURE_FLAGS")
     

@@ -11,7 +11,10 @@ from app.utils.logger import get_logger
 logger = get_logger("local_embedder")
 
 
-class LocalEmbedder:
+from app.addons.embeddings.providers.base import BaseEmbeddingProvider
+
+
+class LocalEmbedder(BaseEmbeddingProvider):
     """Generate embeddings locally using SentenceTransformers (all-MiniLM-L6-v2)"""
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):

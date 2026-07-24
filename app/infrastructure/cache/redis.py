@@ -10,6 +10,13 @@ from typing import Any, Dict, List, Optional
 import redis.asyncio as redis
 from redis.asyncio import ConnectionPool
 
+from app.infrastructure.cache.keys import (
+    build_cache_key,
+    build_user_context_cache_key,
+    build_user_profile_cache_key,
+    tenant_context_membership_key,
+    tenant_namespace_revision_key,
+)
 from app.utils.logger import get_logger
 
 logger = get_logger("redis")
@@ -175,7 +182,7 @@ class RedisClient:
     
     # ==================== JSON Operations ====================
     
-    async def get_json(self, key: str) -> Optional[Dict[str, Any]]:
+    async def get_json(self, key: str) -> Optional[Any]:
         """Get JSON value by key"""
         value = await self.get(key)
         if value:
@@ -188,7 +195,7 @@ class RedisClient:
     async def set_json(
         self, 
         key: str, 
-        value: Dict[str, Any], 
+        value: Any,
         ttl: Optional[int] = None
     ) -> bool:
         """Set JSON value with optional TTL"""
@@ -349,17 +356,106 @@ class RedisClient:
             logger.error(f"Redis ZREVRANGE error for key {key}: {e}")
             return []
 
+    # ==================== Invalidation & Namespaces ====================
+
+    async def delete_matching(self, pattern: str, batch_size: int = 500) -> int:
+        """Delete matching keys incrementally without blocking Redis with ``KEYS``."""
+        if not self._client:
+            return 0
+
+        deleted_count = 0
+        batch: List[str] = []
+        try:
+            async for key in self._client.scan_iter(match=pattern, count=batch_size):
+                batch.append(key)
+                if len(batch) >= batch_size:
+                    deleted_count += await self._client.delete(*batch)
+                    batch.clear()
+            if batch:
+                deleted_count += await self._client.delete(*batch)
+            return deleted_count
+        except Exception as e:
+            logger.error(f"Redis scan delete failed: {e}")
+            return 0
+
+    async def track_tenant_context_key(self, tenant_id: str, context_key: str, ttl: int) -> bool:
+        """Register a cached API-key context for targeted tenant invalidation."""
+        if not self._client:
+            return False
+
+        try:
+            membership_key = tenant_context_membership_key(tenant_id)
+            await self._client.sadd(membership_key, context_key)
+            if ttl > 0:
+                await self._client.expire(membership_key, ttl)
+            return True
+        except Exception as e:
+            logger.error(f"Redis tenant context registration failed: {e}")
+            return False
+
+    async def invalidate_tenant_contexts(self, tenant_id: str) -> int:
+        """Invalidate only API-key contexts belonging to one tenant."""
+        if not self._client:
+            return 0
+
+        membership_key = tenant_context_membership_key(tenant_id)
+        try:
+            context_keys = await self._client.smembers(membership_key)
+            deleted_count = 0
+            if context_keys:
+                deleted_count = await self._client.delete(*context_keys)
+            await self._client.delete(membership_key)
+            return deleted_count
+        except Exception as e:
+            logger.error(f"Redis tenant context invalidation failed: {e}")
+            return 0
+
+    async def get_tenant_namespace_revision(self, tenant_id: str, namespace: str) -> int:
+        """Return a tenant-local cache revision, falling back to the initial revision."""
+        value = await self.get(tenant_namespace_revision_key(tenant_id, namespace))
+        try:
+            return int(value) if value is not None else 0
+        except (TypeError, ValueError):
+            return 0
+
+    async def bump_tenant_namespace_revision(self, tenant_id: str, namespace: str) -> int:
+        """Logically invalidate a tenant namespace by incrementing its revision."""
+        if not self._client:
+            return 0
+
+        try:
+            return int(await self._client.incr(tenant_namespace_revision_key(tenant_id, namespace)))
+        except Exception as e:
+            logger.error(f"Redis namespace revision update failed: {e}")
+            return 0
+
+    async def allow_rate_limit(self, key: str, limit: int, window: int) -> bool:
+        """Atomically enforce a fixed-window limit when Redis is available."""
+        if not self._client:
+            return True
+        try:
+            count = await self._client.incr(key)
+            if count == 1:
+                await self._client.expire(key, window)
+            return count <= limit
+        except Exception as e:
+            logger.error(f"Redis rate limit update failed: {e}")
+            return True
+
     # ==================== Application-Specific Methods ====================
     
     async def cache_conversation(
         self, 
+        organization_id: str,
         user_id: str, 
         conversation_id: str, 
         messages: List[Dict[str, Any]],
         ttl: int = 3600
     ) -> bool:
         """Cache conversation messages"""
-        cache_key = f"conversation:{user_id}:{conversation_id}"
+        cache_key = build_cache_key(
+            "conversation", {"user_id": user_id, "conversation_id": conversation_id}, tenant_id=organization_id
+        )
         cache_data = {
             'messages': messages,
             'cached_at': datetime.now().isoformat(),
@@ -370,48 +466,44 @@ class RedisClient:
     
     async def get_cached_conversation(
         self, 
+        organization_id: str,
         user_id: str, 
         conversation_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get cached conversation"""
-        cache_key = f"conversation:{user_id}:{conversation_id}"
+        cache_key = build_cache_key(
+            "conversation", {"user_id": user_id, "conversation_id": conversation_id}, tenant_id=organization_id
+        )
         return await self.get_json(cache_key)
     
     async def cache_user_context(
         self, 
+        organization_id: str,
         user_id: str, 
         context: Dict[str, Any],
         ttl: int = 1800
     ) -> bool:
         """Cache user context for LLM"""
-        cache_key = f"user_context:{user_id}"
+        cache_key = build_user_context_cache_key(organization_id, user_id)
         return await self.set_json(cache_key, context, ttl)
     
-    async def get_user_context(self, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_user_context(self, organization_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Get cached user context"""
-        cache_key = f"user_context:{user_id}"
+        cache_key = build_user_context_cache_key(organization_id, user_id)
         return await self.get_json(cache_key)
     
-    async def clear_user_cache(self, user_id: str) -> bool:
-        """Clear all cached data for a user"""
+    async def clear_user_cache(self, organization_id: str, user_id: str) -> bool:
+        """Clear direct tenant-local customer cache records for one user."""
         if not self._client:
             return False
         
         try:
-            patterns = [
-                f"conversation:{user_id}:*",
-                f"user_context:{user_id}",
-                f"user_profile:{user_id}",
-                f"user_activity:{user_id}:*"
-            ]
+            deleted_count = await self._client.delete(
+                build_user_context_cache_key(organization_id, user_id),
+                build_user_profile_cache_key(organization_id, user_id),
+            )
             
-            deleted_count = 0
-            for pattern in patterns:
-                keys = await self._client.keys(pattern)
-                if keys:
-                    deleted_count += await self._client.delete(*keys)
-            
-            logger.info(f"Cleared {deleted_count} cache keys for user {user_id}")
+            logger.info("Cleared tenant-local user cache", extra={"deleted": deleted_count})
             return True
             
         except Exception as e:
@@ -425,9 +517,14 @@ class RedisClient:
         
         try:
             info = await self._client.info()
+            db_index = self.db
+            if self._pool:
+                db_index = int(self._pool.connection_kwargs.get("db", self.db))
             return {
                 "connected": True,
-                "total_keys": info.get("db0", {}).get("keys", 0) if isinstance(info.get("db0"), dict) else 0,
+                "total_keys": info.get(f"db{db_index}", {}).get("keys", 0)
+                if isinstance(info.get(f"db{db_index}"), dict)
+                else 0,
                 "memory_usage": info.get("used_memory_human", "unknown"),
                 "connected_clients": info.get("connected_clients", 0),
                 "uptime": info.get("uptime_in_seconds", 0)

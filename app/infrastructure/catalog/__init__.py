@@ -1,0 +1,1 @@
+"""Canonical catalog persistence adapters."""

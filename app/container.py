@@ -61,7 +61,8 @@ class Container:
                 port=self.settings.REDIS_PORT,
                 db=self.settings.REDIS_DB,
                 password=self.settings.REDIS_PASSWORD,
-                url=self.settings.REDIS_URL
+                url=self.settings.REDIS_URL,
+                max_connections=200
             )
             await asyncio.wait_for(self._services['redis'].connect(), timeout=5.0)
             logger.info("Redis connected")
@@ -132,12 +133,20 @@ class Container:
     
     async def _init_domain_services(self) -> None:
         """Initialize domain services"""
+        from app.domain.catalogs.service import CatalogService
         from app.domain.conversations.service import ConversationService
         from app.domain.pricing.service import PricingService
         from app.domain.products.service import ProductService
         from app.domain.products.trending_service import TrendingProductsService
         from app.domain.recommendations.engine import RecommendationEngine
+        from app.domain.tenants.audit import AuditService
         from app.domain.users.service import UserService
+        from app.infrastructure.catalog.repository import CatalogRepository
+        
+        # Audit Service
+        self._services['audit_service'] = AuditService(
+            async_session_maker=self._services['postgres'].async_session
+        )
         
         # Product Service
         self._services['product_service'] = ProductService(
@@ -186,6 +195,21 @@ class Container:
             db=self._services['postgres'],
             cache=self._services['redis']
         )
+        
+        from app.domain.privacy.service import PrivacyService
+        self._services['privacy_service'] = PrivacyService(
+            db=self._services['postgres'],
+            tenant_service=self._services['tenant_service'],
+            user_service=self._services['user_service']
+        )
+
+        self._services['catalog_service'] = CatalogService(
+            repository=CatalogRepository(
+                self._services['postgres'],
+                max_index_attempts=self.settings.CATALOG_INDEX_MAX_ATTEMPTS,
+                processing_lease_seconds=self.settings.CATALOG_INDEX_LEASE_SECONDS,
+            )
+        )
         self._services['tenant_provisioner'] = TenantProvisioner(
             typesense=self._services.get('typesense')
         )
@@ -194,17 +218,20 @@ class Container:
     
     async def _init_addons(self) -> None:
         """Initialize add-ons layer"""
-        from app.addons.embeddings.local_embedder import LocalEmbedder
+        from app.addons.embeddings.providers.factory import EmbeddingProviderFactory
         from app.addons.image.processor import ImageProcessor
         from app.addons.memory.short_term import ShortTermMemory
         from app.addons.personalization.scorer import PersonalizationScorer
         from app.addons.search.hybrid import HybridSearch
 
-        # Embeddings
-        self._services['embeddings'] = LocalEmbedder(
-            model_name="all-MiniLM-L6-v2"
-        )
-        await self._services['embeddings'].initialize()
+        # 1. Embeddings
+        # Default to local sentence-transformers
+        if 'embeddings' not in self._services:
+            self._services['embeddings'] = EmbeddingProviderFactory.create_provider(self.settings)
+            
+            # LocalEmbedder has no async initialize, but we'll try if it has one
+            if hasattr(self._services['embeddings'], 'initialize'):
+                await self._services['embeddings'].initialize()
 
         # Search
         self._services['hybrid_search'] = HybridSearch(
@@ -221,6 +248,7 @@ class Container:
         # Personalization
         self._services['personalization_scorer'] = PersonalizationScorer(
             user_service=self._services['user_service'],
+            privacy_service=self._services['privacy_service'],
             cache=self._services['redis']
         )
         
@@ -255,18 +283,18 @@ class Container:
             provider=self._services['vision_provider']
         )
 
-        # Wire sync pipeline: Postgres → Typesense
-        if self._services.get('postgres'):
-            self._services['postgres'].setup_sync(
-                embeddings=self._services['embeddings'],
-                typesense=self._services.get('typesense'),
-            )
-        
         # Catalog Importer
         from app.domain.tenants.importer import CatalogImporter
         self._services['catalog_importer'] = CatalogImporter(
             typesense=self._services.get('typesense'),
-            embeddings=self._services['embeddings']
+            embeddings=self._services['embeddings'],
+            catalog_service=self._services['catalog_service'],
+        )
+        from app.infrastructure.catalog.worker import CatalogIndexWorker
+        self._services['catalog_index_worker'] = CatalogIndexWorker(
+            catalog_service=self._services['catalog_service'],
+            embeddings=self._services['embeddings'],
+            typesense=self._services.get('typesense'),
         )
         
         logger.info("Add-ons layer initialized")
@@ -274,19 +302,15 @@ class Container:
     async def _init_intelligence(self) -> None:
         """Initialize intelligence layer"""
         from app.intelligence.engine import LLMEngine
+        from app.intelligence.providers.factory import AIProviderFactory
         from app.intelligence.tools.product_tools import ProductTools
         from app.intelligence.tools.user_tools import UserTools
         
-        # LLM Engine
-        if getattr(self.settings, 'MERCURY_MODE', 'standard') != "lite" and self.settings.GOOGLE_API_KEY:
-            self._services['llm_engine'] = LLMEngine(
-                api_key=self.settings.GOOGLE_API_KEY,
-                project_id=self.settings.GOOGLE_CLOUD_PROJECT
-            )
+        if 'llm_engine' not in self._services:
+            self._services['llm_engine'] = AIProviderFactory.create_provider(self.settings)
             await self._services['llm_engine'].initialize()
         else:
-            logger.warning("SERVICE_UNAVAILABLE: Gemini API key missing or lite mode. Falling back to Search-only.")
-            self._services['llm_engine'] = None
+            logger.warning("LLM Engine already initialized")
         
         # Tools (without SearchTools - will be created after orchestrators)
         self._services['product_tools'] = ProductTools(

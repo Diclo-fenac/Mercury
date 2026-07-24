@@ -7,12 +7,13 @@ from typing import Any, Dict, List, Optional
 
 import typesense
 
+from app.infrastructure.search.base import SearchAdapter
 from app.utils.logger import get_logger
 
 logger = get_logger("typesense")
 
 
-class TypesenseClient:
+class TypesenseClient(SearchAdapter):
     """Typesense client for fuzzy and keyword search"""
     
     def __init__(
@@ -140,13 +141,28 @@ class TypesenseClient:
             logger.info(f"Indexed {success_count}/{len(documents)} documents")
             
             return {
-                "success": True,
+                "success": success_count == len(documents),
                 "total": len(documents),
-                "indexed": success_count
+                "indexed": success_count,
+                "failed": len(documents) - success_count,
+                "results": result,
             }
         except Exception as e:
             logger.error(f"Error indexing documents: {e}")
             return {"success": False, "error": str(e)}
+
+    async def delete_document(self, collection: str, document_id: str) -> bool:
+        """Delete one derived search document; canonical data remains in PostgreSQL."""
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: self.client.collections[collection].documents[document_id].delete(),
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting document: {e}")
+            return False
     
     async def search(
         self,
@@ -157,7 +173,9 @@ class TypesenseClient:
         sort_by: Optional[str] = None,
         vector_query: Optional[str] = None,
         per_page: int = 10,
-        page: int = 1
+        page: int = 1,
+        num_typos: int = 2,
+        facet_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Search documents with fuzzy/hybrid matching"""
         try:
@@ -167,7 +185,7 @@ class TypesenseClient:
                 'per_page': per_page,
                 'page': page,
                 'typo_tokens_threshold': 1,
-                'num_typos': 2,
+                'num_typos': num_typos,
                 'prefix': True
             }
             
@@ -176,6 +194,8 @@ class TypesenseClient:
             
             if sort_by:
                 search_params['sort_by'] = sort_by
+            if facet_by:
+                search_params['facet_by'] = facet_by
 
             if vector_query:
                 search_params['vector_query'] = vector_query
@@ -203,16 +223,22 @@ class TypesenseClient:
             hits = result.get('hits', [])
             documents = []
             for hit in hits:
-                doc = hit['document']
+                doc = dict(hit['document'])
                 if 'vector_distance' in hit:
                     doc['vector_distance'] = hit['vector_distance']
+                doc['_typesense'] = {
+                    'text_match': hit.get('text_match'),
+                    'text_match_info': hit.get('text_match_info'),
+                    'vector_distance': hit.get('vector_distance'),
+                }
                 documents.append(doc)
             
             return {
                 "success": True,
                 "documents": documents,
                 "found": result.get('found', 0),
-                "search_time_ms": result.get('search_time_ms', 0)
+                "search_time_ms": result.get('search_time_ms', 0),
+                "facet_counts": result.get('facet_counts', []),
             }
             
         except Exception as e:

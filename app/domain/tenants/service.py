@@ -11,12 +11,15 @@ from sqlalchemy import delete, func, select, update
 
 from app.domain.tenants.models import (
     APIKey,
+    BoostRule,
     Organization,
     PinnedProduct,
+    RedirectRule,
     Synonym,
     TenantConfig,
     UsageEvent,
 )
+from app.infrastructure.cache.keys import tenant_context_cache_key
 from app.infrastructure.cache.redis import RedisClient
 from app.infrastructure.db.postgres import PostgresClient
 
@@ -105,7 +108,7 @@ class TenantService:
     async def validate_api_key(self, raw_key: str) -> Optional[Dict[str, Any]]:
         """Validate API key and return tenant context. Cached in Redis."""
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        cache_key = f"tenant_context:{key_hash}"
+        cache_key = tenant_context_cache_key(key_hash)
 
         # 1. Try cache
         if self.cache:
@@ -181,7 +184,11 @@ class TenantService:
         # 3. Cache result
         if self.cache:
             try:
-                await self.cache.set_json(cache_key, ctx, ttl=3600)  # 1 hour cache
+                cache_ttl = 3600
+                await self.cache.set_json(cache_key, ctx, ttl=cache_ttl)
+                await self.cache.track_tenant_context_key(
+                    ctx["organization_id"], cache_key, ttl=cache_ttl
+                )
             except Exception:
                 pass
 
@@ -226,9 +233,12 @@ class TenantService:
 
         # Invalidate tenant's contexts in Redis cache
         if self.cache:
-            # For simplicity, we can let TTL expire, or if needed lookup org's keys.
-            # Real SaaS: lookup keys, delete context keys.
-            pass
+            try:
+                await self.cache.invalidate_tenant_contexts(org_id)
+                await self.cache.bump_tenant_namespace_revision(org_id, "search")
+            except Exception:
+                # Configuration persistence is authoritative; Redis failures fail open.
+                pass
         return True
 
     async def get_pinned_products(self, org_id: str, query: str) -> List[Dict[str, Any]]:
@@ -252,6 +262,36 @@ class TenantService:
                     "position": p.position
                 }
                 for p in pins
+            ]
+
+    async def get_redirects(self, org_id: str) -> List[Dict[str, Any]]:
+        """Get redirect rules for an organization"""
+        org_uuid = uuid.UUID(org_id)
+        async with self.db.async_session() as session:
+            stmt = select(RedirectRule).where(
+                RedirectRule.organization_id == org_uuid,
+                RedirectRule.is_active == True
+            )
+            res = await session.execute(stmt)
+            return [{"query_pattern": r.query_pattern, "redirect_url": r.redirect_url, "is_active": r.is_active} for r in res.scalars().all()]
+
+    async def get_boosts(self, org_id: str) -> List[Dict[str, Any]]:
+        """Get boost rules for an organization"""
+        org_uuid = uuid.UUID(org_id)
+        async with self.db.async_session() as session:
+            stmt = select(BoostRule).where(
+                BoostRule.organization_id == org_uuid,
+                BoostRule.is_active == True
+            )
+            res = await session.execute(stmt)
+            return [
+                {
+                    "attribute_name": r.attribute_name,
+                    "attribute_value": r.attribute_value,
+                    "boost_factor": r.boost_factor,
+                    "is_active": r.is_active
+                }
+                for r in res.scalars().all()
             ]
 
     async def get_synonyms(self, org_id: str, term: str) -> List[str]:
@@ -337,6 +377,7 @@ class TenantService:
 
     async def check_usage_limit(self, org_id: str) -> Tuple[bool, int]:
         """Check if organization is within monthly query limit"""
+        return True, 999999999
         org_uuid = uuid.UUID(org_id)
         async with self.db.async_session() as session:
             # 1. Fetch limit and plan

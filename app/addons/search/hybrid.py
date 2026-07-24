@@ -40,91 +40,283 @@ class HybridSearch:
         }
     
     async def search(
-        self, 
-        query: str, 
+        self,
+        query: str,
         query_vector: Optional[List[float]] = None,
-        filters: Dict[str, Any] = None, 
+        image_vector: Optional[List[float]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         limit: int = 10,
-        collection: str = "products"
+        collection: str = "products",
+        **kwargs,
     ) -> List[Dict[str, Any]]:
-        """Hybrid search - semantic + keyword using Typesense"""
-        results = []
+        """Compatibility wrapper returning one page of canonical catalog documents."""
+        page = await self.search_with_metadata(
+            query=query,
+            query_vector=query_vector,
+            image_vector=image_vector,
+            filters=filters,
+            limit=limit,
+            collection=collection,
+            **kwargs,
+        )
+        return page["documents"]
 
-        # Auto-embed query if no vector provided and embeddings are available
-        if query_vector is None and self.embeddings and query:
+    async def search_with_metadata(
+        self,
+        query: str,
+        query_vector: Optional[List[float]] = None,
+        image_vector: Optional[List[float]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        limit: int = 10,
+        offset: int = 0,
+        collection: str = "products",
+        mode: str = "hybrid",
+        sort: Optional[Dict[str, Any]] = None,
+        keyword_weight: float = 1.0,
+        vector_weight: float = 1.0,
+        num_typos: int = 2,
+        searchable_fields: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Run independent keyword/vector retrieval then deterministic weighted RRF.
+
+        Typesense remains derived retrieval only. Returned documents are rehydrated
+        from PostgreSQL so a stale search document can never expose a deleted or
+        foreign-tenant product.
+        """
+        from asyncio import gather
+
+        from app.core.security.context import tenant_context_var
+
+        tenant = tenant_context_var.get()
+        if not tenant:
+            raise ValueError("Tenant context required for catalog retrieval")
+        if collection != tenant.collection_name:
+            raise ValueError("Collection does not match tenant context")
+        if mode not in {"hybrid", "keyword", "semantic"}:
+            raise ValueError("Unsupported search mode")
+
+        # A tenant can own a keyword-only legacy index while its vector fields
+        # are being backfilled. Avoid paying for a query embedding and issuing a
+        # vector search that cannot return document vectors in that state.
+        if not (getattr(tenant, "config", {}) or {}).get("enable_semantic", True):
+            mode = "keyword"
+
+        filters = filters or {}
+        if tenant.seller_id:
+            filters["seller_id"] = tenant.seller_id
+            
+        candidate_limit = min(250, max(limit + offset, limit) * 3)
+        query_by = ",".join(
+            field
+            for field in (searchable_fields or ["title", "name", "description", "brand", "category"])
+            if field in {"title", "name", "description", "brand", "category", "sub_category"}
+        ) or "title,name,description,brand,category"
+        filter_by = self._build_typesense_filter(filters)
+        sort_by = self._build_typesense_sort(sort)
+
+        if query_vector is None and mode in {"hybrid", "semantic"} and self.embeddings and query:
             try:
                 query_vector = await self.embeddings.embed_query(query)
-            except Exception as e:
-                logger.warning(f"Failed to embed query, falling back to keyword search: {e}")
-        
-        # Try Typesense hybrid search
-        if query_vector and self.typesense:
-            try:
-                vector_q = f"embedding:({query_vector}, k:{limit})"
-                res = await self.typesense.search(
-                    collection=collection,
-                    query=query,
-                    vector_query=vector_q,
-                    per_page=limit
-                )
-                if res.get('success'):
-                    for doc in res.get('documents', []):
-                        if collection != "products":
-                            doc['similarity_score'] = doc.get('vector_distance', 0)
-                            results.append(doc)
-                        else:
-                            product_id = doc.get('id')
-                            if product_id:
-                                product = await self.db.get_product_by_id(str(product_id))
-                                if product:
-                                    product['similarity_score'] = doc.get('vector_distance', 0)
-                                    results.append(product)
-            except Exception as e:
-                logger.warning(f"Typesense hybrid search failed, falling back to keyword search: {e}")
-                results = []
-        
-        # Fallback to Typesense keyword search
-        if not results and self.typesense:
-            try:
-                res = await self.typesense.search(
-                    collection=collection,
-                    query=query,
-                    per_page=limit
-                )
-                if res.get('success'):
-                    for doc in res.get('documents', []):
-                        if collection != "products":
-                            results.append(doc)
-                        else:
-                            product_id = doc.get('id')
-                            if product_id:
-                                product = await self.db.get_product_by_id(str(product_id))
-                                if product:
-                                    results.append(product)
-            except Exception as e:
-                logger.warning(f"Typesense keyword search fallback failed: {e}")
+            except Exception as exc:
+                logger.warning(f"Query embedding failed; keyword retrieval continues: {exc}")
 
-        # Final fallback to direct Postgres search (only for global collection)
-        if not results and collection == "products":
-            results = await self.db.search_products(filters or {}, limit)
-        
-        return results[:limit]
+        keyword_response: Dict[str, Any] = {}
+        vector_response: Dict[str, Any] = {}
+        tasks = []
+        task_names = []
+        if self.typesense and mode in {"hybrid", "keyword"}:
+            task_names.append("keyword")
+            tasks.append(
+                self.typesense.search(
+                    collection=collection,
+                    query=query or "*",
+                    query_by=query_by,
+                    filter_by=filter_by,
+                    sort_by=sort_by,
+                    per_page=candidate_limit,
+                    num_typos=max(0, min(2, num_typos)),
+                    facet_by="brand,category",
+                )
+            )
+        if self.typesense and (query_vector or image_vector) and mode in {"hybrid", "semantic"}:
+            task_names.append("vector")
+            
+            if image_vector:
+                ts_vector_query = f"image_vector:({image_vector}, k:{candidate_limit})"
+            else:
+                ts_vector_query = f"embedding:({query_vector}, k:{candidate_limit})"
+                
+            tasks.append(
+                self.typesense.search(
+                    collection=collection,
+                    query=query or "*",
+                    query_by=query_by,
+                    filter_by=filter_by,
+                    sort_by=sort_by,
+                    vector_query=ts_vector_query,
+                    per_page=candidate_limit,
+                    num_typos=max(0, min(2, num_typos)),
+                    facet_by="brand,category",
+                )
+            )
+        if tasks:
+            responses = await gather(*tasks, return_exceptions=True)
+            for name, response in zip(task_names, responses):
+                if isinstance(response, Exception):
+                    logger.warning(f"{name} retrieval failed: {response}")
+                elif response.get("success"):
+                    if name == "keyword":
+                        keyword_response = response
+                    else:
+                        vector_response = response
+
+        ranked = self._fuse_rrf(
+            keyword_response.get("documents", []),
+            vector_response.get("documents", []),
+            keyword_weight=keyword_weight,
+            vector_weight=vector_weight,
+        )
+        if ranked:
+            canonical = await self.db.get_products_by_ids(
+                tenant.organization_id, [str(document["id"]) for document in ranked]
+            )
+            documents = []
+            for document in ranked:
+                product = canonical.get(str(document["id"]))
+                if product:
+                    product["_retrieval"] = document["_retrieval"]
+                    documents.append(product)
+            total = max(keyword_response.get("found", 0), vector_response.get("found", 0), len(documents))
+            return {
+                "documents": documents[offset : offset + limit],
+                "total": total,
+                "facets": keyword_response.get("facet_counts") or vector_response.get("facet_counts") or [],
+                "search_time_ms": max(
+                    keyword_response.get("search_time_ms", 0), vector_response.get("search_time_ms", 0)
+                ),
+                "retrieval": "rrf" if keyword_response and vector_response else ("keyword" if keyword_response else "semantic"),
+                "fallback_used": False,
+            }
+
+        # PostgreSQL is canonical fallback. It returns tenant-filtered records while
+        # Typesense is unavailable or both retrieval branches return zero hits.
+        fallback = await self.db.search_products(
+            tenant.organization_id, filters, candidate_limit, offset=0
+        )
+        for product in fallback:
+            product["_retrieval"] = {"source": "postgres_fallback", "rrf_score": None}
+        return {
+            "documents": fallback[offset : offset + limit],
+            "total": len(fallback),
+            "facets": [],
+            "search_time_ms": 0,
+            "retrieval": "postgres_fallback",
+            "fallback_used": True,
+        }
+
+    @staticmethod
+    def _filter_literal(value: Any) -> str:
+        return "`" + str(value).replace("\\", "\\\\").replace("`", "\\`") + "`"
+
+    def _build_typesense_filter(self, filters: Dict[str, Any]) -> Optional[str]:
+        """Compile only known request filters; unrecognized keys never reach Typesense."""
+        clauses: List[str] = []
+        for field in ("category", "sub_category", "brand", "seller_id"):
+            values = filters.get(field)
+            if isinstance(values, str):
+                values = [values]
+            if values:
+                exact = [f"{field}:={self._filter_literal(value)}" for value in values if value is not None]
+                if exact:
+                    clauses.append("(" + " || ".join(exact) + ")")
+        price = filters.get("price") or {}
+        if price.get("min") is not None:
+            clauses.append(f"selling_price:>={float(price['min'])}")
+        if price.get("max") is not None:
+            clauses.append(f"selling_price:<={float(price['max'])}")
+        rating = filters.get("rating", filters.get("rating_min"))
+        if rating is not None:
+            clauses.append(f"rating:>={float(rating)}")
+        if filters.get("stock_only") or filters.get("stock"):
+            clauses.append("stock:=true")
+        if filters.get("online_available") is not None:
+            clauses.append(f"online_available:={'true' if filters['online_available'] else 'false'}")
+        return " && ".join(clauses) if clauses else None
+
+    @staticmethod
+    def _build_typesense_sort(sort: Optional[Dict[str, Any]]) -> Optional[str]:
+        if not sort or sort.get("by", "relevance") == "relevance":
+            return None
+        field = {"price": "selling_price", "rating": "rating"}.get(sort.get("by"))
+        if not field:
+            return None
+        order = "asc" if sort.get("order") == "asc" else "desc"
+        return f"{field}:{order}"
+
+    @staticmethod
+    def _fuse_rrf(
+        keyword_documents: List[Dict[str, Any]],
+        vector_documents: List[Dict[str, Any]],
+        *,
+        keyword_weight: float,
+        vector_weight: float,
+    ) -> List[Dict[str, Any]]:
+        """Weighted reciprocal-rank fusion with source ranks retained for explainability."""
+        fused: Dict[str, Dict[str, Any]] = {}
+        constant = 60
+        for source, documents, weight in (
+            ("keyword", keyword_documents, max(0.0, keyword_weight)),
+            ("semantic", vector_documents, max(0.0, vector_weight)),
+        ):
+            for rank, document in enumerate(documents, start=1):
+                document_id = str(document.get("id", ""))
+                if not document_id:
+                    continue
+                entry = fused.setdefault(
+                    document_id,
+                    {"id": document_id, "document": document, "score": 0.0, "ranks": {}},
+                )
+                entry["document"] = document
+                entry["score"] += weight / (constant + rank)
+                entry["ranks"][source] = {
+                    "rank": rank,
+                    "text_match": (document.get("_typesense") or {}).get("text_match"),
+                    "vector_distance": (document.get("_typesense") or {}).get("vector_distance"),
+                }
+        ranked = sorted(fused.values(), key=lambda item: (-item["score"], item["id"]))
+        documents = []
+        for entry in ranked:
+            document = dict(entry["document"])
+            document["_retrieval"] = {
+                "source": "rrf",
+                "rrf_score": round(entry["score"], 8),
+                "ranks": entry["ranks"],
+            }
+            documents.append(document)
+        return documents
     
     async def find_strict_variants(
         self, 
         product_id: str, 
         user_preferences: Optional[Dict[str, Any]] = None,
-        limit: int = 8
+        limit: int = 8,
+        collection: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Find strict variants of a product (same product, only size/color differences)
         Based on LOCKED tag priority order from requirements
         """
         try:
+            from app.core.security.context import tenant_context_var
+
+            tenant = tenant_context_var.get()
+            if not tenant:
+                return []
+            organization_id = tenant.organization_id
             logger.info(f"🔍 Finding strict variants for product {product_id}")
             
             # Step 1: Get the original product
-            original_product = await self.db.get_product_by_id(product_id)
+            original_product = await self.db.get_product_by_id(organization_id, product_id)
             if not original_product:
                 logger.warning(f"Product {product_id} not found")
                 return []
@@ -139,7 +331,7 @@ class HybridSearch:
             variant_filters = self._build_variant_filters(original_product, identity_filters)
             
             # Step 4: Search for variants using Postgres (more reliable for exact matching)
-            variant_candidates = await self.db.search_products(variant_filters, limit * 2)
+            variant_candidates = await self.db.search_products(organization_id, variant_filters, limit * 2)
             
             # Step 5: Apply strict variant validation
             strict_variants = self._validate_strict_variants(
@@ -346,7 +538,12 @@ class HybridSearch:
     async def search_by_text(self, query: str, filters: Dict[str, Any] = None, limit: int = 10) -> List[Dict[str, Any]]:
         """Text-based search using Postgres"""
         try:
-            return await self.db.search_products(filters or {}, limit)
+            from app.core.security.context import tenant_context_var
+
+            tenant = tenant_context_var.get()
+            if not tenant:
+                return []
+            return await self.db.search_products(tenant.organization_id, filters or {}, limit)
         except Exception as e:
             logger.error(f"Search error: {e}")
             return []
@@ -363,10 +560,16 @@ class HybridSearch:
         Different from variants - these are alternative products serving same purpose
         """
         try:
+            from app.core.security.context import tenant_context_var
+
+            tenant = tenant_context_var.get()
+            if not tenant:
+                return []
+            organization_id = tenant.organization_id
             logger.info(f"🔄 Finding {substitute_type} substitutes for product {product_id}")
             
             # Get original product
-            original_product = await self.db.get_product_by_id(product_id)
+            original_product = await self.db.get_product_by_id(organization_id, product_id)
             if not original_product:
                 return []
             
@@ -385,7 +588,7 @@ class HybridSearch:
                 substitute_filters['rating_min'] = 4.0
             
             # Search for substitute candidates
-            candidates = await self.db.search_products(substitute_filters, limit * 3)
+            candidates = await self.db.search_products(organization_id, substitute_filters, limit * 3)
             
             # Rank substitutes based on type
             ranked_substitutes = self._rank_substitutes(

@@ -4,12 +4,20 @@ Layer 6: Infrastructure - Data & State
 Async PostgreSQL with SQLAlchemy
 """
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.infrastructure.db.models import Activity, Base, Conversation, Message, Product, User
+from app.domain.tenants.models import CatalogItem
+from app.infrastructure.db.models import (
+    Product,
+    TenantActivity,
+    TenantConversation,
+    TenantMessage,
+    TenantUser,
+)
 from app.utils.logger import get_logger
 
 logger = get_logger("postgres")
@@ -30,8 +38,8 @@ class PostgresClient:
             self.engine = create_async_engine(
                 self.database_url,
                 echo=False,
-                pool_size=20,
-                max_overflow=10,
+                pool_size=10,
+                max_overflow=5,
                 pool_pre_ping=True
             )
             
@@ -41,9 +49,10 @@ class PostgresClient:
                 expire_on_commit=False
             )
             
-            # Test connection
-            async with self.engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+            # Schema is owned by Alembic. Runtime DDL masks migration drift and can
+            # create partially upgraded databases, so only verify connectivity here.
+            async with self.engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
             
             self._connected = True
             logger.info("✅ PostgreSQL connected")
@@ -87,115 +96,147 @@ class PostgresClient:
     
     # ==================== Product Operations ====================
     
-    async def get_product_by_id(self, product_id: str) -> Optional[Dict[str, Any]]:
-        """Get product by ID"""
+    def _product_scope(self, organization_id: str, product_id: Optional[str]) -> tuple[str, str]:
+        """Resolve legacy reads only from request tenant context; never query global products."""
+        if product_id is not None:
+            return organization_id, product_id
+        from app.core.security.context import tenant_context_var
+
+        tenant = tenant_context_var.get()
+        if not tenant:
+            raise ValueError("Tenant context required for catalog reads")
+        return tenant.organization_id, organization_id
+
+    async def get_product_by_id(
+        self, organization_id: str, product_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get one canonical product only within its organization."""
         try:
+            organization_id, product_id = self._product_scope(organization_id, product_id)
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                result = await session.execute(
-                    select(Product).where(Product.id == product_id)
+                product = await session.scalar(
+                    select(CatalogItem).where(
+                        CatalogItem.organization_id == org_id,
+                        CatalogItem.external_id == product_id,
+                        CatalogItem.resource_type == "product",
+                        CatalogItem.status == "active",
+                        CatalogItem.deleted_at.is_(None),
+                    )
                 )
-                product = result.scalar_one_or_none()
-                
                 if product:
-                    return self._product_to_dict(product)
+                    return self._catalog_item_to_dict(product)
                 return None
                 
         except Exception as e:
             logger.error(f"Error getting product {product_id}: {e}")
             return None
+
+    async def get_products_by_ids(
+        self, organization_id: str, product_ids: List[str]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Rehydrate derived-search IDs from canonical catalog in one tenant-scoped query."""
+        if not product_ids:
+            return {}
+        try:
+            org_id = self._organization_uuid(organization_id)
+            async with self.async_session() as session:
+                result = await session.scalars(
+                    select(CatalogItem).where(
+                        CatalogItem.organization_id == org_id,
+                        CatalogItem.external_id.in_([str(product_id) for product_id in product_ids]),
+                        CatalogItem.resource_type == "product",
+                        CatalogItem.status == "active",
+                        CatalogItem.deleted_at.is_(None),
+                    )
+                )
+                return {
+                    item.external_id: self._catalog_item_to_dict(item)
+                    for item in result.all()
+                }
+        except Exception as exc:
+            logger.error(f"Error rehydrating canonical products: {exc}")
+            return {}
     
     async def search_products(
-        self, 
-        filters: Dict[str, Any], 
+        self,
+        organization_id: str | Dict[str, Any],
+        filters: Optional[Dict[str, Any] | int] = None,
         limit: int = 20,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        """Search products with filters"""
+        """Search canonical products in one organization, never global legacy rows."""
         try:
+            if isinstance(organization_id, dict):
+                # Legacy shape: search_products(filters, limit). It is safe only under
+                # a request-scoped tenant context set by the orchestrator.
+                if isinstance(filters, int):
+                    limit = filters
+                filters = organization_id
+                from app.core.security.context import tenant_context_var
+
+                tenant = tenant_context_var.get()
+                if not tenant:
+                    raise ValueError("Tenant context required for catalog reads")
+                organization_id = tenant.organization_id
+            filters = filters if isinstance(filters, dict) else {}
+            org_id = self._organization_uuid(str(organization_id))
             async with self.async_session() as session:
-                query = select(Product)
-                
+                query = select(CatalogItem).where(
+                    CatalogItem.organization_id == org_id,
+                    CatalogItem.resource_type == "product",
+                    CatalogItem.status == "active",
+                    CatalogItem.deleted_at.is_(None),
+                )
+
                 # Apply filters
                 if filters.get('category'):
-                    query = query.where(Product.category == filters['category'])
+                    query = query.where(CatalogItem.category == filters['category'])
                 if filters.get('sub_category'):
-                    query = query.where(Product.sub_category == filters['sub_category'])
+                    query = query.where(CatalogItem.sub_category == filters['sub_category'])
                 if filters.get('brand'):
-                    query = query.where(Product.brand == filters['brand'])
+                    query = query.where(CatalogItem.brand == filters['brand'])
                 if filters.get('online_available'):
-                    query = query.where(Product.online_available == 1)
+                    query = query.where(CatalogItem.document['online_available'].as_boolean().is_(True))
                 if filters.get('stock'):
-                    query = query.where(Product.stock > 0)
-                if filters.get('rating_min'):
-                    query = query.where(Product.rating >= filters['rating_min'])
+                    query = query.where(CatalogItem.document['stock'].as_boolean().is_(True))
                 
                 # Exclude specific product
                 if filters.get('exclude_id'):
-                    query = query.where(Product.id != filters['exclude_id'])
+                    query = query.where(CatalogItem.external_id != str(filters['exclude_id']))
+                if filters.get('seller_id'):
+                    query = query.where(CatalogItem.seller_id == str(filters['seller_id']))
                 
                 # Pagination
                 query = query.offset(offset).limit(limit)
                 
                 result = await session.execute(query)
-                products = result.scalars().all()
-                
-                return [self._product_to_dict(p) for p in products]
+                return [self._catalog_item_to_dict(product) for product in result.scalars().all()]
                 
         except Exception as e:
             logger.error(f"Error searching products: {e}")
             return []
     
     async def upsert_product(self, product_data: Dict[str, Any]) -> bool:
-        """Insert or update product"""
-        from datetime import datetime
-
-        def _parse_dt(val):
-            if val is None or isinstance(val, datetime):
-                return val
-            try:
-                return datetime.fromisoformat(str(val).replace('Z', '+00:00')).replace(tzinfo=None)
-            except Exception:
-                return None
-
-        try:
-            async with self.async_session() as session:
-                product = Product(
-                    id=product_data['id'],
-                    name=product_data.get('name'),
-                    title=product_data.get('title'),
-                    brand=product_data.get('brand'),
-                    category=product_data.get('category'),
-                    sub_category=product_data.get('sub_category'),
-                    description=product_data.get('description'),
-                    url=product_data.get('url'),
-                    price=product_data.get('price'),
-                    price_history=product_data.get('price_history'),
-                    tags=product_data.get('tags'),
-                    images=product_data.get('images'),
-                    availability=product_data.get('availability'),
-                    extra_data=product_data.get('metadata'),
-                    rating=product_data.get('rating', 0.0),
-                    stock=bool(product_data.get('stock', False)),
-                    online_available=bool(product_data.get('online_available', True)),
-                    uploaded_at=_parse_dt(product_data.get('uploaded_at')),
-                )
-                
-                await session.merge(product)
-                await session.commit()
-                return True
-                
-        except Exception as e:
-            logger.error(f"Error upserting product: {e}")
-            return False
+        """Legacy global writes are intentionally disabled; use CatalogService."""
+        raise RuntimeError("Use CatalogService.upsert_products for tenant-scoped catalog writes")
     
     # ==================== User Operations ====================
     
-    async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
+    @staticmethod
+    def _organization_uuid(organization_id: str) -> UUID:
+        return UUID(str(organization_id))
+
+    async def get_user_profile(self, organization_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user profile"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
                 result = await session.execute(
-                    select(User).where(User.id == user_id)
+                    select(TenantUser).where(
+                        TenantUser.organization_id == org_id,
+                        TenantUser.id == user_id,
+                    )
                 )
                 user = result.scalar_one_or_none()
                 
@@ -207,7 +248,7 @@ class PostgresClient:
             logger.error(f"Error getting user {user_id}: {e}")
             return None
     
-    async def upsert_user(self, user_data: Dict[str, Any]) -> bool:
+    async def upsert_user(self, organization_id: str, user_data: Dict[str, Any]) -> bool:
         """Insert or update user"""
         def _parse_dt(val):
             if val is None:
@@ -217,8 +258,10 @@ class PostgresClient:
             return val
 
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                user = User(
+                user = TenantUser(
+                    organization_id=org_id,
                     id=user_data['id'],
                     email=user_data.get('email'),
                     name=user_data.get('name'),
@@ -239,16 +282,18 @@ class PostgresClient:
             return False
     
     async def update_user_preferences(
-        self, 
-        user_id: str, 
-        preferences: Dict[str, Any]
+        self,
+        organization_id: str,
+        user_id: str,
+        preferences: Dict[str, Any],
     ) -> bool:
         """Update user preferences"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
                 await session.execute(
-                    update(User)
-                    .where(User.id == user_id)
+                    update(TenantUser)
+                    .where(TenantUser.organization_id == org_id, TenantUser.id == user_id)
                     .values(preferences=preferences)
                 )
                 await session.commit()
@@ -260,12 +305,16 @@ class PostgresClient:
     
     # ==================== Conversation Operations ====================
     
-    async def get_conversation(self, conversation_id: str) -> Optional[Dict[str, Any]]:
+    async def get_conversation(self, organization_id: str, conversation_id: str) -> Optional[Dict[str, Any]]:
         """Get conversation"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
                 result = await session.execute(
-                    select(Conversation).where(Conversation.id == conversation_id)
+                    select(TenantConversation).where(
+                        TenantConversation.organization_id == org_id,
+                        TenantConversation.id == conversation_id,
+                    )
                 )
                 conv = result.scalar_one_or_none()
                 
@@ -276,33 +325,47 @@ class PostgresClient:
         except Exception as e:
             logger.error(f"Error getting conversation: {e}")
             return None
-    async def _ensure_user_exists(self, session, user_id: str):
+    async def _ensure_tenant_user_exists(self, session, organization_id: UUID, user_id: str):
         """Ensure that the user exists in database to satisfy foreign keys"""
-        result = await session.execute(select(User).where(User.id == user_id))
+        result = await session.execute(
+            select(TenantUser).where(
+                TenantUser.organization_id == organization_id,
+                TenantUser.id == user_id,
+            )
+        )
         user = result.scalar_one_or_none()
         if not user:
             try:
                 async with session.begin_nested():
-                    user = User(id=user_id, name=f"User {user_id}")
+                    user = TenantUser(
+                        organization_id=organization_id,
+                        id=user_id,
+                        name=f"User {user_id}",
+                    )
                     session.add(user)
                     await session.flush()
             except Exception:
                 pass
 
     async def create_conversation(
-        self, 
-        conversation_id: str, 
-        user_id: str, 
-        title: str = None
+        self,
+        organization_id: str,
+        conversation_id: str,
+        user_id: str,
+        title: str = None,
+        channel: str = "rest",
     ) -> bool:
         """Create conversation"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                await self._ensure_user_exists(session, user_id)
-                conv = Conversation(
+                await self._ensure_tenant_user_exists(session, org_id, user_id)
+                conv = TenantConversation(
+                    organization_id=org_id,
                     id=conversation_id,
                     user_id=user_id,
-                    title=title or "New Chat"
+                    title=title or "New Chat",
+                    channel=channel,
                 )
                 session.add(conv)
                 await session.commit()
@@ -313,31 +376,40 @@ class PostgresClient:
             return False
     
     async def save_message(
-        self, 
+        self,
+        organization_id: str,
         message_id: str,
         conversation_id: str,
         user_id: str,
         role: str,
         content: str,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ) -> bool:
         """Save message"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                await self._ensure_user_exists(session, user_id)
+                await self._ensure_tenant_user_exists(session, org_id, user_id)
                 # Ensure conversation exists
-                res = await session.execute(select(Conversation).where(Conversation.id == conversation_id))
+                res = await session.execute(
+                    select(TenantConversation).where(
+                        TenantConversation.organization_id == org_id,
+                        TenantConversation.id == conversation_id,
+                    )
+                )
                 conv = res.scalar_one_or_none()
                 if not conv:
-                    conv = Conversation(
+                    conv = TenantConversation(
+                        organization_id=org_id,
                         id=conversation_id,
                         user_id=user_id,
-                        title="New Chat"
+                        title="New Chat",
                     )
                     session.add(conv)
                     await session.flush()
                 
-                message = Message(
+                message = TenantMessage(
+                    organization_id=org_id,
                     id=message_id,
                     conversation_id=conversation_id,
                     user_id=user_id,
@@ -359,18 +431,23 @@ class PostgresClient:
             return False
     
     async def get_messages(
-        self, 
-        conversation_id: str, 
+        self,
+        organization_id: str,
+        conversation_id: str,
         limit: int = 50,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
         """Get conversation messages"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
                 result = await session.execute(
-                    select(Message)
-                    .where(Message.conversation_id == conversation_id)
-                    .order_by(Message.created_at.desc())
+                    select(TenantMessage)
+                    .where(
+                        TenantMessage.organization_id == org_id,
+                        TenantMessage.conversation_id == conversation_id,
+                    )
+                    .order_by(TenantMessage.created_at.desc())
                     .offset(offset)
                     .limit(limit)
                 )
@@ -384,11 +461,14 @@ class PostgresClient:
     
     # ==================== Activity Operations ====================
     
-    async def log_user_activity(self, activity_data: Dict[str, Any]) -> bool:
+    async def log_user_activity(self, organization_id: str, activity_data: Dict[str, Any]) -> bool:
         """Log user activity"""
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                activity = Activity(
+                await self._ensure_tenant_user_exists(session, org_id, activity_data['user_id'])
+                activity = TenantActivity(
+                    organization_id=org_id,
                     user_id=activity_data['user_id'],
                     activity_type=activity_data['activity_type'],
                     data=activity_data.get('data')
@@ -427,8 +507,24 @@ class PostgresClient:
             'updated_at': product.updated_at,
             'uploaded_at': product.uploaded_at,
         }
+
+    @staticmethod
+    def _catalog_item_to_dict(item: CatalogItem) -> Dict[str, Any]:
+        """Expose canonical document while preserving normalized searchable fields."""
+        document = dict(item.document or {})
+        return {
+            **document,
+            'id': document.get('id', item.external_id),
+            'name': document.get('name', item.title),
+            'title': document.get('title', item.title),
+            'brand': document.get('brand', item.brand),
+            'category': document.get('category', item.category),
+            'sub_category': document.get('sub_category', item.sub_category),
+            'description': document.get('description', item.description),
+            'url': document.get('url', item.url),
+        }
     
-    def _user_to_dict(self, user: User) -> Dict[str, Any]:
+    def _user_to_dict(self, user: TenantUser) -> Dict[str, Any]:
         """Convert User model to dict"""
         return {
             'id': user.id,
@@ -444,7 +540,7 @@ class PostgresClient:
             'updated_at': user.updated_at
         }
     
-    def _conversation_to_dict(self, conv: Conversation) -> Dict[str, Any]:
+    def _conversation_to_dict(self, conv: TenantConversation) -> Dict[str, Any]:
         """Convert Conversation model to dict"""
         return {
             'id': conv.id,
@@ -458,7 +554,7 @@ class PostgresClient:
             'updated_at': conv.updated_at
         }
     
-    def _message_to_dict(self, message: Message) -> Dict[str, Any]:
+    def _message_to_dict(self, message: TenantMessage) -> Dict[str, Any]:
         """Convert Message model to dict"""
         return {
             'id': message.id,
@@ -471,21 +567,43 @@ class PostgresClient:
         }
 
     
-    async def get_conversations_by_user(self, user_id: str, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
+    async def get_conversations_by_user(
+        self,
+        organization_id: str,
+        user_id: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                query = select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc()).offset(offset).limit(limit)
+                query = (
+                    select(TenantConversation)
+                    .where(
+                        TenantConversation.organization_id == org_id,
+                        TenantConversation.user_id == user_id,
+                    )
+                    .order_by(TenantConversation.created_at.desc())
+                    .offset(offset)
+                    .limit(limit)
+                )
                 result = await session.execute(query)
                 return [self._conversation_to_dict(c) for c in result.scalars().all()]
         except Exception as e:
             logger.error(f"Error querying conversations: {e}")
             return []
 
-    async def update_user(self, user_id: str, data: dict[str, Any]) -> bool:
+    async def update_user(self, organization_id: str, user_id: str, data: dict[str, Any]) -> bool:
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                await self._ensure_user_exists(session, user_id)
-                result = await session.execute(select(User).where(User.id == user_id))
+                await self._ensure_tenant_user_exists(session, org_id, user_id)
+                result = await session.execute(
+                    select(TenantUser).where(
+                        TenantUser.organization_id == org_id,
+                        TenantUser.id == user_id,
+                    )
+                )
                 user = result.scalar_one_or_none()
                 if not user: return False
                 for key, val in data.items():
@@ -497,11 +615,22 @@ class PostgresClient:
             logger.error(f"Error updating user: {e}")
             return False
 
-    async def delete_conversation(self, conversation_id: str) -> bool:
+    async def delete_conversation(self, organization_id: str, conversation_id: str) -> bool:
         try:
+            org_id = self._organization_uuid(organization_id)
             async with self.async_session() as session:
-                await session.execute(delete(Message).where(Message.conversation_id == conversation_id))
-                await session.execute(delete(Conversation).where(Conversation.id == conversation_id))
+                await session.execute(
+                    delete(TenantMessage).where(
+                        TenantMessage.organization_id == org_id,
+                        TenantMessage.conversation_id == conversation_id,
+                    )
+                )
+                await session.execute(
+                    delete(TenantConversation).where(
+                        TenantConversation.organization_id == org_id,
+                        TenantConversation.id == conversation_id,
+                    )
+                )
                 await session.commit()
                 return True
         except Exception as e:

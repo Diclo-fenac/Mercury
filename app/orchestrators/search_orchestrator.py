@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Optional
 
 from app.addons.personalization.scorer import PersonalizationScorer
 from app.addons.search.hybrid import HybridSearch
+from app.domain.search.rules import SearchRuleEngine
 from app.domain.search.suggestions_service import SearchSuggestionsService
+from app.infrastructure.cache.keys import build_search_cache_key
 from app.infrastructure.cache.redis import RedisClient
 from app.utils.metrics import (
     CACHE_HIT_RATE,
@@ -55,29 +57,111 @@ class SearchOrchestrator:
         fallback_used = False
         
         try:
-            # Check cache first
-            cache_key = f"search:{query}:{user_id}:{filters}"
-            if tenant_context:
-                cache_key = f"tenant_search:{tenant_context.organization_id}:{query}:{user_id}:{filters}"
+            from app.core.security.context import tenant_context_var
+            from app.utils.pii_redactor import PIIRedactor
+
+            # Redact PII from query before logging, caching, or processing
+            query = PIIRedactor.redact(query)
+
+            tenant_context_var.set(tenant_context)
+            collection = tenant_context.collection_name if tenant_context else "products"
+            tenant_id = tenant_context.organization_id if tenant_context else None
+            enable_personalization = (
+                tenant_context.config.get("enable_personalization", False)
+                if tenant_context
+                else True
+            )
+            revision = 0
+            if self.cache and tenant_id:
+                try:
+                    revision = await self.cache.get_tenant_namespace_revision(tenant_id, "search")
+                except Exception:
+                    revision = 0
+
+            cache_key = build_search_cache_key(
+                tenant_id=tenant_id,
+                query=query,
+                user_id=user_id if enable_personalization else None,
+                filters=filters or {},
+                limit=limit,
+                offset=offset,
+                sort=sort,
+                search_type=search_type,
+                include_suggestions=include_suggestions,
+                collection=collection,
+                revision=revision,
+            )
 
             cached = None
             if self.cache:
+                self._cache_total += 1
                 cached = await self.cache.get_json(cache_key)
                 if cached:
                     self._cache_hits += 1
                     CACHE_HITS.inc()
+                    CACHE_HIT_RATE.set(self._cache_hits / self._cache_total)
+                    cached = dict(cached)
+                    cached_meta = dict(cached.get("meta") or {})
+                    cached_meta.update({
+                        "cache_hit": True,
+                        "latency_ms": int((time.time() - start_time) * 1000),
+                    })
+                    cached["meta"] = cached_meta
+                    SEARCH_TOTAL.labels(
+                        query_type=search_type,
+                        result_count=str(len(cached.get("results", []))),
+                    ).inc()
+                    SEARCH_LATENCY.labels(search_type=search_type).observe(time.time() - start_time)
                     return cached
-                else:
-                    CACHE_MISSES.inc()
+                CACHE_MISSES.inc()
+                CACHE_HIT_RATE.set(self._cache_hits / self._cache_total)
             
-            self._cache_total += 1
-            
-            # 1. (Removed manual synonym expansion - relying on Typesense native synonyms)
+            # 1. Check for Query rules (Redirects & Synonyms)
             expanded_query = query
+            is_redirect = False
+            redirect_url = None
+            
+            if self.tenant_service and tenant_id:
+                redirects = await self.tenant_service.get_redirects(tenant_id)
+                synonyms = await self.tenant_service.get_all_synonyms(tenant_id)
+                
+                query_action = SearchRuleEngine.apply_query_rules(query, redirects, synonyms)
+                if query_action.get("action") == "redirect":
+                    is_redirect = True
+                    redirect_url = query_action.get("url")
+                else:
+                    expanded_query = query_action.get("expanded_query", query)
+            
+            if is_redirect:
+                return {
+                    "success": True,
+                    "query": query,
+                    "action": "redirect",
+                    "redirect_url": redirect_url,
+                    "results": [],
+                    "total_results": 0,
+                    "facets": {},
+                    "meta": {"latency_ms": int((time.time() - start_time) * 1000)},
+                    "filters_applied": filters or {}
+                }
 
-            # 2. Search products (with dynamic collection)
-            collection = tenant_context.collection_name if tenant_context else "products"
-            results = await self.search.search(expanded_query, filters=filters, limit=limit, collection=collection)
+            # 2. Retrieve candidates from Typesense
+            candidate_limit = min(250, limit + offset)
+            retrieval = await self.search.search_with_metadata(
+                expanded_query,
+                filters=filters,
+                limit=candidate_limit,
+                offset=0,
+                collection=collection,
+                mode=search_type,
+                sort=sort,
+                keyword_weight=float(tenant_context.config.get("rrf_keyword_weight", 1.0)) if tenant_context else 1.0,
+                vector_weight=float(tenant_context.config.get("rrf_vector_weight", 1.0)) if tenant_context else 1.0,
+                num_typos=int(tenant_context.config.get("typo_tolerance", 2)) if tenant_context else 2,
+                searchable_fields=tenant_context.config.get("searchable_fields") if tenant_context else None,
+            )
+            results = retrieval["documents"]
+            total_results = retrieval["total"]
             
             # Track zero-result queries
             if len(results) == 0:
@@ -86,7 +170,21 @@ class SearchOrchestrator:
                 fallback_query = self._expand_query(query)
                 if fallback_query != query:
                     fallback_used = True
-                    results = await self.search.search(fallback_query, filters=filters, limit=limit, collection=collection)
+                    retrieval = await self.search.search_with_metadata(
+                        fallback_query,
+                        filters=filters,
+                        limit=candidate_limit,
+                        offset=0,
+                        collection=collection,
+                        mode=search_type,
+                        sort=sort,
+                        keyword_weight=float(tenant_context.config.get("rrf_keyword_weight", 1.0)) if tenant_context else 1.0,
+                        vector_weight=float(tenant_context.config.get("rrf_vector_weight", 1.0)) if tenant_context else 1.0,
+                        num_typos=int(tenant_context.config.get("typo_tolerance", 2)) if tenant_context else 2,
+                        searchable_fields=tenant_context.config.get("searchable_fields") if tenant_context else None,
+                    )
+                    results = retrieval["documents"]
+                    total_results = retrieval["total"]
                     if len(results) > 0:
                         ZERO_RESULT_QUERIES.labels(search_type=search_type, fallback_used='true').inc()
             
@@ -95,63 +193,91 @@ class SearchOrchestrator:
                 behavior = tenant_context.config.get("out_of_stock_behavior", "demote")
                 results = self._apply_stock_policy(results, behavior)
 
-            # 4. Apply pinned products (merchandising)
+            # 4. Apply boosts and pinned products (merchandising)
             if self.tenant_service and tenant_context:
                 pins = await self.tenant_service.get_pinned_products(tenant_context.organization_id, query)
-                if pins:
-                    results = self._apply_pins(results, pins)
+                boosts = await self.tenant_service.get_boosts(tenant_context.organization_id)
+                if pins or boosts:
+                    results = SearchRuleEngine.apply_result_rules(results, pins, boosts)
 
             # 5. Personalize results and add transparency (only if enabled by tenant config)
             personalization_applied = False
-            enable_personalization = tenant_context.config.get("enable_personalization", False) if tenant_context else True
             if self.personalization and enable_personalization:
                 try:
-                    personalized = await self.personalization.score_products(user_id, results)
+                    personalized = await self.personalization.score_products(tenant_id, user_id, results)
                     results = personalized
                     personalization_applied = True
                 except Exception as e:
                     print(f"Personalization error: {e}")
             
-            # Process results to add breakdown and metadata
+            # 6. Apply margin/inventory commerce optimization
+            if tenant_context and tenant_context.config.get("enable_commerce_optimization", True):
+                for item in results:
+                    margin = float(item.get("margin") or 0.0)
+                    stock = int(item.get("stock") or 0)
+                    
+                    # Compute a commerce multiplier (max 1.3x boost)
+                    margin_boost = 1.0 + (min(margin, 100.0) / 100.0) * 0.2
+                    inventory_boost = 1.0
+                    if stock > 100:
+                        inventory_boost = 1.1
+                    elif stock < 10:
+                        inventory_boost = 0.95
+                        
+                    commerce_multiplier = margin_boost * inventory_boost
+                    
+                    # Apply multiplier to whichever score is active
+                    if personalization_applied and "personalization_score" in item:
+                        item["personalization_score"] *= commerce_multiplier
+                    
+                    retrieval_evidence = item.get("_retrieval", {})
+                    if retrieval_evidence.get("rrf_score") is not None:
+                        retrieval_evidence["rrf_score"] *= commerce_multiplier
+                        
+                # Re-sort if scores changed
+                if personalization_applied:
+                    results.sort(key=lambda x: x.get("personalization_score", 0), reverse=True)
+                else:
+                    results.sort(
+                        key=lambda x: x.get("_retrieval", {}).get("rrf_score") or 0,
+                        reverse=True,
+                    )
+            
+            # Process results with real retrieval evidence, then paginate after all
+            # merchant and personalization ranking changes.
             processed_results = []
-            facets = {"brand": {}, "category": {}}
+            facets = self._format_facets(retrieval.get("facets", []))
             
             for item in results:
-                # Aggregate facets
-                brand = item.get('brand', 'Unknown')
-                category = item.get('category', 'General')
-                facets["brand"][brand] = facets["brand"].get(brand, 0) + 1
-                facets["category"][category] = facets["category"].get(category, 0) + 1
-                
-                # Build score breakdown
-                similarity = item.get('similarity_score', 0.0)
-                # Map old score if exists
-                current_score = item.get('personalization_score') or item.get('variant_score') or similarity or 0.8
-                
+                retrieval_evidence = item.pop("_retrieval", {})
+                current_score = item.get("personalization_score") or retrieval_evidence.get("rrf_score") or 0.0
                 breakdown = {
-                    "keyword_score": 0.5 if similarity > 0 else 0.8, # Mock logic
-                    "semantic_score": similarity,
-                    "rrf_score": similarity * 0.9,
-                    "personalization_boost": 0.05 if personalization_applied else 0.0
+                    "retrieval": retrieval_evidence,
+                    "personalization_score": item.get("personalization_score") if personalization_applied else None,
                 }
                 
                 item['score'] = current_score
                 item['breakdown'] = breakdown
                 processed_results.append(item)
+
+            if not facets:
+                facets = self._calculate_page_facets(processed_results)
+            paginated_results = processed_results[offset : offset + limit]
             
             latency = int((time.time() - start_time) * 1000)
             
             response = {
                 "success": True,
                 "query": query,
-                "results": processed_results,
-                "total_results": len(processed_results),
+                "results": paginated_results,
+                "total_results": total_results,
                 "facets": facets,
                 "meta": {
                     "latency_ms": latency,
                     "cache_hit": cached is not None,
                     "search_mode": search_type,
-                    "fallback_used": fallback_used
+                    "fallback_used": fallback_used or retrieval.get("fallback_used", False),
+                    "retrieval": retrieval.get("retrieval"),
                 },
                 "filters_applied": filters or {}
             }
@@ -167,7 +293,7 @@ class SearchOrchestrator:
             # Record metrics
             SEARCH_TOTAL.labels(
                 query_type=search_type,
-                result_count=str(len(processed_results))
+                result_count=str(len(paginated_results))
             ).inc()
             SEARCH_LATENCY.labels(search_type=search_type).observe(time.time() - start_time)
             
@@ -238,6 +364,28 @@ class SearchOrchestrator:
                     in_stock.append(item)
             return in_stock + out_of_stock
         return results
+
+    @staticmethod
+    def _format_facets(facet_counts: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+        facets: Dict[str, Dict[str, int]] = {}
+        for facet in facet_counts:
+            field_name = facet.get("field_name")
+            if not field_name:
+                continue
+            facets[field_name] = {
+                str(count.get("value")): int(count.get("count", 0))
+                for count in facet.get("counts", [])
+            }
+        return facets
+
+    @staticmethod
+    def _calculate_page_facets(results: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+        facets = {"brand": {}, "category": {}}
+        for item in results:
+            for field, default in (("brand", "Unknown"), ("category", "General")):
+                value = item.get(field) or default
+                facets[field][value] = facets[field].get(value, 0) + 1
+        return facets
     
     def _expand_query(self, query: str) -> str:
         """Semantic query expansion for fallback"""
@@ -258,11 +406,12 @@ class SearchOrchestrator:
             collection = tenant_context.collection_name if tenant_context else "products"
             if self.suggestions_service:
                 suggestions = await self.suggestions_service.get_suggestions(query, limit, collection=collection)
-                return {
-                    "success": True,
-                    "suggestions": suggestions
-                }
-            
+                if suggestions:
+                    return {
+                        "success": True,
+                        "suggestions": suggestions
+                    }
+
             # Fallback to generated suggestions if service is not available
             suggestions = [
                 f"{query} deals",

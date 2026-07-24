@@ -2,8 +2,11 @@
 FastAPI Main Application
 Clean architecture implementation
 """
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from asyncio import CancelledError, create_task, sleep
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,19 +21,52 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+async def _run_catalog_index_worker(worker, settings) -> None:
+    """Continuously replay durable catalog index events while this process is alive."""
+    while True:
+        try:
+            result = await worker.run_once(settings.CATALOG_INDEX_BATCH_SIZE)
+            # Yield after a full batch so requests and other background tasks run fairly.
+            await sleep(0 if result["claimed"] else settings.CATALOG_INDEX_POLL_INTERVAL_SECONDS)
+        except CancelledError:
+            raise
+        except Exception:
+            logger.exception("Catalog index worker iteration failed")
+            await sleep(settings.CATALOG_INDEX_POLL_INTERVAL_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     logger.info("Starting application")
-    
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(ThreadPoolExecutor(max_workers=200))
+    settings = get_settings()
     container = get_container()
+    if settings.TEST_MODE:
+        # Endpoint tests provide dependency overrides; never boot external services.
+        app.state.container = container
+        yield
+        return
+
     await container.initialize()
     app.state.container = container
-    
-    yield
-    
-    logger.info("Shutting down application")
-    await container.cleanup()
+    worker_task = None
+    worker = container.get("catalog_index_worker")
+    if settings.CATALOG_INDEX_WORKER_ENABLED and worker:
+        worker_task = create_task(
+            _run_catalog_index_worker(worker, settings), name="catalog-index-worker"
+        )
+
+    try:
+        yield
+    finally:
+        if worker_task:
+            worker_task.cancel()
+            with suppress(CancelledError):
+                await worker_task
+        logger.info("Shutting down application")
+        await container.cleanup()
 
 
 def create_app() -> FastAPI:
@@ -40,7 +76,8 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Mercury AI Assistant",
         version="4.0.0",
-        docs_url="/docs" if settings.DEBUG else None,
+        docs_url="/docs",
+        redoc_url="/redoc",
         lifespan=lifespan
     )
     
@@ -80,7 +117,13 @@ def create_app() -> FastAPI:
     from fastapi.responses import FileResponse
     from fastapi.staticfiles import StaticFiles
 
-    dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dashboard")
+    dashboard_path = os.path.join(os.path.dirname(__file__), "dashboard")
+    if not os.path.exists(dashboard_path):
+        dashboard_path = os.path.abspath("dashboard")
+
+    widget_path = os.path.join(os.path.dirname(__file__), "widget")
+    if not os.path.exists(widget_path):
+        widget_path = os.path.abspath("widget")
     if os.path.exists(dashboard_path):
         app.mount("/dashboard/static", StaticFiles(directory=dashboard_path), name="dashboard_static")
         
@@ -91,13 +134,20 @@ def create_app() -> FastAPI:
         @app.get("/dashboard/demo", include_in_schema=False)
         async def serve_demo():
             return FileResponse(os.path.join(dashboard_path, "demo.html"))
+
+    if settings.MCP_ENABLED:
+        from app.mcp.server import get_mcp_app
+        app.mount("/api/v1/mcp", get_mcp_app())
     
     # Serve static widget scripts
-    app.mount("/widget", StaticFiles(directory="widget"), name="widget")
+    if os.path.exists(widget_path):
+        app.mount("/widget", StaticFiles(directory=widget_path), name="widget")
     
     # WebSocket endpoint mounting
     from fastapi import WebSocket, WebSocketDisconnect
+    from fastapi.security import HTTPAuthorizationCredentials
 
+    from app.api.dependencies import TenantContext, get_current_user
     from app.websocket.handlers import register_websocket_handlers
     from app.websocket.manager import WebSocketManager
     
@@ -105,11 +155,45 @@ def create_app() -> FastAPI:
     
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
-        await ws_manager.connect(websocket)
+        container = get_container()
+        api_key = websocket.headers.get("x-api-key")
+        authorization = websocket.headers.get("authorization", "")
+        if not api_key or not authorization.startswith("Bearer "):
+            await websocket.close(code=1008, reason="Tenant API key and JWT required")
+            return
+
+        tenant_service = container.get("tenant_service")
+        if not tenant_service:
+            await websocket.close(code=1011, reason="Tenant service unavailable")
+            return
+        tenant_data = await tenant_service.validate_api_key(api_key)
+        current_user = await get_current_user(
+            HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials=authorization.removeprefix("Bearer ")
+            )
+        )
+        if not tenant_data or not current_user or current_user.get("organization_id") != tenant_data["organization_id"]:
+            await websocket.close(code=1008, reason="Invalid tenant credentials")
+            return
+
+        tenant_context = TenantContext(
+            organization_id=tenant_data["organization_id"],
+            organization_slug=tenant_data["organization_slug"],
+            key_type=tenant_data["key_type"],
+            scopes=tenant_data["scopes"],
+            plan=tenant_data["plan"],
+            config=tenant_data["config"],
+            collection_name=f"tenant_{tenant_data['organization_id']}_products",
+        )
+        await ws_manager.connect(
+            websocket,
+            user_id=current_user["user_id"],
+            organization_id=tenant_context.organization_id,
+        )
         try:
-            from app.core.dependencies import get_service_container
-            legacy_container = get_service_container()
-            await register_websocket_handlers(websocket, ws_manager, legacy_container)
+            await register_websocket_handlers(
+                websocket, ws_manager, container, tenant_context, current_user
+            )
         except WebSocketDisconnect:
             ws_manager.disconnect(websocket)
         except Exception as e:

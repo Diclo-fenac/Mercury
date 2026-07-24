@@ -16,7 +16,7 @@ class TenantProvisioner:
     def __init__(self, typesense: TypesenseClient):
         self.typesense = typesense
 
-    def build_schema(self, collection_name: str, num_dim: int = 384) -> Dict[str, Any]:
+    def build_schema(self, collection_name: str, num_dim: int = 384, image_num_dim: int = 512) -> Dict[str, Any]:
         """Build standard Typesense collection schema for a tenant"""
         return {
             "name": collection_name,
@@ -32,7 +32,10 @@ class TenantProvisioner:
                 {"name": "stock", "type": "bool", "optional": True},
                 {"name": "online_available", "type": "bool", "optional": True},
                 {"name": "selling_price", "type": "float", "optional": True},
-                {"name": "embedding", "type": "float[]", "num_dim": num_dim},
+                # Legacy keyword-only catalogs may not have vectors yet. Hybrid
+                # search will still use keyword retrieval while vectors are backfilled.
+                {"name": "embedding", "type": "float[]", "num_dim": num_dim, "optional": True},
+                {"name": "image_vector", "type": "float[]", "num_dim": image_num_dim, "optional": True},
             ],
             "default_sorting_field": "rating",
         }
