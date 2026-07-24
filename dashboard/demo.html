@@ -1,116 +1,1161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-[#F6F4F0]">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LUMIÈRE - Premium Tech</title>
-    <!-- Tailwind CSS -->
+    <title>SEN — Aesthetic Tech & Lifestyle | Powered by Mercury AI</title>
+    <meta name="description" content="Discover minimal lifestyle electronics and deskware with instant AI vector search, smart recommendations, and grounded product assistance.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sen:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pink: '#F6D0EF',
+                            periwinkle: '#C1C8FF',
+                            skyblue: '#C3E4EE',
+                            beige: '#D8D1AF',
+                            dark: '#1D1C1B',
+                            cream: '#F6F4F0'
+                        }
+                    },
+                    fontFamily: {
+                        sen: ['Sen', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
-        body { font-family: 'Inter', -apple-system, sans-serif; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F6F4F0;
+            color: #1D1C1B;
+        }
+
+        h1, h2, h3, h4, h5, h6, .font-brand {
+            font-family: 'Sen', sans-serif;
+        }
+
+        /* Glassmorphism & Soft Gradients */
+        .gradient-backdrop {
+            background: linear-gradient(135deg, rgba(246, 208, 239, 0.45) 0%, rgba(193, 200, 255, 0.45) 50%, rgba(195, 228, 238, 0.45) 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(29, 28, 27, 0.08);
+        }
+
+        .shimmer-badge {
+            background: linear-gradient(90deg, #F6D0EF 0%, #C1C8FF 50%, #C3E4EE 100%);
+            background-size: 200% auto;
+            animation: shimmer 4s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Soft Floating Animation */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(0.5deg); }
+        }
+
+        .animate-float {
+            animation: floatSlow 6s ease-in-out infinite;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F6F4F0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D8D1AF;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1D1C1B;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col antialiased selection:bg-[#F6D0EF] selection:text-[#1D1C1B]">
 
-    <!-- Store Navbar -->
-    <header class="bg-white shadow-sm sticky top-0 z-40">
+    <!-- Top Announcement Bar -->
+    <div class="shimmer-badge text-[#1D1C1B] text-xs font-semibold py-2 px-4 text-center tracking-wide flex items-center justify-center gap-2 border-b border-black/5">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Powered by <strong>Mercury Hybrid AI Search & Grounded Gemini Reranking</strong></span>
+        <span class="hidden sm:inline opacity-75">| Free express shipping on orders over $100</span>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="sticky top-0 z-40 glass-card border-b border-black/5 shadow-xs transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <!-- Logo -->
-                <div class="flex-shrink-0 flex items-center">
-                    <span class="text-2xl font-black tracking-tighter text-indigo-600">LUMIÈRE</span>
-                </div>
+            <div class="flex items-center justify-between h-20 gap-4">
                 
-                <!-- Navigation Links -->
-                <nav class="hidden md:flex space-x-8">
-                    <a href="#" class="text-sm font-medium text-gray-900 hover:text-indigo-600">New Arrivals</a>
-                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Electronics</a>
-                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Accessories</a>
-                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-indigo-600">Sale</a>
+                <!-- Brand Logo -->
+                <div class="flex items-center gap-3">
+                    <a href="#" class="group flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-2xl bg-[#1D1C1B] text-white font-brand font-black text-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200">
+                            S
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-brand font-extrabold text-2xl tracking-tight text-[#1D1C1B]">SEN</span>
+                            <span class="text-[10px] font-semibold tracking-widest uppercase text-gray-500 -mt-1">Aesthetic Tech</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center space-x-1 lg:space-x-2 text-sm font-semibold text-[#1D1C1B]/80">
+                    <a href="#products" class="px-3.5 py-2 rounded-xl hover:bg-black/5 hover:text-[#1D1C1B] transition-colors">New Arrivals</a>
+                    <a href="#products" class="px-3.5 py-2 rounded-xl hover:bg-black/5 hover:text-[#1D1C1B] transition-colors">Audio Gear</a>
+                    <a href="#products" class="px-3.5 py-2 rounded-xl hover:bg-black/5 hover:text-[#1D1C1B] transition-colors">Desk Setup</a>
+                    <a href="#products" class="px-3.5 py-2 rounded-xl hover:bg-black/5 hover:text-[#1D1C1B] transition-colors">Wearables</a>
                 </nav>
 
-                <!-- Search Widget Placeholder -->
-                <div class="flex-1 max-w-md mx-8 relative" id="search-container">
-                    <!-- The script will inject the search widget exactly here -->
+                <!-- Embedded Mercury Search Bar Container -->
+                <div class="flex-1 max-w-lg relative mx-2 sm:mx-4" id="search-container">
+                    <div class="relative group">
+                        <input 
+                            type="text" 
+                            id="demo-search-input"
+                            placeholder="Search products, brands, or ask AI (e.g., 'headphones for focus')..." 
+                            class="w-full bg-white/90 border border-black/10 rounded-2xl py-2.5 pl-11 pr-24 text-sm font-medium text-[#1D1C1B] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C1C8FF] focus:border-transparent transition-all shadow-xs"
+                            onkeyup="handleSearchInput(event)"
+                        >
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#1D1C1B]">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <button 
+                            onclick="toggleAIDrawer()"
+                            class="absolute inset-y-1.5 right-1.5 px-3 bg-[#F6D0EF] hover:bg-[#f2b9ea] text-[#1D1C1B] text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
+                        >
+                            <span>Ask AI</span>
+                        </button>
+                    </div>
+
+                    <!-- Instant Autocomplete Dropdown Simulation -->
+                    <div id="autocomplete-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-black/10 overflow-hidden z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div class="text-[11px] font-bold tracking-wider uppercase text-gray-400 px-3 py-1.5">Instant AI Suggestions</div>
+                        <div id="autocomplete-results" class="divide-y divide-gray-100">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Standalone Mercury Widget Script Injector -->
                     <script src="/widget/mercury-search.min.js" 
-                            data-api-key="stress_test_key_123" 
+                            data-api-key="pk_5c75cd41dd114ca7aaf32a040a777008" 
                             data-endpoint="">
                     </script>
                 </div>
-                
-                <!-- Cart Icon -->
-                <div class="flex items-center">
-                    <button class="p-2 text-gray-400 hover:text-gray-500">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+
+                <!-- Right Utility Icons & Actions -->
+                <div class="flex items-center space-x-2">
+                    <button 
+                        onclick="toggleAIDrawer()" 
+                        class="relative px-3.5 py-2 rounded-2xl bg-[#C1C8FF]/40 hover:bg-[#C1C8FF] text-[#1D1C1B] font-semibold text-xs flex items-center gap-2 transition-all border border-[#C1C8FF] shadow-xs active:scale-95"
+                    >
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                        <span class="hidden sm:inline">AI Copilot</span>
+                    </button>
+                    
+                    <button 
+                        onclick="openCartModal()" 
+                        class="relative p-2.5 rounded-2xl bg-white border border-black/10 hover:bg-gray-100 text-[#1D1C1B] transition-colors shadow-xs"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
+                        <span id="cart-count" class="absolute -top-1.5 -right-1.5 bg-[#1D1C1B] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                            2
+                        </span>
                     </button>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <main class="flex-1 flex flex-col">
-        <div class="relative bg-gray-900 overflow-hidden h-[500px]">
-            <img src="https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&q=80&w=2070" alt="Hero background" class="absolute inset-0 w-full h-full object-cover opacity-50">
-            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-80"></div>
-            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-                <div class="text-center md:text-left">
-                    <h1 class="text-4xl tracking-tight font-extrabold text-white sm:text-5xl md:text-6xl">
-                        <span class="block">The Future of</span>
-                        <span class="block text-indigo-400">Premium Tech</span>
-                    </h1>
-                    <p class="mt-3 max-w-md text-base text-gray-300 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-                        Discover the latest cutting-edge electronics, smart devices, and accessories designed to elevate your everyday life.
-                    </p>
-                    <div class="mt-5 max-w-md sm:flex md:mt-8">
-                        <div class="rounded-md shadow">
-                            <a href="#" class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10">
-                                Shop Now
+    <!-- Main Content Area -->
+    <main class="flex-1">
+        
+        <!-- Hero Section with Pastel Aesthetic -->
+        <section class="relative overflow-hidden pt-12 pb-16 lg:pt-20 lg:pb-24 gradient-backdrop border-b border-black/5">
+            
+            <!-- Soft Ambient Background Glows -->
+            <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#F6D0EF]/60 blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#C3E4EE]/60 blur-3xl pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                    
+                    <!-- Left Hero Text -->
+                    <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill text-xs font-bold text-[#1D1C1B]">
+                            <span class="w-2 h-2 rounded-full bg-[#1D1C1B]"></span>
+                            <span>SEN 2026 Aesthetic Collection</span>
+                        </div>
+                        
+                        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-brand font-black text-[#1D1C1B] tracking-tight leading-[1.1]">
+                            Carefully Curated <br class="hidden sm:inline"/>
+                            <span class="bg-clip-text text-transparent bg-gradient-to-r from-[#1D1C1B] via-indigo-950 to-purple-900">Tech & Lifestyle</span>
+                        </h1>
+                        
+                        <p class="text-base sm:text-lg text-gray-700 font-normal max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                            Discover minimalist audio gear, ergonomic desk accessories, and smart ambient objects—elevated by <strong>Mercury AI Hybrid Vector Search</strong>.
+                        </p>
+
+                        <!-- Call to Action Buttons -->
+                        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+                            <a href="#products" class="px-8 py-4 rounded-2xl bg-[#1D1C1B] hover:bg-black text-white font-brand font-bold text-base transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0">
+                                Explore Products
                             </a>
+                            <button onclick="toggleAIDrawer()" class="px-8 py-4 rounded-2xl bg-white/80 hover:bg-white text-[#1D1C1B] border border-black/10 font-brand font-bold text-base transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2">
+                                <span>✨ Launch AI Shopping Assistant</span>
+                            </button>
+                        </div>
+
+                        <!-- Trust Badges -->
+                        <div class="pt-6 flex items-center justify-center lg:justify-start gap-6 text-xs font-semibold text-gray-600 border-t border-black/5">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span>Sub-50ms Hybrid Search</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span>Grounded Gemini Chat</span>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Right Hero Visual Floating Card Stack -->
+                    <div class="lg:col-span-5 relative">
+                        <div class="relative mx-auto max-w-md lg:max-w-none">
+                            
+                            <!-- Main Hero Product Showcase Card -->
+                            <div class="glass-card rounded-3xl p-5 shadow-2xl border border-white/80 relative overflow-hidden animate-float">
+                                <div class="relative h-64 sm:h-72 rounded-2xl overflow-hidden bg-white mb-4 flex items-center justify-center group">
+                                    <img 
+                                        src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80" 
+                                        alt="Zenith Premium Wireless Headphones"
+                                        class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                    >
+                                    <div class="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#F6D0EF] text-[#1D1C1B] text-xs font-brand font-bold shadow-xs">
+                                        Top Recommendation
+                                    </div>
+                                    <div class="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-[#1D1C1B]/80 backdrop-blur-md text-white text-xs font-semibold">
+                                        ★ 4.9
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Audio & Sound</span>
+                                        <h3 class="text-xl font-brand font-bold text-[#1D1C1B]">Zenith ANC Wireless Headphones</h3>
+                                        <p class="text-xs text-gray-500 mt-0.5">Active Noise Canceling • Matte Periwinkle</p>
+                                    </div>
+                                    <span class="text-xl font-brand font-extrabold text-[#1D1C1B]">$349</span>
+                                </div>
+
+                                <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                    <div class="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-lg">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                        </svg>
+                                        <span>99.4% Semantic Match</span>
+                                    </div>
+                                    <button 
+                                        onclick="openProductModal('PROD-101')" 
+                                        class="px-4 py-2 rounded-xl bg-[#1D1C1B] text-white text-xs font-brand font-bold hover:bg-black transition-colors"
+                                    >
+                                        Quick View
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Decorative Floating Pastel Accent Pill -->
+                            <div class="absolute -bottom-6 -left-6 glass-card p-4 rounded-2xl shadow-xl flex items-center gap-3 border border-white/90 hidden sm:flex">
+                                <div class="w-10 h-10 rounded-xl bg-[#C1C8FF] flex items-center justify-center text-lg">
+                                    🎧
+                                </div>
+                                <div class="text-xs">
+                                    <p class="font-bold text-[#1D1C1B]">Typesense Vector Engine</p>
+                                    <p class="text-gray-500">Latency: 14ms</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Category Filter & Search Control Section -->
+        <section id="products" class="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-brand font-black text-[#1D1C1B]">Explore Catalog</h2>
+                    <p class="text-sm text-gray-500 mt-1">Grounded vector indexing with multi-tenant search scoping</p>
+                </div>
+
+                <!-- Category Pill Filters -->
+                <div class="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                    <button onclick="filterCategory('all')" class="category-btn active px-4 py-2 rounded-xl text-xs font-brand font-bold bg-[#1D1C1B] text-white transition-all shadow-xs whitespace-nowrap">
+                        All Products (8)
+                    </button>
+                    <button onclick="filterCategory('audio')" class="category-btn px-4 py-2 rounded-xl text-xs font-brand font-bold bg-white text-[#1D1C1B] hover:bg-[#F6D0EF]/50 border border-black/10 transition-all whitespace-nowrap">
+                        🎧 Audio & Sound
+                    </button>
+                    <button onclick="filterCategory('desk')" class="category-btn px-4 py-2 rounded-xl text-xs font-brand font-bold bg-white text-[#1D1C1B] hover:bg-[#C1C8FF]/50 border border-black/10 transition-all whitespace-nowrap">
+                        ⌨️ Minimalist Desk
+                    </button>
+                    <button onclick="filterCategory('wearable')" class="category-btn px-4 py-2 rounded-xl text-xs font-brand font-bold bg-white text-[#1D1C1B] hover:bg-[#C3E4EE]/50 border border-black/10 transition-all whitespace-nowrap">
+                        ⌚ Smart Wearables
+                    </button>
+                    <button onclick="filterCategory('ambient')" class="category-btn px-4 py-2 rounded-xl text-xs font-brand font-bold bg-white text-[#1D1C1B] hover:bg-[#D8D1AF]/50 border border-black/10 transition-all whitespace-nowrap">
+                        💡 Ambient Tech
+                    </button>
+                </div>
+            </div>
+
+            <!-- Product Cards Grid -->
+            <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- Product Card 1 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="audio">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80" alt="Zenith Headphones" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C1C8FF] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Audio
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Zenith ANC Wireless Headphones</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">High-fidelity active noise canceling with 40-hour battery life and ultra-soft memory foam earcups.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$349.00</span>
+                        <button onclick="addToCart('Zenith ANC Wireless Headphones', 349)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 2 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="desk">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=600&q=80" alt="Aura Keyboard" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#F6D0EF] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Desk
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Aura Wireless Mechanical Keyboard</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">75% compact wireless mechanical layout with hot-swappable tactile switches and pastel RGB backlighting.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$189.00</span>
+                        <button onclick="addToCart('Aura Mechanical Keyboard', 189)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 3 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="desk">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=600&q=80" alt="ErgoLift Desk Mat" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#D8D1AF] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Desk
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">ErgoLift Wool Felt Desk Mat</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">Premium merino wool felt desk pad with anti-slip rubberized backing for seamless mouse tracking.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$89.00</span>
+                        <button onclick="addToCart('ErgoLift Wool Desk Mat', 89)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 4 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="wearable">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80" alt="Pulse Watch" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C3E4EE] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Wearable
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Pulse Ultra Fitness Smartwatch</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">Always-on OLED display, continuous heart rate monitor, sleep tracking, and 7-day battery stamina.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$279.00</span>
+                        <button onclick="addToCart('Pulse Ultra Smartwatch', 279)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 5 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="ambient">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=600&q=80" alt="Horizon Light" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#D8D1AF] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Ambient
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Horizon Smart Ambient Light Strip</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">Addressable gradient LED strip with adaptive screen sync and smart voice integration.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$119.00</span>
+                        <button onclick="addToCart('Horizon Ambient Light', 119)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 6 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="audio">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80" alt="Hi-Fi Desktop Speakers" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C1C8FF] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Audio
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Studio Hi-Fi Desktop Speakers</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">Compact wooden acoustic monitors with Bluetooth 5.2 and optical clarity input.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$420.00</span>
+                        <button onclick="addToCart('Studio Hi-Fi Speakers', 420)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 7 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="desk">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1609592424109-dd9892f1b177?auto=format&fit=crop&w=600&q=80" alt="MagSafe Battery Dock" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#F6D0EF] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Desk
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Luna MagSafe Charging Dock</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">Solid aluminum wireless charging stand supporting fast 15W MagSafe for phone and earbuds.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$79.00</span>
+                        <button onclick="addToCart('Luna MagSafe Dock', 79)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Card 8 -->
+                <div class="product-card group bg-white rounded-3xl p-4 border border-black/5 hover:border-black/20 hover:shadow-xl transition-all duration-300 flex flex-col justify-between" data-category="ambient">
+                    <div>
+                        <div class="relative h-52 rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                            <img src="https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=600&q=80" alt="Cable Organizer" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#C3E4EE] text-[#1D1C1B] text-[11px] font-brand font-bold">
+                                Ambient
+                            </span>
+                        </div>
+                        <h3 class="font-brand font-bold text-base text-[#1D1C1B] group-hover:text-indigo-600 transition-colors">Minimalist Magnetic Cable Organizer</h3>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">Heavy weighted silicone base with magnetic cable collars to eliminate cord clutter.</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span class="font-brand font-extrabold text-lg text-[#1D1C1B]">$35.00</span>
+                        <button onclick="addToCart('Magnetic Cable Organizer', 35)" class="px-3.5 py-1.5 rounded-xl bg-[#F6F4F0] hover:bg-[#1D1C1B] hover:text-white text-[#1D1C1B] text-xs font-brand font-bold transition-colors">
+                            + Add to Bag
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- AI Assistant Floating Slide-Over Drawer -->
+    <div id="ai-drawer" class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out border-l border-black/10 flex flex-col">
+        
+        <!-- Drawer Header -->
+        <div class="p-5 gradient-backdrop border-b border-black/10 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-[#1D1C1B] text-white flex items-center justify-center text-base shadow-xs">
+                    ✨
+                </div>
+                <div>
+                    <h3 class="font-brand font-bold text-base text-[#1D1C1B]">Mercury AI Shopping Copilot</h3>
+                    <p class="text-xs text-gray-600">Grounded in SEN product catalog via Gemini</p>
+                </div>
+            </div>
+            <button onclick="toggleAIDrawer()" class="p-2 rounded-xl hover:bg-black/5 text-gray-500 hover:text-black transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Chat History Messages Container -->
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 bg-[#F6F4F0]/50">
+            <div class="flex items-start gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-[#C1C8FF] text-[#1D1C1B] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                    AI
+                </div>
+                <div class="bg-white p-3.5 rounded-2xl rounded-tl-none border border-black/5 text-xs text-[#1D1C1B] leading-relaxed shadow-xs">
+                    Hello! I'm your grounded AI assistant powered by Mercury. Ask me anything about our audio gear, desk setup accessories, or request personalized recommendations!
                 </div>
             </div>
         </div>
 
-        <!-- Fake Product Grid -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-            <h2 class="text-2xl font-extrabold text-gray-900 mb-6">Trending Now</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- These are just placeholder cards for the storefront illusion -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
-                    <div class="p-4">
-                        <h3 class="text-sm text-gray-700">Wireless Noise-Canceling Headphones</h3>
-                        <p class="mt-1 text-lg font-medium text-gray-900">$299.00</p>
+        <!-- Prompt Suggestions Chips -->
+        <div class="px-4 py-2 bg-white border-t border-black/5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
+            <button onclick="sendQuickPrompt('Find wireless headphones under $350')" class="px-3 py-1.5 rounded-full bg-[#F6D0EF]/40 hover:bg-[#F6D0EF] text-[#1D1C1B] font-semibold whitespace-nowrap transition-colors">
+                🎧 Headphones under $350
+            </button>
+            <button onclick="sendQuickPrompt('What desk accessories match a minimalist look?')" class="px-3 py-1.5 rounded-full bg-[#C1C8FF]/40 hover:bg-[#C1C8FF] text-[#1D1C1B] font-semibold whitespace-nowrap transition-colors">
+                ⌨️ Minimalist desk setup
+            </button>
+        </div>
+
+        <!-- Chat Input Form -->
+        <form onsubmit="handleChatSubmit(event)" class="p-4 bg-white border-t border-black/10 flex items-center gap-2">
+            <input 
+                type="text" 
+                id="chat-input"
+                placeholder="Ask AI shopping copilot..." 
+                class="flex-1 bg-[#F6F4F0] border border-black/10 rounded-xl px-4 py-2.5 text-xs font-medium text-[#1D1C1B] focus:outline-none focus:ring-2 focus:ring-[#C1C8FF]"
+            >
+            <button type="submit" class="px-4 py-2.5 bg-[#1D1C1B] hover:bg-black text-white font-brand font-bold text-xs rounded-xl transition-all active:scale-95">
+                Send
+            </button>
+        </form>
+    </div>
+
+    <!-- Quick Product View Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 relative border border-black/10 shadow-2xl animate-in zoom-in-95 duration-200">
+            <button onclick="closeProductModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-500">
+                ✕
+            </button>
+            <div id="modal-content">
+                <!-- Dynamically filled -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-[#1D1C1B] text-white pt-12 pb-8 border-t border-white/10 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 rounded-xl bg-white text-[#1D1C1B] font-brand font-black flex items-center justify-center">
+                            S
+                        </div>
+                        <span class="font-brand font-extrabold text-xl">SEN</span>
                     </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        Aesthetic lifestyle and tech products powered by Mercury's multi-tenant hybrid vector search engine.
+                    </p>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
-                    <div class="p-4">
-                        <h3 class="text-sm text-gray-700">Ultra-Slim 4K Monitor</h3>
-                        <p class="mt-1 text-lg font-medium text-gray-900">$450.00</p>
-                    </div>
+                <div>
+                    <h4 class="font-brand font-bold text-sm mb-3 text-white">Categories</h4>
+                    <ul class="space-y-2 text-xs text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Audio & Headphones</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Mechanical Keyboards</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Desk Mats & Accessories</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Smart Wearables</a></li>
+                    </ul>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
-                    <div class="p-4">
-                        <h3 class="text-sm text-gray-700">Mechanical Keyboard Pro</h3>
-                        <p class="mt-1 text-lg font-medium text-gray-900">$129.00</p>
-                    </div>
+                <div>
+                    <h4 class="font-brand font-bold text-sm mb-3 text-white">Mercury AI Tech</h4>
+                    <ul class="space-y-2 text-xs text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Typesense BM25 + Typo</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Vector Embeddings</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Gemini Grounded Rerank</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Sub-50ms Response Guarantee</a></li>
+                    </ul>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-400">Image Placeholder</div>
-                    <div class="p-4">
-                        <h3 class="text-sm text-gray-700">Smart Home Hub</h3>
-                        <p class="mt-1 text-lg font-medium text-gray-900">$89.00</p>
+                <div>
+                    <h4 class="font-brand font-bold text-sm mb-3 text-white">Newsletter</h4>
+                    <p class="text-xs text-gray-400 mb-3">Get notified about new minimalist tech drops.</p>
+                    <div class="flex gap-2">
+                        <input type="email" placeholder="Your email..." class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none w-full">
+                        <button class="px-3 py-2 bg-[#F6D0EF] text-[#1D1C1B] font-brand font-bold text-xs rounded-xl hover:bg-white transition-colors">Join</button>
                     </div>
                 </div>
             </div>
+            <div class="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
+                <p>© 2026 SEN Aesthetic Tech Storefront. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <span>Powered by Mercury AI</span>
+                    <span>•</span>
+                    <a href="/dashboard" class="hover:text-white transition-colors">Admin Dashboard</a>
+                </div>
+            </div>
         </div>
-    </main>
+    </footer>
+
+    <!-- Interactive JavaScript Logic -->
+    <script>
+        let cartCount = 2;
+
+        function addToCart(title, price) {
+            cartCount++;
+            document.getElementById('cart-count').innerText = cartCount;
+            
+            // Show toast notification
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-5 right-5 bg-[#1D1C1B] text-white px-5 py-3 rounded-2xl shadow-2xl text-xs font-brand font-bold flex items-center gap-2 z-50 animate-in slide-in-from-bottom-3 duration-200';
+            toast.innerHTML = `<span>✨ Added <strong>${title}</strong> ($${price}) to bag</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        function filterCategory(cat) {
+            const buttons = document.querySelectorAll('.category-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-[#1D1C1B]', 'text-white');
+                btn.classList.add('bg-white', 'text-[#1D1C1B]');
+            });
+            event.target.classList.remove('bg-white', 'text-[#1D1C1B]');
+            event.target.classList.add('bg-[#1D1C1B]', 'text-white');
+
+            const cards = document.querySelectorAll('.product-card');
+            cards.forEach(card => {
+                if (cat === 'all' || card.getAttribute('data-category') === cat) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function toggleAIDrawer() {
+            const drawer = document.getElementById('ai-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        function handleSearchInput(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            const results = document.getElementById('autocomplete-results');
+
+            if (query.length < 2) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            const mockItems = [
+                { name: 'Zenith ANC Wireless Headphones', cat: 'Audio', price: '$349' },
+                { name: 'Aura Wireless Mechanical Keyboard', cat: 'Deskware', price: '$189' },
+                { name: 'ErgoLift Wool Felt Desk Mat', cat: 'Deskware', price: '$89' },
+                { name: 'Pulse Ultra Fitness Smartwatch', cat: 'Wearables', price: '$279' }
+            ];
+
+            const filtered = mockItems.filter(i => i.name.toLowerCase().includes(query) || i.cat.toLowerCase().includes(query));
+            
+            if (filtered.length > 0) {
+                results.innerHTML = filtered.map(item => `
+                    <div onclick="selectSearchResult('${item.name}')" class="px-3 py-2 hover:bg-[#F6F4F0] rounded-xl cursor-pointer flex items-center justify-between text-xs">
+                        <span class="font-semibold text-[#1D1C1B]">${item.name}</span>
+                        <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">${item.price}</span>
+                    </div>
+                `).join('');
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function selectSearchResult(name) {
+            document.getElementById('demo-search-input').value = name;
+            document.getElementById('autocomplete-dropdown').classList.add('hidden');
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addChatMessage('user', text);
+            input.value = '';
+
+            setTimeout(() => {
+                addChatMessage('ai', `I found great results for "${text}" in our catalog! The **Zenith ANC Headphones** ($349) and **Aura Mechanical Keyboard** ($189) feature sub-50ms vector relevance.`);
+            }, 800);
+        }
+
+        function sendQuickPrompt(promptText) {
+            addChatMessage('user', promptText);
+            setTimeout(() => {
+                addChatMessage('ai', `Here are top recommendations matching "${promptText}": Zenith ANC Headphones with active noise canceling and 40h battery.`);
+            }, 600);
+        }
+
+        function addChatMessage(sender, msg) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            if (sender === 'user') {
+                div.className = 'flex items-start justify-end gap-2.5';
+                div.innerHTML = `
+                    <div class="bg-[#1D1C1B] text-white p-3.5 rounded-2xl rounded-tr-none text-xs leading-relaxed shadow-xs max-w-[80%]">
+                        ${msg}
+                    </div>
+                `;
+            } else {
+                div.className = 'flex items-start gap-2.5';
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-[#C1C8FF] text-[#1D1C1B] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                        AI
+                    </div>
+                    <div class="bg-white p-3.5 rounded-2xl rounded-tl-none border border-black/5 text-xs text-[#1D1C1B] leading-relaxed shadow-xs max-w-[85%]">
+                        ${msg}
+                    </div>
+                `;
+            }
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function openProductModal(prodId) {
+            const modal = document.getElementById('product-modal');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="flex flex-col sm:flex-row gap-6">
+                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&q=80" class="w-full sm:w-1/2 h-56 object-cover rounded-2xl">
+                    <div class="flex-1 space-y-3">
+                        <span class="px-2.5 py-1 rounded-full bg-[#C1C8FF] text-[#1D1C1B] text-[10px] font-brand font-bold">High Semantic Relevance</span>
+                        <h3 class="font-brand font-extrabold text-xl text-[#1D1C1B]">Zenith ANC Headphones</h3>
+                        <p class="text-xs text-gray-600">Pure acoustics, active noise cancellation, matte periwinkle design, and custom 40mm drivers tuned for clarity.</p>
+                        <div class="text-2xl font-brand font-black text-[#1D1C1B]">$349.00</div>
+                        <button onclick="addToCart('Zenith ANC Headphones', 349); closeProductModal();" class="w-full py-3 rounded-2xl bg-[#1D1C1B] text-white font-brand font-bold text-xs hover:bg-black transition-colors">
+                            Add to Bag • $349.00
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+        }
+
+    <!-- Interactive Cart Drawer Slide-Over Modal -->
+    <div id="cart-drawer" class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out border-l border-black/10 flex flex-col">
+        <!-- Cart Drawer Header -->
+        <div class="p-5 gradient-backdrop border-b border-black/10 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-[#1D1C1B] text-white flex items-center justify-center text-base shadow-xs">
+                    🛒
+                </div>
+                <div>
+                    <h3 class="font-brand font-bold text-base text-[#1D1C1B]">Your Shopping Bag</h3>
+                    <p class="text-xs text-gray-600"><span id="cart-drawer-count">2</span> curated items</p>
+                </div>
+            </div>
+            <button onclick="toggleCartDrawer()" class="p-2 rounded-xl hover:bg-black/5 text-gray-500 hover:text-black transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Cart Items List Container -->
+        <div id="cart-items-container" class="flex-1 p-5 overflow-y-auto space-y-4 bg-[#F6F4F0]/40">
+            <!-- Dynamically populated -->
+        </div>
+
+        <!-- AI Cross-Sell Recommendation Box -->
+        <div class="mx-5 my-2 p-3 rounded-2xl bg-[#C1C8FF]/20 border border-[#C1C8FF]/50 text-xs flex items-center gap-3">
+            <div class="text-lg">✨</div>
+            <div class="flex-1">
+                <p class="font-brand font-bold text-[#1D1C1B]">Mercury AI Frequently Bought Together</p>
+                <p class="text-[11px] text-gray-600">Add <strong>Wool Desk Mat ($89)</strong> to complete your aesthetic setup.</p>
+            </div>
+            <button onclick="addToCart('ErgoLift Wool Desk Mat', 89)" class="px-2.5 py-1 rounded-xl bg-[#1D1C1B] text-white text-[11px] font-bold hover:bg-black">
+                + Add
+            </button>
+        </div>
+
+        <!-- Cart Summary Footer & Checkout -->
+        <div class="p-5 bg-white border-t border-black/10 space-y-3">
+            <div class="flex items-center gap-2">
+                <input type="text" id="promo-input" placeholder="Promo code (try MERCURY10)" class="flex-1 bg-[#F6F4F0] border border-black/10 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#C1C8FF]">
+                <button onclick="applyPromoCode()" class="px-3 py-2 bg-[#F6D0EF] hover:bg-[#f2b9ea] text-[#1D1C1B] font-brand font-bold text-xs rounded-xl transition-all">
+                    Apply
+                </button>
+            </div>
+            
+            <div id="discount-row" class="hidden flex items-center justify-between text-xs text-emerald-600 font-semibold">
+                <span>Promo Discount (10% OFF)</span>
+                <span id="discount-amount">-$0.00</span>
+            </div>
+
+            <div class="flex items-center justify-between text-sm font-brand font-bold text-[#1D1C1B]">
+                <span>Estimated Total:</span>
+                <span id="cart-total" class="text-lg text-indigo-600">$538.00</span>
+            </div>
+
+            <button onclick="simulateCheckout()" class="w-full py-3.5 bg-[#1D1C1B] hover:bg-black text-white font-brand font-bold text-sm rounded-2xl transition-all shadow-lg active:scale-98">
+                Proceed to Checkout →
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Product View Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 relative border border-black/10 shadow-2xl animate-in zoom-in-95 duration-200">
+            <button onclick="closeProductModal()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-500">
+                ✕
+            </button>
+            <div id="modal-content">
+                <!-- Dynamically filled -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-[#1D1C1B] text-white pt-12 pb-8 border-t border-white/10 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 rounded-xl bg-white text-[#1D1C1B] font-brand font-black flex items-center justify-center">
+                            S
+                        </div>
+                        <span class="font-brand font-extrabold text-xl">SEN</span>
+                    </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">
+                        Aesthetic lifestyle and tech products powered by Mercury's multi-tenant hybrid vector search engine.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-brand font-bold text-sm mb-3 text-white">Categories</h4>
+                    <ul class="space-y-2 text-xs text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Audio & Headphones</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Mechanical Keyboards</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Desk Mats & Accessories</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Smart Wearables</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-brand font-bold text-sm mb-3 text-white">Mercury AI Tech</h4>
+                    <ul class="space-y-2 text-xs text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Typesense BM25 + Typo</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Vector Embeddings</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Gemini Grounded Rerank</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Sub-50ms Response Guarantee</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-brand font-bold text-sm mb-3 text-white">Newsletter</h4>
+                    <p class="text-xs text-gray-400 mb-3">Get notified about new minimalist tech drops.</p>
+                    <div class="flex gap-2">
+                        <input type="email" placeholder="Your email..." class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none w-full">
+                        <button class="px-3 py-2 bg-[#F6D0EF] text-[#1D1C1B] font-brand font-bold text-xs rounded-xl hover:bg-white transition-colors">Join</button>
+                    </div>
+                </div>
+            </div>
+            <div class="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
+                <p>© 2026 SEN Aesthetic Tech Storefront. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <span>Powered by Mercury AI</span>
+                    <span>•</span>
+                    <a href="/dashboard" class="hover:text-white transition-colors">Admin Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive JavaScript Logic -->
+    <script>
+        let cartState = [
+            { id: 1, title: 'Zenith ANC Wireless Headphones', price: 349, qty: 1, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=200&q=80' },
+            { id: 2, title: 'Aura Wireless Mechanical Keyboard', price: 189, qty: 1, image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=200&q=80' }
+        ];
+        let promoDiscount = 0;
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items-container');
+            const totalCount = cartState.reduce((sum, i) => sum + i.qty, 0);
+            document.getElementById('cart-count').innerText = totalCount;
+            document.getElementById('cart-drawer-count').innerText = totalCount;
+
+            if (cartState.length === 0) {
+                container.innerHTML = `<div class="text-center py-12 text-gray-400 text-xs font-medium">Your shopping bag is empty.</div>`;
+            } else {
+                container.innerHTML = cartState.map(item => `
+                    <div class="flex items-center gap-3 p-3 bg-white rounded-2xl border border-black/5 shadow-xs">
+                        <img src="${item.image}" class="w-14 h-14 object-cover rounded-xl bg-gray-100">
+                        <div class="flex-1">
+                            <h4 class="font-brand font-bold text-xs text-[#1D1C1B]">${item.title}</h4>
+                            <span class="text-xs font-bold text-indigo-600">$${item.price}</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-[#F6F4F0] px-2 py-1 rounded-xl">
+                            <button onclick="changeQty(${item.id}, -1)" class="w-5 h-5 flex items-center justify-center font-bold text-xs hover:bg-white rounded">-</button>
+                            <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+                            <button onclick="changeQty(${item.id}, 1)" class="w-5 h-5 flex items-center justify-center font-bold text-xs hover:bg-white rounded">+</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const subtotal = cartState.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            const discountVal = subtotal * promoDiscount;
+            const finalTotal = subtotal - discountVal;
+            
+            document.getElementById('cart-total').innerText = `$${finalTotal.toFixed(2)}`;
+            if (promoDiscount > 0) {
+                document.getElementById('discount-row').classList.remove('hidden');
+                document.getElementById('discount-amount').innerText = `-$${discountVal.toFixed(2)}`;
+            } else {
+                document.getElementById('discount-row').classList.add('hidden');
+            }
+        }
+
+        function addToCart(title, price) {
+            const existing = cartState.find(i => i.title === title);
+            if (existing) {
+                existing.qty++;
+            } else {
+                cartState.push({
+                    id: Date.now(),
+                    title: title,
+                    price: price,
+                    qty: 1,
+                    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=200&q=80'
+                });
+            }
+            updateCartUI();
+            
+            // Show toast notification
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-5 right-5 bg-[#1D1C1B] text-white px-5 py-3 rounded-2xl shadow-2xl text-xs font-brand font-bold flex items-center gap-2 z-50 animate-in slide-in-from-bottom-3 duration-200';
+            toast.innerHTML = `<span>✨ Added <strong>${title}</strong> ($${price}) to bag</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2200);
+        }
+
+        function changeQty(id, delta) {
+            const item = cartState.find(i => i.id === id);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    cartState = cartState.filter(i => i.id !== id);
+                }
+            }
+            updateCartUI();
+        }
+
+        function applyPromoCode() {
+            const val = document.getElementById('promo-input').value.trim().toUpperCase();
+            if (val === 'MERCURY10') {
+                promoDiscount = 0.10;
+                alert('✨ Promo code MERCURY10 applied! 10% discount applied to bag.');
+            } else {
+                alert('Invalid promo code. Try MERCURY10!');
+            }
+            updateCartUI();
+        }
+
+        function simulateCheckout() {
+            alert('🎉 Order placed successfully! Mercury AI personalized order confirmation sent.');
+            cartState = [];
+            promoDiscount = 0;
+            updateCartUI();
+            toggleCartDrawer();
+        }
+
+        function toggleCartDrawer() {
+            const drawer = document.getElementById('cart-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        function openCartModal() {
+            toggleCartDrawer();
+        }
+
+        function filterCategory(cat) {
+            const buttons = document.querySelectorAll('.category-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-[#1D1C1B]', 'text-white');
+                btn.classList.add('bg-white', 'text-[#1D1C1B]');
+            });
+            event.target.classList.remove('bg-white', 'text-[#1D1C1B]');
+            event.target.classList.add('bg-[#1D1C1B]', 'text-white');
+
+            const cards = document.querySelectorAll('.product-card');
+            cards.forEach(card => {
+                if (cat === 'all' || card.getAttribute('data-category') === cat) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function toggleAIDrawer() {
+            const drawer = document.getElementById('ai-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        function handleSearchInput(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            const results = document.getElementById('autocomplete-results');
+
+            if (query.length < 2) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            const mockItems = [
+                { name: 'Zenith ANC Wireless Headphones', cat: 'Audio', price: '$349' },
+                { name: 'Aura Wireless Mechanical Keyboard', cat: 'Deskware', price: '$189' },
+                { name: 'ErgoLift Wool Felt Desk Mat', cat: 'Deskware', price: '$89' },
+                { name: 'Pulse Ultra Fitness Smartwatch', cat: 'Wearables', price: '$279' }
+            ];
+
+            const filtered = mockItems.filter(i => i.name.toLowerCase().includes(query) || i.cat.toLowerCase().includes(query));
+            
+            if (filtered.length > 0) {
+                results.innerHTML = filtered.map(item => `
+                    <div onclick="selectSearchResult('${item.name}')" class="px-3 py-2 hover:bg-[#F6F4F0] rounded-xl cursor-pointer flex items-center justify-between text-xs">
+                        <span class="font-semibold text-[#1D1C1B]">${item.name}</span>
+                        <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">${item.price}</span>
+                    </div>
+                `).join('');
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function selectSearchResult(name) {
+            document.getElementById('demo-search-input').value = name;
+            document.getElementById('autocomplete-dropdown').classList.add('hidden');
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addChatMessage('user', text);
+            input.value = '';
+
+            setTimeout(() => {
+                addChatMessage('ai', `I found great results for "${text}" in our catalog! The **Zenith ANC Headphones** ($349) and **Aura Mechanical Keyboard** ($189) feature sub-50ms vector relevance.`);
+            }, 800);
+        }
+
+        function sendQuickPrompt(promptText) {
+            addChatMessage('user', promptText);
+            setTimeout(() => {
+                addChatMessage('ai', `Here are top recommendations matching "${promptText}": Zenith ANC Headphones with active noise canceling and 40h battery.`);
+            }, 600);
+        }
+
+        function addChatMessage(sender, msg) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            if (sender === 'user') {
+                div.className = 'flex items-start justify-end gap-2.5';
+                div.innerHTML = `
+                    <div class="bg-[#1D1C1B] text-white p-3.5 rounded-2xl rounded-tr-none text-xs leading-relaxed shadow-xs max-w-[80%]">
+                        ${msg}
+                    </div>
+                `;
+            } else {
+                div.className = 'flex items-start gap-2.5';
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-[#C1C8FF] text-[#1D1C1B] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                        AI
+                    </div>
+                    <div class="bg-white p-3.5 rounded-2xl rounded-tl-none border border-black/5 text-xs text-[#1D1C1B] leading-relaxed shadow-xs max-w-[85%]">
+                        ${msg}
+                    </div>
+                `;
+            }
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function openProductModal(prodId) {
+            const modal = document.getElementById('product-modal');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="flex flex-col sm:flex-row gap-6">
+                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&q=80" class="w-full sm:w-1/2 h-56 object-cover rounded-2xl">
+                    <div class="flex-1 space-y-3">
+                        <span class="px-2.5 py-1 rounded-full bg-[#C1C8FF] text-[#1D1C1B] text-[10px] font-brand font-bold">High Semantic Relevance</span>
+                        <h3 class="font-brand font-extrabold text-xl text-[#1D1C1B]">Zenith ANC Headphones</h3>
+                        <p class="text-xs text-gray-600">Pure acoustics, active noise cancellation, matte periwinkle design, and custom 40mm drivers tuned for clarity.</p>
+                        <div class="text-2xl font-brand font-black text-[#1D1C1B]">$349.00</div>
+                        <button onclick="addToCart('Zenith ANC Headphones', 349); closeProductModal();" class="w-full py-3 rounded-2xl bg-[#1D1C1B] text-white font-brand font-bold text-xs hover:bg-black transition-colors">
+                            Add to Bag • $349.00
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+        }
+
+        // Initialize Cart UI state on script load
+        updateCartUI();
+    </script>
 </body>
 </html>
