@@ -1,4 +1,4 @@
-# --- Project Specific ---
+# --- Environment & Credentials ---
 config/google_cred.json
 *service-account*.json
 *service_account*.json
@@ -6,8 +6,9 @@ config/google_cred.json
 .env
 .env.local
 .env.*.local
+!.env.example
 
-# --- Python ---
+# --- Python & Build Artifacts ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -31,43 +32,73 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# --- Virtual Environments ---
+# --- Virtual Environments & Package Managers ---
 .venv/
 venv/
 ENV/
 env/
+.uv/
 
-# --- Tools ---
+# --- ML & Model Weights Cache ---
+models/
+.cache/
+huggingface/
+.torch/
+
+# --- Database & Dump Files ---
+*.sqlite
+*.sqlite3
+*.db
+data/
+uploads/
+
+# --- Code Quality & Testing ---
 .mypy_cache/
 .pytest_cache/
-.coverage
-htmlcov/
-.ipynb_checkpoints
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.ipynb_checkpoints
+locust_report_*.csv
+locust_report_*.html
+playwright-report/
+test-results/
+blob-report/
 
-# --- UV ---
-.uv
+# --- Temp & Scratch Files ---
+hey
+scratch/
+plan/
+/test_*.py
+fix_html.py
 
-# --- IDEs ---
+# --- AI Agents & Workspace Settings ---
+.agents/
+.codex/
+.gemini/
+.antigravity/
+.mercury/
+skills-lock.json
+
+# --- IDEs & Editors ---
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.project
+.settings/
 
-# --- OS ---
+# --- OS Specific ---
 .DS_Store
+.DS_Store?
+ehthumbs.db
+Icon?
 Thumbs.db
 
-# --- Mercury Startup ---
-.mercury/
-
-# --- Logs ---
+# --- Logs & Node ---
 logs/
 *.log
-
-# --- Local Data & Uploads ---
-data/
-uploads/
-hey
-scratch/
 node_modules/
