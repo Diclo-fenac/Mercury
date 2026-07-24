@@ -30,6 +30,7 @@ dependencies = [
     "prometheus-client>=0.19.0",
     "locust>=2.20.0",
     "minio>=7.2.20",
+    "mcp>=1.28.1",
 ]
 
 [project.optional-dependencies]
@@ -58,8 +59,13 @@ line_length = 100
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
-addopts = "--ignore=tests/load_test.py"
+testpaths = ["tests/unit", "tests/test_api_endpoints.py", "tests/test_admin_endpoints.py"]
+addopts = "--ignore=tests/load --ignore=tests/e2e --ignore=tests/integration --ignore=tests/performance"
+markers = [
+    "integration: requires live PostgreSQL, Redis, Typesense, or storage services",
+    "e2e: requires a deployed application and browser tooling",
+    "model_backed: requires live or locally downloaded AI models",
+]
 
 [tool.ruff]
 line-length = 100
