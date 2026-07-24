@@ -14,6 +14,8 @@ from app.api.dependencies import (
     TenantContext,
     get_container_dependency,
     get_tenant_context,
+    require_auth,
+    require_same_tenant,
 )
 from app.models.requests import ChatCompletionMessage, ChatCompletionRequest, SearchRequest
 from app.models.responses import SearchResult
@@ -128,7 +130,7 @@ async def search_products(
                 api_key_id=getattr(tenant, "key_id", None)
             )
             
-        cache = container.get('cache')
+        cache = container.get('redis')
         if cache:
             telemetry_key = f"telemetry:{tenant.organization_id}:trending_searches:7d"
             background_tasks.add_task(
@@ -283,7 +285,9 @@ async def get_popular_searches(
 @router.post("/image")
 async def search_by_image_legacy(
     payload: Dict[str, Any],
-    container = Depends(get_container_dependency)
+    container = Depends(get_container_dependency),
+    tenant: TenantContext = Depends(get_tenant_context),
+    current_user = Depends(require_auth),
 ):
     """Search products by image (legacy)"""
     try:
@@ -294,10 +298,13 @@ async def search_by_image_legacy(
                 detail="Image search service not available"
             )
         
+        require_same_tenant(current_user, tenant)
         result = await image_orchestrator.search_by_image(
             image_id=payload.get("image_id"),
             image_data=payload.get("image_data"),
-            user_id=payload.get("user_id"),
+            organization_id=tenant.organization_id,
+            user_id=current_user["user_id"],
+            tenant_context=tenant,
             search_type=payload.get("search_type", "similar"),
             limit=payload.get("limit", 10)
         )

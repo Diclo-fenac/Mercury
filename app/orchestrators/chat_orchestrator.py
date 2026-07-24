@@ -142,7 +142,13 @@ class ChatOrchestrator:
                 'price': p.get('price', {}).get('selling') or p.get('selling_price'),
                 'category': p.get('category'),
                 'brand': p.get('brand'),
-                'rating': p.get('rating')
+                'rating': p.get('rating'),
+                'description': p.get('description'),
+                'url': p.get('url'),
+                'selling_price': p.get('selling_price'),
+                'stock': p.get('stock'),
+                'online_available': p.get('online_available'),
+                'breakdown': p.get('breakdown'),
             }
             for p in products
         ]
@@ -181,12 +187,13 @@ class ChatOrchestrator:
 
     async def _tool_get_user_preferences(self) -> Dict[str, Any]:
         """Get user preferences and explicitly strip PII"""
-        from app.core.security.context import user_id_var
+        from app.core.security.context import tenant_context_var, user_id_var
         user_id = user_id_var.get()
-        if not user_id:
+        tenant = tenant_context_var.get()
+        if not user_id or not tenant:
             return {}
             
-        profile = await self.users.get_user_profile(user_id)
+        profile = await self.users.get_user_profile(tenant.organization_id, user_id)
         if not profile:
             return {}
             
@@ -200,10 +207,12 @@ class ChatOrchestrator:
         }
         return safe_prefs
 
-    async def handle_completion(self, request: Any, tenant_context: Optional[Any] = None) -> Dict[str, Any]:
+    async def handle_completion(
+        self, request: Any, tenant_context: Optional[Any] = None, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Handle OpenAI-style chat completion request"""
         try:
-            user_id = request.user_id
+            user_id = user_id or request.user_id
             conversation_id = request.conversation_id
             
             # Use last message as the primary query for existing handle logic
@@ -227,35 +236,22 @@ class ChatOrchestrator:
             logger.error(f"Chat completion failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def stream_completion(self, request: Any, tenant_context: Optional[Any] = None):
-        """Stream chat completion using SSE"""
+    async def stream_completion(
+        self, request: Any, tenant_context: Optional[Any] = None, user_id: Optional[str] = None
+    ):
+        """Stream the same catalog-grounded answer used by non-streaming chat."""
         try:
             import json
 
-            from app.core.security.context import tenant_context_var, user_id_var
-            from app.core.security.input_sanitizer import sanitize_user_input
-            
-            tenant_context_var.set(tenant_context)
-            user_id = request.user_id
-            user_id_var.set(user_id)
-            
-            message = request.messages[-1].content if request.messages else ""
-            sanitized_message, is_suspicious = sanitize_user_input(message)
-            
-            if is_suspicious:
-                yield f"data: {json.dumps({'choices': [{'delta': {'content': sanitized_message}}]})}\n\n"
+            result = await self.handle_completion(request, tenant_context, user_id=user_id)
+            if not result.get("success"):
+                yield f"data: {json.dumps({'error': result.get('error', 'Chat failed')})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
-            
-            # Simple mock streaming for now
-            # In production, this would use self.llm.generate_stream
-            full_text = f"Streaming response for: {sanitized_message}"
-            import asyncio
-            
-            for chunk in full_text.split():
+
+            for chunk in result.get("response", "").split():
                 data = json.dumps({"choices": [{"delta": {"content": chunk + " "}}]})
                 yield f"data: {data}\n\n"
-                await asyncio.sleep(0.1)
                 
             yield "data: [DONE]\n\n"
             
@@ -304,6 +300,9 @@ class ChatOrchestrator:
             
             tenant_context_var.set(tenant_context)
             user_id_var.set(user_id)
+            if not tenant_context:
+                return {"success": False, "error": "Tenant context required"}
+            organization_id = tenant_context.organization_id
             
             # Apply input sanitizer
             sanitized_message, is_suspicious = sanitize_user_input(message)
@@ -324,17 +323,19 @@ class ChatOrchestrator:
             logger.info(f"🎯 Processing {message_type} message for user {user_id}")
             
             # CRITICAL: Ensure conversation exists before saving messages
-            conversation = await self.conversations.get_conversation(conversation_id)
+            conversation = await self.conversations.get_conversation(organization_id, conversation_id)
             if not conversation:
                 # Create conversation if it doesn't exist
-                actual_conversation_id = await self.conversations.create_conversation(user_id, "New Chat")
+                actual_conversation_id = await self.conversations.create_conversation(
+                    organization_id, user_id, "New Chat", channel="rest"
+                )
                 conversation_id = actual_conversation_id
             elif conversation.get('user_id') != user_id:
                 # User doesn't own this conversation
                 raise Exception(f"Access denied to conversation {conversation_id}")
             
             # Get user context for personalization
-            context = await self._build_user_context(user_id, conversation_id)
+            context = await self._build_user_context(organization_id, user_id, conversation_id)
             
             # Enhanced image handling with new intelligence capabilities
             image_analysis = None
@@ -346,6 +347,7 @@ class ChatOrchestrator:
                 # Use enhanced image analysis
                 image_result = await self.image_tools.analyze_product_image(
                     image_data, 
+                    organization_id,
                     user_id,
                     context.get('user_preferences', {})
                 )
@@ -361,7 +363,9 @@ class ChatOrchestrator:
                     logger.warning(f"⚠️ Image analysis failed: {image_result.get('error')}")
                     # Fallback to basic image processing
                     if self.image_processor:
-                        upload_result = await self.image_processor.upload_image(image_data, user_id)
+                        upload_result = await self.image_processor.upload_image(
+                            image_data, organization_id, user_id
+                        )
                         if upload_result.get('success'):
                             basic_analysis = await self.llm.analyze_image(image_data)
                             if basic_analysis:
@@ -377,7 +381,7 @@ class ChatOrchestrator:
             
             # Save user message with enhanced metadata
             await self.conversations.save_message(
-                conversation_id, user_id, message, role='user',
+                organization_id, conversation_id, user_id, message, role='user',
                 metadata={
                     'type': message_type, 
                     'image_analysis': image_analysis,
@@ -387,7 +391,7 @@ class ChatOrchestrator:
             
             # Save assistant message
             assistant_message_id = await self.conversations.save_message(
-                conversation_id, user_id, response_text, role='assistant',
+                organization_id, conversation_id, user_id, response_text, role='assistant',
                 metadata={
                     'function_called': result.get('function_called'),
                     'function_result': result.get('function_result'),
@@ -396,7 +400,7 @@ class ChatOrchestrator:
             )
             
             # Update context cache
-            await self._update_context_cache(user_id, context, message, response_text)
+            await self._update_context_cache(organization_id, user_id, context, message, response_text)
             
             return {
                 "success": True,
@@ -404,6 +408,7 @@ class ChatOrchestrator:
                 "conversation_id": conversation_id,
                 "message_id": assistant_message_id,
                 "function_called": result.get('function_called'),
+                "citations": result.get("citations", []),
                 "image_analysis": image_analysis,
                 "features_used": {
                     "function_calling": bool(result.get('function_called')),
@@ -420,13 +425,15 @@ class ChatOrchestrator:
             logger.error(f"❌ Chat handling error for user {user_id}: {e}")
             return {"success": False, "error": str(e)}
     
-    async def _build_user_context(self, user_id: str, conversation_id: str) -> Dict[str, Any]:
+    async def _build_user_context(
+        self, organization_id: str, user_id: str, conversation_id: str
+    ) -> Dict[str, Any]:
         """Build comprehensive user context for personalization"""
-        context = await self.memory.get_context(user_id)
+        context = await self.memory.get_context(organization_id, user_id)
         if not context:
             # Build context from user profile and conversation
-            profile = await self.users.get_user_profile(user_id)
-            messages = await self.conversations.get_messages(conversation_id, limit=5)
+            profile = await self.users.get_user_profile(organization_id, user_id)
+            messages = await self.conversations.get_messages(organization_id, conversation_id, limit=5)
             
             context = {
                 'user_preferences': profile.get('preferences') if profile else {},
@@ -435,7 +442,7 @@ class ChatOrchestrator:
             }
             
             # Cache context
-            await self.memory.save_context(user_id, context)
+            await self.memory.save_context(organization_id, user_id, context)
         
         return context
     
@@ -470,7 +477,14 @@ class ChatOrchestrator:
         
         return "\n".join(parts)
     
-    async def _update_context_cache(self, user_id: str, context: Dict[str, Any], user_message: str, assistant_response: str):
+    async def _update_context_cache(
+        self,
+        organization_id: str,
+        user_id: str,
+        context: Dict[str, Any],
+        user_message: str,
+        assistant_response: str,
+    ):
         """Update context cache with new conversation data"""
         if context:
             context['recent_messages'].append({'role': 'user', 'message': user_message})
@@ -480,4 +494,4 @@ class ChatOrchestrator:
             if len(context['recent_messages']) > 10:
                 context['recent_messages'] = context['recent_messages'][-10:]
             
-            await self.memory.save_context(user_id, context)
+            await self.memory.save_context(organization_id, user_id, context)

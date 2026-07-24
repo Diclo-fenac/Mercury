@@ -39,6 +39,7 @@ async def get_user_conversations(
             )
         
         result = await conversation_orchestrator.get_user_conversations(
+            organization_id=current_user["organization_id"],
             user_id=target_user_id,
             limit=pagination.limit
         )
@@ -88,6 +89,7 @@ async def get_conversation_details(
 
         # Identity is resolved from token, orchestrator checks ownership
         result = await conversation_orchestrator.get_conversation_details(
+            organization_id=current_user["organization_id"],
             user_id=current_user["user_id"],
             conversation_id=conversation_id
         )
@@ -146,6 +148,7 @@ async def create_conversation(
             )
 
         result = await conversation_orchestrator.create_conversation(
+            organization_id=current_user["organization_id"],
             user_id=user_id,
             title=request.title,
             metadata=request.metadata
@@ -189,6 +192,7 @@ async def delete_conversation(
 
         # Identity is resolved from token, orchestrator checks ownership
         result = await conversation_orchestrator.delete_conversation(
+            organization_id=current_user["organization_id"],
             user_id=current_user["user_id"],
             conversation_id=conversation_id
         )

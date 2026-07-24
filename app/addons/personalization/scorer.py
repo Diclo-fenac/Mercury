@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from app.domain.users.service import UserService
+from app.infrastructure.cache.keys import build_cache_key, build_user_context_cache_key
 from app.infrastructure.cache.redis import RedisClient
 from app.utils.logger import get_logger
 
@@ -15,8 +16,9 @@ logger = get_logger("personalization_scorer")
 class PersonalizationScorer:
     """Enhanced behavioral personalization with session context management"""
     
-    def __init__(self, user_service: UserService, cache: Optional[RedisClient] = None):
+    def __init__(self, user_service: UserService, privacy_service, cache: Optional[RedisClient] = None):
         self.user_service = user_service
+        self.privacy_service = privacy_service
         self.cache = cache
         
         # Personalization weights (tunable)
@@ -31,8 +33,9 @@ class PersonalizationScorer:
         }
     
     async def score_products(
-        self, 
-        user_id: str, 
+        self,
+        organization_id: str,
+        user_id: str,
         products: List[Dict[str, Any]],
         session_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
@@ -40,8 +43,14 @@ class PersonalizationScorer:
         try:
             logger.info(f"🎯 Scoring {len(products)} products for user {user_id}")
             
+            # Check consent
+            can_personalize = await self.privacy_service.can_personalize(organization_id, user_id)
+            if not can_personalize:
+                logger.info(f"Personalization disabled or no consent for user {user_id}. Returning original order.")
+                return products
+            
             # Get behavioral context (Postgres + Redis merge)
-            context = await self.get_behavioral_context(user_id, session_id)
+            context = await self.get_behavioral_context(organization_id, user_id, session_id)
             
             if not context:
                 logger.warning(f"No personalization context for user {user_id}")
@@ -70,7 +79,9 @@ class PersonalizationScorer:
             logger.error(f"❌ Error scoring products for user {user_id}: {e}")
             return products
     
-    async def get_behavioral_context(self, user_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_behavioral_context(
+        self, organization_id: str, user_id: str, session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Build behavioral context using Postgres + Redis merge logic
         Session constraints (Redis) override long-term preferences (Postgres)
@@ -79,9 +90,9 @@ class PersonalizationScorer:
             import asyncio
             # Fetch contexts concurrently to reduce latency
             long_term_context, session_context, cross_session_context = await asyncio.gather(
-                self._get_long_term_context(user_id),
-                self._get_session_context(user_id, session_id),
-                self._get_cross_session_context(user_id)
+                self._get_long_term_context(organization_id, user_id),
+                self._get_session_context(organization_id, user_id, session_id),
+                self._get_cross_session_context(organization_id, user_id)
             )
             
             # Step 4: Merge contexts with session rules taking precedence
@@ -94,10 +105,10 @@ class PersonalizationScorer:
             logger.error(f"❌ Error building behavioral context for user {user_id}: {e}")
             return {}
     
-    async def _get_long_term_context(self, user_id: str) -> Dict[str, Any]:
+    async def _get_long_term_context(self, organization_id: str, user_id: str) -> Dict[str, Any]:
         """Get long-term preferences from Postgres (hints)"""
         try:
-            profile = await self.user_service.get_user_profile(user_id)
+            profile = await self.user_service.get_user_profile(organization_id, user_id)
             if not profile:
                 return {}
             
@@ -112,14 +123,19 @@ class PersonalizationScorer:
             logger.error(f"Error getting long-term context: {e}")
             return {}
     
-    async def _get_session_context(self, user_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def _get_session_context(
+        self, organization_id: str, user_id: str, session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Get session constraints from Redis (rules)"""
         if not self.cache or not session_id:
             return {}
         
         try:
-            # session:{user_id}:{session_id} - Session constraints (rules)
-            session_key = f"session:{user_id}:{session_id}"
+            session_key = build_cache_key(
+                "personalization-session",
+                {"user_id": user_id, "session_id": session_id},
+                tenant_id=organization_id,
+            )
             session_data = await self.cache.get_json(session_key)
             
             if session_data:
@@ -135,14 +151,13 @@ class PersonalizationScorer:
             logger.error(f"Error getting session context: {e}")
             return {}
     
-    async def _get_cross_session_context(self, user_id: str) -> Dict[str, Any]:
+    async def _get_cross_session_context(self, organization_id: str, user_id: str) -> Dict[str, Any]:
         """Get cross-session snapshot from Redis (read-optimized)"""
         if not self.cache:
             return {}
         
         try:
-            # user_context:{user_id} - Cross-session hints (read-optimized)
-            context_key = f"user_context:{user_id}"
+            context_key = build_user_context_cache_key(organization_id, user_id)
             context_data = await self.cache.get_json(context_key)
             
             if context_data:

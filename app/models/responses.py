@@ -76,6 +76,7 @@ class ChatResponse(BaseResponse):
     language_info: Optional[Dict[str, str]] = Field(None, description="Language information")
     cache_stats: Optional[Dict[str, Any]] = Field(None, description="Cache statistics")
     features_used: Optional[Dict[str, bool]] = Field(None, description="Features utilized")
+    citations: List[Dict[str, Any]] = Field(default_factory=list, description="Verified catalog evidence")
 
 # Image models
 class ImageAnalysis(BaseModel):

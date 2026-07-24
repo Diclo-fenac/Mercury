@@ -15,11 +15,21 @@ from app.websocket.manager import WebSocketManager
 logger = StructuredLogger("websocket_handlers")
 
 async def register_websocket_handlers(
-    websocket: WebSocket, 
-    manager: WebSocketManager, 
-    container: Container
+    websocket: WebSocket,
+    manager: WebSocketManager,
+    container: Container,
+    tenant_context: Any,
+    current_user: Dict[str, Any],
 ):
     """Register all WebSocket event handlers and start message loop"""
+    organization_id = tenant_context.organization_id
+    authenticated_user_id = current_user["user_id"]
+
+    def user_room(user_id: str) -> str:
+        return f"tenant:{organization_id}:user:{user_id}"
+
+    def conversation_room(conversation_id: str) -> str:
+        return f"tenant:{organization_id}:conversation:{conversation_id}"
     
     # Get services
     chat_service = await container.get_service("chat_orchestrator")
@@ -32,16 +42,14 @@ async def register_websocket_handlers(
     async def handle_user_auth(websocket: WebSocket, data: Dict[str, Any]):
         """Handle user authentication"""
         try:
-            user_id = data.get("user_id")
-            user_name = data.get("user_name", f"User_{user_id}")
+            user_id = authenticated_user_id
+            user_name = current_user.get("name", f"User_{user_id}")
             language = data.get("language", "en")
             
             if user_id:
                 # Set user ID for connection
-                manager.set_user_id(websocket, user_id)
-                
                 # Join user's personal room
-                manager.join_room(websocket, f"user_{user_id}")
+                manager.join_room(websocket, user_room(user_id))
                 
                 await manager.send_message(websocket, {
                     "event": "auth_success",
@@ -64,21 +72,19 @@ async def register_websocket_handlers(
     async def handle_join_conversation(websocket: WebSocket, data: Dict[str, Any]):
         """Handle joining a conversation room"""
         try:
-            user_id = data.get("user_id")
+            user_id = authenticated_user_id
             conversation_id = data.get("conversation_id")
             
-            if user_id and conversation_id:
-                room_name = f"conversation_{conversation_id}"
+            if conversation_id:
+                history = await conversation_service.get_conversation_history(
+                    organization_id, conversation_id, user_id, limit=100
+                )
+                if not history.get("success"):
+                    await manager.send_error(websocket, "Conversation not found or access denied")
+                    return
+
+                room_name = conversation_room(conversation_id)
                 manager.join_room(websocket, room_name)
-                
-                # Cache conversation for performance
-                if redis_service:
-                    messages = await conversation_service.get_conversation_history(
-                        user_id, conversation_id, limit=100
-                    )
-                    await redis_service.cache_conversation(
-                        user_id, conversation_id, messages.get("messages", [])
-                    )
                 
                 await manager.send_message(websocket, {
                     "event": "conversation_joined",
@@ -107,7 +113,7 @@ async def register_websocket_handlers(
         """Handle chat messages with full feature support"""
         try:
             message = data.get("message", "").strip()
-            user_id = data.get("user_id", "")
+            user_id = authenticated_user_id
             conversation_id = data.get("conversation_id")
             message_type = data.get("type", "text")
             image_data = data.get("image_data") if message_type == "image" else None
@@ -125,7 +131,7 @@ async def register_websocket_handlers(
             
             # Send typing indicator
             if conversation_id:
-                await manager.broadcast_to_room(f"conversation_{conversation_id}", {
+                await manager.broadcast_to_room(conversation_room(conversation_id), {
                     "event": "typing_indicator",
                     "data": {
                         "user_id": "assistant",
@@ -140,12 +146,13 @@ async def register_websocket_handlers(
                 message=message,
                 conversation_id=conversation_id,
                 message_type=message_type,
-                image_data=image_data
+                image_data=image_data,
+                tenant_context=tenant_context,
             )
             
             # Stop typing indicator
             if conversation_id:
-                await manager.broadcast_to_room(f"conversation_{conversation_id}", {
+                await manager.broadcast_to_room(conversation_room(conversation_id), {
                     "event": "typing_indicator",
                     "data": {
                         "user_id": "assistant",
@@ -183,7 +190,7 @@ async def register_websocket_handlers(
             
             # Notify conversation room
             if chat_result.get("conversation_id"):
-                await manager.broadcast_to_room(f"conversation_{chat_result.get('conversation_id')}", {
+                await manager.broadcast_to_room(conversation_room(chat_result.get('conversation_id')), {
                     "event": "new_message",
                     "data": {
                         "from": "assistant",
@@ -205,7 +212,7 @@ async def register_websocket_handlers(
             query = data.get("query", "").strip()
             limit = data.get("limit", 10)
             rerank = data.get("rerank", True)
-            user_id = data.get("user_id")
+            user_id = authenticated_user_id
             
             if not query:
                 await manager.send_error(websocket, "Search query is required")
@@ -221,7 +228,9 @@ async def register_websocket_handlers(
             })
             
             # Perform search
-            result = await product_service.search_products(query, user_id=user_id, limit=limit)
+            result = await product_service.search_products(
+                query, user_id=user_id, limit=limit, tenant_context=tenant_context
+            )
             
             if result.get("success"):
                 await manager.send_message(websocket, {
@@ -229,8 +238,8 @@ async def register_websocket_handlers(
                     "data": {
                         "success": True,
                         "query": query,
-                        "products": result.get("products", []),
-                        "total": result.get("total", 0),
+                        "products": result.get("results", []),
+                        "total": result.get("total_results", 0),
                         "reranked": result.get("reranked", False),
                         "timestamp": datetime.now().isoformat()
                     }
@@ -245,15 +254,20 @@ async def register_websocket_handlers(
     async def handle_typing(websocket: WebSocket, data: Dict[str, Any]):
         """Handle typing indicators"""
         try:
-            user_id = data.get("user_id")
+            user_id = authenticated_user_id
             conversation_id = data.get("conversation_id")
             typing = data.get("typing", False)
             
             if conversation_id:
-                connection_info = manager.get_connection_info(websocket)
-                user_name = data.get("user_name", user_id)
+                conversation = await conversation_service.get_conversation_details(
+                    organization_id, user_id, conversation_id
+                )
+                if not conversation.get("success"):
+                    await manager.send_error(websocket, "Conversation not found or access denied")
+                    return
+                user_name = current_user.get("name", user_id)
                 
-                await manager.broadcast_to_room(f"conversation_{conversation_id}", {
+                await manager.broadcast_to_room(conversation_room(conversation_id), {
                     "event": "typing_indicator",
                     "data": {
                         "user_id": user_id,
@@ -269,7 +283,7 @@ async def register_websocket_handlers(
     async def handle_get_conversation_list(websocket: WebSocket, data: Dict[str, Any]):
         """Get user's conversation list"""
         try:
-            user_id = data.get("user_id")
+            user_id = authenticated_user_id
             limit = data.get("limit", 20)
             
             if not user_id:
@@ -277,7 +291,7 @@ async def register_websocket_handlers(
                 return
             
             # Get conversations from service
-            result = await conversation_service.get_user_conversations(user_id, limit)
+            result = await conversation_service.get_user_conversations(organization_id, user_id, limit)
             
             if result.get("success"):
                 await manager.send_message(websocket, {
@@ -300,7 +314,7 @@ async def register_websocket_handlers(
     async def handle_file_upload(websocket: WebSocket, data: Dict[str, Any]):
         """Handle file uploads via WebSocket"""
         try:
-            user_id = data.get("user_id")
+            user_id = authenticated_user_id
             file_data = data.get("file_data")
             file_name = data.get("file_name")
             file_type = data.get("file_type")
@@ -331,7 +345,8 @@ async def register_websocket_handlers(
                     message=message,
                     conversation_id=conversation_id,
                     message_type="image",
-                    image_data=file_data
+                    image_data=file_data,
+                    tenant_context=tenant_context,
                 )
                 
                 if chat_result.get("success"):

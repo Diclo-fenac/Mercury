@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin,
+    analytics,
     chat,
     conversations,
     health,
@@ -30,3 +31,4 @@ api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(widget.router, prefix="/widget", tags=["widget"])
+api_router.include_router(analytics.router, tags=["analytics"])

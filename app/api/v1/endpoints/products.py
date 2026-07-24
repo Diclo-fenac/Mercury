@@ -133,6 +133,7 @@ async def get_search_suggestions(
 async def get_product(
     product_id: str = Path(..., description="Product identifier"),
     user_id: Optional[str] = Query(None, description="User identifier for activity tracking"),
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency)
 ):
     """Get detailed product information via product orchestrator"""
@@ -146,7 +147,8 @@ async def get_product(
         
         result = await product_orchestrator.get_product_details(
             product_id=product_id,
-            user_id=user_id
+            user_id=user_id,
+            organization_id=tenant.organization_id,
         )
         
         if not result.get('success'):
@@ -177,6 +179,7 @@ async def get_product_recommendations(
     user_id: Optional[str] = Query(None, description="User identifier"),
     recommendation_type: str = Query(default="similar", description="Recommendation type: similar, complementary, substitute, variant"),
     pagination: PaginationParams = Depends(),
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency)
 ):
     """Get product recommendations via recommendation orchestrator"""
@@ -200,7 +203,8 @@ async def get_product_recommendations(
             product_id=product_id,
             user_id=user_id,
             recommendation_type=recommendation_type,
-            limit=pagination.limit
+            limit=pagination.limit,
+            organization_id=tenant.organization_id,
         )
         
         if not result.get('success'):

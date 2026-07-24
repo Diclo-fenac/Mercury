@@ -19,6 +19,7 @@ class ImageTools:
     async def analyze_product_image(
         self, 
         image_data: str, 
+        organization_id: str,
         user_id: str,
         user_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -32,6 +33,7 @@ class ImageTools:
             # Process image with full analysis
             result = await self.image_processor.process_image_upload(
                 image_data, 
+                organization_id,
                 user_id, 
                 user_context
             )
@@ -95,7 +97,7 @@ class ImageTools:
                 "analysis_type": "error"
             }
     
-    async def detect_barcode(self, image_data: str) -> Dict[str, Any]:
+    async def detect_barcode(self, image_data: str, organization_id: str) -> Dict[str, Any]:
         """
         Focused barcode detection
         MVP: UPC/EAN/QR detection only
@@ -103,7 +105,7 @@ class ImageTools:
         try:
             logger.info("🔍 Starting barcode detection")
             
-            result = await self.image_processor.detect_barcode(image_data)
+            result = await self.image_processor.detect_barcode(image_data, organization_id)
             
             if not result.get('success'):
                 return {
@@ -135,10 +137,10 @@ class ImageTools:
                 "is_barcode": False
             }
     
-    async def get_cached_analysis(self, image_id: str) -> Dict[str, Any]:
+    async def get_cached_analysis(self, organization_id: str, image_id: str) -> Dict[str, Any]:
         """Get previously cached image analysis"""
         try:
-            cached_data = await self.image_processor.get_cached_analysis(image_id)
+            cached_data = await self.image_processor.get_cached_analysis(organization_id, image_id)
             
             if cached_data:
                 return {

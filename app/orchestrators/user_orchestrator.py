@@ -13,10 +13,10 @@ class UserOrchestrator:
     def __init__(self, user_service: UserService):
         self.users = user_service
     
-    async def get_user_profile(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_profile(self, organization_id: str, user_id: str) -> Dict[str, Any]:
         """Get user profile"""
         try:
-            profile_data = await self.users.get_user_profile(user_id)
+            profile_data = await self.users.get_user_profile(organization_id, user_id)
             
             if not profile_data:
                 return {"success": False, "error": "not_found"}
@@ -37,10 +37,10 @@ class UserOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to get user profile: {str(e)}")
     
-    async def get_user_preferences(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_preferences(self, organization_id: str, user_id: str) -> Dict[str, Any]:
         """Get user preferences"""
         try:
-            profile_data = await self.users.get_user_profile(user_id)
+            profile_data = await self.users.get_user_profile(organization_id, user_id)
             
             if not profile_data:
                 return {"success": False, "error": "not_found"}
@@ -53,16 +53,18 @@ class UserOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to get user preferences: {str(e)}")
     
-    async def update_user_preferences(self, user_id: str, preferences: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_user_preferences(
+        self, organization_id: str, user_id: str, preferences: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Update user preferences"""
         try:
-            success = await self.users.update_preferences(user_id, preferences)
+            success = await self.users.update_preferences(organization_id, user_id, preferences)
             
             if not success:
                 raise Exception("Failed to update preferences in database")
             
             # Return the updated preferences
-            updated_profile = await self.users.get_user_profile(user_id)
+            updated_profile = await self.users.get_user_profile(organization_id, user_id)
             return {
                 "success": True,
                 "preferences": updated_profile.get("preferences", {}) if updated_profile else preferences,

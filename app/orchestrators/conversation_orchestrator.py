@@ -13,10 +13,12 @@ class ConversationOrchestrator:
     def __init__(self, conversation_service: ConversationService):
         self.conversations = conversation_service
     
-    async def get_user_conversations(self, user_id: str, limit: int = 20) -> Dict[str, Any]:
+    async def get_user_conversations(
+        self, organization_id: str, user_id: str, limit: int = 20
+    ) -> Dict[str, Any]:
         """Get user's conversations"""
         try:
-            conversations = await self.conversations.get_user_conversations(user_id, limit)
+            conversations = await self.conversations.get_user_conversations(organization_id, user_id, limit)
             for conv in conversations:
                 if 'id' in conv and 'conversation_id' not in conv:
                     conv['conversation_id'] = conv['id']
@@ -28,10 +30,12 @@ class ConversationOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to get user conversations: {str(e)}")
     
-    async def get_conversation_details(self, user_id: str, conversation_id: str) -> Dict[str, Any]:
+    async def get_conversation_details(
+        self, organization_id: str, user_id: str, conversation_id: str
+    ) -> Dict[str, Any]:
         """Get conversation details with access control"""
         try:
-            conversation = await self.conversations.get_conversation(conversation_id)
+            conversation = await self.conversations.get_conversation(organization_id, conversation_id)
             
             if not conversation:
                 return {"success": False, "error": "not_found"}
@@ -47,11 +51,17 @@ class ConversationOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to get conversation details: {str(e)}")
     
-    async def create_conversation(self, user_id: str, title: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def create_conversation(
+        self,
+        organization_id: str,
+        user_id: str,
+        title: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Create new conversation"""
         try:
-            conversation_id = await self.conversations.create_conversation(user_id, title)
-            conversation = await self.conversations.get_conversation(conversation_id)
+            conversation_id = await self.conversations.create_conversation(organization_id, user_id, title)
+            conversation = await self.conversations.get_conversation(organization_id, conversation_id)
             
             return {
                 "success": True,
@@ -62,10 +72,12 @@ class ConversationOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to create conversation: {str(e)}")
     
-    async def delete_conversation(self, user_id: str, conversation_id: str) -> Dict[str, Any]:
+    async def delete_conversation(
+        self, organization_id: str, user_id: str, conversation_id: str
+    ) -> Dict[str, Any]:
         """Delete conversation with access control"""
         try:
-            conversation = await self.conversations.get_conversation(conversation_id)
+            conversation = await self.conversations.get_conversation(organization_id, conversation_id)
             
             if not conversation:
                 return {"success": False, "error": "not_found"}
@@ -74,7 +86,7 @@ class ConversationOrchestrator:
             if conversation.get('user_id') != user_id:
                 return {"success": False, "error": "access_denied"}
             
-            success = await self.conversations.delete_conversation(conversation_id)
+            success = await self.conversations.delete_conversation(organization_id, conversation_id)
             
             if not success:
                 raise Exception("Failed to delete conversation from database")
@@ -87,18 +99,20 @@ class ConversationOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to delete conversation: {str(e)}")
     
-    async def get_conversation_history(self, conversation_id: str, user_id: str, limit: int = 50) -> Dict[str, Any]:
+    async def get_conversation_history(
+        self, organization_id: str, conversation_id: str, user_id: str, limit: int = 50
+    ) -> Dict[str, Any]:
         """Get conversation message history with access control"""
         try:
             # Check if user owns this conversation
-            conversation = await self.conversations.get_conversation(conversation_id)
+            conversation = await self.conversations.get_conversation(organization_id, conversation_id)
             if not conversation:
                 return {"success": False, "error": "not_found"}
             
             if conversation.get('user_id') != user_id:
                 return {"success": False, "error": "access_denied"}
             
-            messages = await self.conversations.get_messages(conversation_id, limit)
+            messages = await self.conversations.get_messages(organization_id, conversation_id, limit)
             
             return {
                 "success": True,

@@ -137,38 +137,22 @@ async def widget_chat(
         )
         
         products = search_res.get("results", [])
-        
-        # 2. Format products for LLM context
-        products_context = ""
-        for p in products:
-            desc = p.get("description", "")
-            if len(desc) > 120:
-                desc = desc[:120] + "..."
-            products_context += (
-                f"- ID: {p.get('id')}\n"
-                f"  Title: {p.get('title')}\n"
-                f"  Brand: {p.get('brand')}\n"
-                f"  Price: ${p.get('selling_price')}\n"
-                f"  Description: {desc}\n"
-                f"  Stock: {'In Stock' if p.get('stock') else 'Out of Stock'}\n\n"
-            )
-            
-        # 3. Generate response using LLM
-        prompt = (
-            f"You are a helpful shopping assistant for '{tenant_ctx.organization_slug}'. "
-            "Help the user find products from the list below and answer their question. "
-            "Keep the response brief, professional, and conversational. Refer to the products provided.\n\n"
-            f"Relevant Products:\n{products_context if products_context else 'No products found matching the query.'}\n"
-            f"User Query: {sanitized_query}\n"
-            "Assistant Response:"
-        )
-        
-        answer = await llm_engine.generate(prompt)
+
+        # Grounded engine always re-runs tenant-scoped retrieval and returns only
+        # verified catalog citations. Never send untrusted catalog text as a prompt.
+        from app.core.security.context import tenant_context_var, user_id_var
+
+        tenant_context_var.set(tenant_ctx)
+        user_id_var.set(request.conversation_id or "anonymous")
+        answer = await llm_engine.generate_with_tools(sanitized_query, tenant_context=tenant_ctx)
+        if not answer.get("success"):
+            raise HTTPException(status_code=503, detail="Catalog assistant unavailable")
         
         return {
             "success": True,
-            "response": answer or "I'm sorry, I couldn't generate a response. How else can I help you?",
+            "response": answer["response"],
             "products": products,
+            "citations": answer.get("citations", []),
             "conversation_id": request.conversation_id or "session_" + tenant_ctx.organization_id[:8]
         }
     except Exception as e:

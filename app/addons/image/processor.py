@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from app.addons.image.provider import VisionProvider
+from app.infrastructure.cache.keys import build_image_cache_key
 from app.infrastructure.cache.redis import RedisClient
 from app.infrastructure.storage.local import LocalStorageClient
 from app.utils.logger import get_logger
@@ -45,18 +46,26 @@ class ImageProcessor:
         except Exception as e:
             return {"valid": False, "error": str(e)}
     
-    async def upload_image(self, image_data: str, user_id: str) -> Dict[str, Any]:
+    @staticmethod
+    def _blob_name(organization_id: str, image_id: str) -> str:
+        """Partition object names without exposing a merchant identifier."""
+        tenant_segment = build_image_cache_key(organization_id, "blob", "namespace").rsplit(":", 1)[-1][:16]
+        return f"images/{tenant_segment}/{image_id}.jpg"
+
+    async def upload_image(
+        self, image_data: str, organization_id: str, user_id: str
+    ) -> Dict[str, Any]:
         """Upload image to storage"""
         validation = self.validate_image(image_data)
         if not validation["valid"]:
             return {"success": False, "error": validation["error"]}
         
-        image_id = f"img_{user_id}_{uuid.uuid4().hex[:8]}"
+        image_id = f"img_{uuid.uuid4().hex}"
+        blob_name = self._blob_name(organization_id, image_id)
         
         # Upload to local storage
         if self.storage:
             try:
-                blob_name = f"{image_id}.jpg"
                 success = await self.storage.upload_blob_from_base64(
                     blob_name,
                     validation["data"],
@@ -76,11 +85,13 @@ class ImageProcessor:
         # Cache image data
         if self.cache:
             await self.cache.set_json(
-                f"image:{image_id}",
+                build_image_cache_key(organization_id, image_id, "metadata"),
                 {
                     "image_id": image_id,
+                    "organization_id": organization_id,
                     "user_id": user_id,
                     "image_url": image_url,
+                    "blob_name": blob_name,
                     "uploaded_at": datetime.now().isoformat()
                 },
                 ttl=86400
@@ -89,15 +100,18 @@ class ImageProcessor:
         return {
             "success": True,
             "image_id": image_id,
-            "image_url": image_url
+            "image_url": image_url,
+            "blob_name": blob_name,
         }
     
-    async def detect_barcode(self, image_data: str) -> Dict[str, Any]:
+    async def detect_barcode(self, image_data: str, organization_id: str) -> Dict[str, Any]:
         """Detect barcode in image using Vision Provider"""
         result = await self.provider.detect_barcode(image_data)
         
         if result.get('is_barcode') and result.get('barcode_data') and self.cache:
-            cache_key = f"barcode:{result['barcode_data']}"
+            cache_key = build_image_cache_key(
+                organization_id, str(result["barcode_data"]), "barcode"
+            )
             await self.cache.set_json(cache_key, {
                 "barcode_data": result['barcode_data'],
                 "barcode_type": result['barcode_type'],
@@ -107,7 +121,9 @@ class ImageProcessor:
             
         return result
     
-    async def analyze_product_image(self, image_data: str, user_context: Optional[Dict] = None) -> Dict[str, Any]:
+    async def analyze_product_image(
+        self, image_data: str, organization_id: str, user_context: Optional[Dict] = None
+    ) -> Dict[str, Any]:
         """
         Multi-step product image analysis workflow:
         1. Barcode detection
@@ -116,7 +132,7 @@ class ImageProcessor:
         """
         try:
             # Step 1: Barcode detection
-            barcode_result = await self.detect_barcode(image_data)
+            barcode_result = await self.detect_barcode(image_data, organization_id)
             
             # Step 2: Product identification (even if barcode detected)
             product_analysis = await self._analyze_product_features(image_data, user_context)
@@ -221,25 +237,33 @@ class ImageProcessor:
             logger.error(f"Search suggestion generation error: {e}")
             return suggestions
             
-    async def process_image_upload(self, image_data: str, user_id: str, user_context: Optional[Dict] = None) -> Dict[str, Any]:
+    async def process_image_upload(
+        self,
+        image_data: str,
+        organization_id: str,
+        user_id: str,
+        user_context: Optional[Dict] = None,
+    ) -> Dict[str, Any]:
         """
         Enhanced image upload and analysis workflow
         Combines upload, barcode detection, and product identification
         """
         # Step 1: Upload the image
-        upload_result = await self.upload_image(image_data, user_id)
+        upload_result = await self.upload_image(image_data, organization_id, user_id)
         
         if not upload_result.get('success'):
             return upload_result
         
         # Step 2: Perform enhanced analysis
-        analysis_result = await self.analyze_product_image(image_data, user_context)
+        analysis_result = await self.analyze_product_image(image_data, organization_id, user_context)
         
         # Step 3: Cache comprehensive results
         if self.cache and upload_result.get('image_id'):
             cache_data = {
                 "image_id": upload_result["image_id"],
                 "image_url": upload_result["image_url"],
+                "blob_name": upload_result["blob_name"],
+                "organization_id": organization_id,
                 "user_id": user_id,
                 "analysis": analysis_result,
                 "processed_at": datetime.now().isoformat(),
@@ -247,7 +271,7 @@ class ImageProcessor:
             }
             
             await self.cache.set_json(
-                f"image_analysis:{upload_result['image_id']}",
+                build_image_cache_key(organization_id, upload_result["image_id"], "analysis"),
                 cache_data,
                 ttl=86400  # 24 hours
             )
@@ -265,8 +289,8 @@ class ImageProcessor:
             ]
         }
     
-    async def get_cached_analysis(self, image_id: str) -> Optional[Dict[str, Any]]:
+    async def get_cached_analysis(self, organization_id: str, image_id: str) -> Optional[Dict[str, Any]]:
         """Get cached image analysis results"""
         if self.cache:
-            return await self.cache.get_json(f"image_analysis:{image_id}")
+            return await self.cache.get_json(build_image_cache_key(organization_id, image_id, "analysis"))
         return None

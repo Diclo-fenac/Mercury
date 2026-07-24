@@ -6,7 +6,6 @@ S3-compliant file operations using MinIO SDK
 import asyncio
 import base64
 import io
-import os
 from typing import Optional
 
 from minio import Minio
@@ -101,8 +100,6 @@ class MinIOStorageClient:
             if not self.client:
                 return False
             
-            # Remove directory structure in filename if present for simplicity
-            filename = os.path.basename(blob_name)
             data_stream = io.BytesIO(data)
             
             loop = asyncio.get_event_loop()
@@ -110,13 +107,13 @@ class MinIOStorageClient:
                 None,
                 lambda: self.client.put_object(
                     bucket_name=self.bucket_name,
-                    object_name=filename,
+                    object_name=blob_name,
                     data=data_stream,
                     length=len(data),
                     content_type=content_type
                 )
             )
-            logger.info(f"✅ Uploaded file to MinIO: {filename}")
+            logger.info("Uploaded file to MinIO")
             return True
         except Exception as e:
             logger.error(f"Error uploading file to MinIO {blob_name}: {e}")
@@ -144,12 +141,11 @@ class MinIOStorageClient:
             if not self.client:
                 return None
             
-            filename = os.path.basename(blob_name)
             loop = asyncio.get_event_loop()
             
             response = await loop.run_in_executor(
                 None,
-                lambda: self.client.get_object(self.bucket_name, filename)
+                lambda: self.client.get_object(self.bucket_name, blob_name)
             )
             try:
                 data = response.read()
@@ -164,7 +160,5 @@ class MinIOStorageClient:
 
     async def get_blob_public_url(self, blob_name: str) -> Optional[str]:
         """Get public API URL for local image serving"""
-        filename = os.path.basename(blob_name)
-        if filename.endswith(".jpg"):
-            filename = filename[:-4]
-        return f"/api/v1/images/{filename}/raw"
+        image_id = blob_name.rsplit("/", 1)[-1].removesuffix(".jpg")
+        return f"/api/v1/images/{image_id}/raw"

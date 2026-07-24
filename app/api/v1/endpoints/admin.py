@@ -7,7 +7,12 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
-from app.api.dependencies import TenantContext, get_container_dependency, require_admin_key
+from app.api.dependencies import (
+    TenantContext,
+    get_container_dependency,
+    require_admin_key,
+    require_scope,
+)
 
 router = APIRouter()
 
@@ -173,7 +178,7 @@ async def get_tenant_config(
 @router.patch("/config")
 async def update_tenant_config(
     request: ConfigUpdateRequest,
-    tenant_ctx: TenantContext = Depends(require_admin_key),
+    tenant_ctx: TenantContext = Depends(require_scope("settings:write")),
     container = Depends(get_container_dependency)
 ):
     """Update tenant configuration."""
@@ -412,19 +417,16 @@ async def get_catalog_stats(
 async def upsert_product(
     product: Dict[str, Any],
     product_id: Optional[str] = None,
-    tenant_ctx: TenantContext = Depends(require_admin_key),
+    tenant_ctx: TenantContext = Depends(require_scope("catalog:write")),
     container = Depends(get_container_dependency)
 ):
-    """Upsert a single product to the catalog."""
-    typesense_client = container.get("typesense")
-    embeddings = container.get("embeddings")
-    if not typesense_client or not embeddings:
+    """Upsert canonical product; durable worker updates derived Typesense index."""
+    catalog_service = container.get("catalog_service")
+    if not catalog_service:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Required indexing services not available"
+            detail="Catalog service unavailable",
         )
-
-    collection_name = f"tenant_{tenant_ctx.organization_id}_products"
     
     prod_id = product_id or str(product.get("id", ""))
     if not prod_id:
@@ -456,9 +458,6 @@ async def upsert_product(
         stock = bool(product.get("stock", True))
         online_available = bool(product.get("online_available", True))
         
-        text = " ".join([val for val in (title, name, description, brand, category, sub_category) if val])
-        embedding = await embeddings.embed_text(text)
-        
         doc = {
             "id": prod_id,
             "name": name,
@@ -471,11 +470,16 @@ async def upsert_product(
             "stock": stock,
             "online_available": online_available,
             "selling_price": selling_price,
-            "embedding": embedding or [0.0] * 384
         }
-        
-        await typesense_client.index_documents(collection_name, [doc])
-        return {"success": True, "action": "upsert", "id": prod_id}
+
+        persisted = await catalog_service.upsert_products(tenant_ctx.organization_id, [doc])
+        return {
+            "success": True,
+            "action": "upsert",
+            "id": prod_id,
+            "index_status": "pending",
+            "index_event_id": persisted[0]["index_event_id"],
+        }
         
     except Exception as e:
         raise HTTPException(
@@ -486,29 +490,26 @@ async def upsert_product(
 @router.delete("/catalog/products/{product_id}")
 async def delete_product(
     product_id: str,
-    tenant_ctx: TenantContext = Depends(require_admin_key),
+    tenant_ctx: TenantContext = Depends(require_scope("catalog:write")),
     container = Depends(get_container_dependency)
 ):
-    """Delete a single product from the catalog."""
-    typesense_client = container.get("typesense")
-    if not typesense_client:
+    """Delete canonical product; worker removes derived search document."""
+    catalog_service = container.get("catalog_service")
+    if not catalog_service:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Required indexing services not available"
+            detail="Catalog service unavailable",
         )
-
-    collection_name = f"tenant_{tenant_ctx.organization_id}_products"
     
     try:
-        import asyncio
-        loop = typesense_client.client.collections[collection_name].documents[product_id].delete
-        await asyncio.get_event_loop().run_in_executor(None, loop)
-        return {"success": True, "action": "delete", "id": product_id}
+        deleted = await catalog_service.delete_product(tenant_ctx.organization_id, product_id)
+        return {
+            "success": True,
+            "action": "delete",
+            "id": product_id,
+            "note": None if deleted else "not found",
+        }
     except Exception as e:
-        # Ignore if it wasn't found
-        if "not found" in str(e).lower() or "404" in str(e):
-             return {"success": True, "action": "delete", "id": product_id, "note": "not found"}
-             
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Delete failed: {str(e)}"
@@ -568,7 +569,7 @@ async def create_synonym(
     """Add a synonym rule"""
     tenant_service = container.get("tenant_service")
     typesense_client = container.get("typesense")
-    if not tenant_service or not typesense_client:
+    if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
     
     term = payload.get("term")
@@ -583,9 +584,13 @@ async def create_synonym(
     synonym_id = f"syn_{term.replace(' ', '_')}"
     # Bidirectional if root is empty, otherwise one-way
     # To map "mobile" -> "smartphone", root="mobile", synonyms=["smartphone"]
-    await typesense_client.upsert_synonym(collection_name, synonym_id, synonyms, root=term)
+    typesense_synced = False
+    if typesense_client:
+        typesense_synced = await typesense_client.upsert_synonym(
+            collection_name, synonym_id, synonyms, root=term
+        )
     
-    return {"success": True}
+    return {"success": True, "typesense_synced": typesense_synced}
 
 
 @router.delete("/rules/synonyms/{term}")

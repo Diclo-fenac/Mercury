@@ -40,17 +40,21 @@ class ProductOrchestrator:
         except Exception as e:
             raise Exception(f"Failed to get flash deals: {str(e)}")
     
-    async def get_product_details(self, product_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_product_details(
+        self, product_id: str, organization_id: str, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Get detailed product information"""
         try:
-            product = await self.products.get_product(product_id)
+            product = await self.products.get_product(organization_id, product_id)
             
             if not product:
                 return {"success": False, "error": "not_found"}
             
             # Log user activity if user_id provided
             if user_id:
-                await self.users.log_activity(user_id, 'product_view', {'product_id': product_id})
+                await self.users.log_activity(
+                    organization_id, user_id, 'product_view', {'product_id': product_id}
+                )
             
             return {
                 "success": True,

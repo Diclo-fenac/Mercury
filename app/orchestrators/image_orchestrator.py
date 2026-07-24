@@ -22,6 +22,7 @@ class ImageOrchestrator:
     async def process_image_upload(
         self, 
         image_data: str, 
+        organization_id: str,
         user_id: str,
         message: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -35,7 +36,9 @@ class ImageOrchestrator:
                 }
             
             # Process the image upload using real image processor
-            result = await self.image_processor.process_image_upload(image_data, user_id)
+            result = await self.image_processor.process_image_upload(
+                image_data, organization_id, user_id
+            )
             
             if not result.get('success'):
                 return {
@@ -53,18 +56,20 @@ class ImageOrchestrator:
                 "details": f"Failed to process image upload: {str(e)}"
             }
     
-    async def get_image_metadata(self, image_id: str, user_id: str) -> Dict[str, Any]:
+    async def get_image_metadata(
+        self, organization_id: str, image_id: str, user_id: str
+    ) -> Dict[str, Any]:
         """Get image metadata and analysis results"""
         try:
             if not self.image_processor:
                 return {"success": False, "error": "image_service_unavailable"}
             
-            result = await self.image_processor.get_cached_analysis(image_id)
+            result = await self.image_processor.get_cached_analysis(organization_id, image_id)
             if not result:
                 return {"success": False, "error": "not_found"}
             
             # Authorization check
-            if result.get('user_id') != user_id:
+            if result.get("organization_id") != organization_id or result.get('user_id') != user_id:
                 return {"success": False, "error": "access_denied"}
             
             return {"success": True, "image": result}
@@ -76,7 +81,9 @@ class ImageOrchestrator:
         self, 
         image_id: Optional[str] = None,
         image_data: Optional[str] = None,
+        organization_id: Optional[str] = None,
         user_id: str = None,
+        tenant_context: Any = None,
         search_type: str = "similar",
         limit: int = 10
     ) -> Dict[str, Any]:
@@ -96,10 +103,22 @@ class ImageOrchestrator:
                     "details": "Search service not available"
                 }
             
-            # Use the hybrid search to find products
-            # For now, this will use text-based search as fallback
-            # In a real implementation, this would extract image features and search vectors
-            results = await self.search.search_by_text("product", {}, limit)
+            if not organization_id or not tenant_context:
+                return {"success": False, "error": "tenant_context_required"}
+            if image_id:
+                metadata = await self.get_image_metadata(organization_id, image_id, user_id)
+                if not metadata.get("success"):
+                    return metadata
+
+            # Vision-vector retrieval is not implemented yet. The temporary fallback
+            # remains tenant-scoped instead of returning a shared catalog result.
+            from app.core.security.context import tenant_context_var
+
+            token = tenant_context_var.set(tenant_context)
+            try:
+                results = await self.search.search_by_text("product", {}, limit)
+            finally:
+                tenant_context_var.reset(token)
             
             return {
                 "success": True,

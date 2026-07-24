@@ -24,6 +24,7 @@ class RecommendationOrchestrator:
     
     async def get_personalized_recommendations(
         self, 
+        organization_id: str,
         user_id: str, 
         limit: int = 10, 
         category: Optional[str] = None
@@ -31,12 +32,12 @@ class RecommendationOrchestrator:
         """Get personalized recommendations for user"""
         try:
             # Get user profile for personalization
-            user_profile = await self.users.get_user_profile(user_id)
+            user_profile = await self.users.get_user_profile(organization_id, user_id)
             
             if not user_profile:
                 # Return generic recommendations for new users
                 filters = {"category": category} if category else {}
-                products = await self.products.search_products(filters, limit)
+                products = await self.products.search_products(organization_id, filters, limit)
                 
                 return {
                     "success": True,
@@ -46,7 +47,9 @@ class RecommendationOrchestrator:
                 }
             
             # Get personalized recommendations using the engine
-            recommendations = await self.recommendations.get_personalized_recommendations(user_id, limit)
+            recommendations = await self.recommendations.get_personalized_recommendations(
+                organization_id, user_id, limit
+            )
             
             # Filter by category if specified
             if category:
@@ -65,6 +68,7 @@ class RecommendationOrchestrator:
     async def get_product_recommendations(
         self, 
         product_id: str, 
+        organization_id: str,
         user_id: Optional[str] = None,
         recommendation_type: str = "similar",
         limit: int = 10
@@ -72,16 +76,32 @@ class RecommendationOrchestrator:
         """Get product-based recommendations"""
         try:
             # Get the source product
-            source_product = await self.products.get_product(product_id)
+            source_product = await self.products.get_product(organization_id, product_id)
             
             if not source_product:
                 return {"success": False, "error": "not_found"}
             
             if recommendation_type == "similar":
-                recommendations = await self.recommendations.get_similar_products(product_id, limit)
+                recommendations = await self.recommendations.get_similar_products(
+                    organization_id, product_id, limit
+                )
+            elif recommendation_type == "fbt":
+                recommendations = await self.recommendations.get_frequently_bought_together(
+                    organization_id, product_id, limit
+                )
+            elif recommendation_type == "complementary":
+                recommendations = await self.recommendations.get_complementary_products(
+                    organization_id, product_id, limit
+                )
+            elif recommendation_type == "substitute":
+                recommendations = await self.recommendations.get_substitute_products(
+                    organization_id, product_id, limit
+                )
             else:
                 # For other types, use similar products as fallback
-                recommendations = await self.recommendations.get_similar_products(product_id, limit)
+                recommendations = await self.recommendations.get_similar_products(
+                    organization_id, product_id, limit
+                )
             
             return {
                 "success": True,

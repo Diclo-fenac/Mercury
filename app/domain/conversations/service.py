@@ -17,17 +17,22 @@ class ConversationService:
         self.cache = cache
         self.id_gen = IDGenerator()
     
-    async def get_user_conversations(self, user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def get_user_conversations(
+        self, organization_id: str, user_id: str, limit: int = 20
+    ) -> List[Dict[str, Any]]:
         """Get user's conversations"""
-        filters = {'user_id': user_id}
-        conversations = await self.db.get_conversations_by_user(user_id, limit)
+        conversations = await self.db.get_conversations_by_user(organization_id, user_id, limit)
         return conversations
     
-    async def get_conversation(self, conversation_id: str) -> Optional[Dict[str, Any]]:
+    async def get_conversation(
+        self, organization_id: str, conversation_id: str
+    ) -> Optional[Dict[str, Any]]:
         """Get conversation by ID"""
-        return await self.db.get_conversation(conversation_id)
+        return await self.db.get_conversation(organization_id, conversation_id)
     
-    async def create_conversation(self, user_id: str, title: Optional[str] = None) -> str:
+    async def create_conversation(
+        self, organization_id: str, user_id: str, title: Optional[str] = None, channel: str = "rest"
+    ) -> str:
         """Create new conversation"""
         conversation_id = self.id_gen.conversation_id(user_id)
         conversation_data = {
@@ -37,11 +42,12 @@ class ConversationService:
             'updated_at': self.id_gen.timestamp(),
             'message_count': 0
         }
-        await self.db.create_conversation(conversation_id, user_id, title)
+        await self.db.create_conversation(organization_id, conversation_id, user_id, title, channel)
         return conversation_id
     
     async def save_message(
         self,
+        organization_id: str,
         conversation_id: str,
         user_id: str,
         message: str,
@@ -60,13 +66,23 @@ class ConversationService:
             'metadata': metadata or {}
         }
         
-        await self.db.save_message(message_data['message_id'], conversation_id, user_id, message_data['role'], message_data['message'], message_data.get('metadata', {}))
+        await self.db.save_message(
+            organization_id,
+            message_data['message_id'],
+            conversation_id,
+            user_id,
+            message_data['role'],
+            message_data['message'],
+            message_data.get('metadata', {}),
+        )
         return message_id
     
-    async def get_messages(self, conversation_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_messages(
+        self, organization_id: str, conversation_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
         """Get conversation messages"""
-        return await self.db.get_messages(conversation_id, limit)
+        return await self.db.get_messages(organization_id, conversation_id, limit)
     
-    async def delete_conversation(self, conversation_id: str) -> bool:
+    async def delete_conversation(self, organization_id: str, conversation_id: str) -> bool:
         """Delete conversation"""
-        return await self.db.delete_conversation(conversation_id)
+        return await self.db.delete_conversation(organization_id, conversation_id)

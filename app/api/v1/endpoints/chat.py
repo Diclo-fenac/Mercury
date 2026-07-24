@@ -12,6 +12,7 @@ from app.api.dependencies import (
     get_container_dependency,
     get_tenant_context,
     require_auth,
+    require_same_tenant,
 )
 from app.core.security.context import tenant_context_var, user_id_var
 from app.models.requests import ChatCompletionRequest, ChatToolsRequest
@@ -42,13 +43,14 @@ async def chat_completion(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
+        require_same_tenant(current_user, tenant)
 
         # Set request-scoped context variables
         tenant_context_var.set(tenant)
         user_id_var.set(user_id)
 
         # Map new model to orchestrator
-        result = await chat_orchestrator.handle_completion(request, tenant)
+        result = await chat_orchestrator.handle_completion(request, tenant, user_id=user_id)
         
         if not result.get('success'):
             raise HTTPException(
@@ -60,7 +62,8 @@ async def chat_completion(
             response=result.get("response", ""),
             conversation_id=request.conversation_id or result.get("conversation_id", "unknown"),
             message_id=result.get("message_id", "unknown"),
-            features_used=result.get("features_used", {})
+            features_used=result.get("features_used", {}),
+            citations=result.get("citations", []),
         )
         
     except HTTPException:
@@ -93,13 +96,14 @@ async def chat_stream(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
+        require_same_tenant(current_user, tenant)
 
         # Set request-scoped context variables
         tenant_context_var.set(tenant)
         user_id_var.set(user_id)
 
         return StreamingResponse(
-            chat_orchestrator.stream_completion(request, tenant),
+            chat_orchestrator.stream_completion(request, tenant, user_id=user_id),
             media_type="text/event-stream"
         )
         
@@ -112,11 +116,13 @@ async def chat_stream(
 @router.post("/tools")
 async def chat_tools(
     request: ChatToolsRequest,
+    tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency),
     current_user = Depends(require_auth)
 ):
     """Discover or execute specific tools"""
     try:
+        require_same_tenant(current_user, tenant)
         chat_orchestrator = container.get('chat_orchestrator')
         if not chat_orchestrator:
             raise HTTPException(
@@ -128,6 +134,8 @@ async def chat_tools(
             tools = await chat_orchestrator.get_available_tools()
             return {"success": True, "tools": tools}
         else:
+            tenant_context_var.set(tenant)
+            user_id_var.set(current_user["user_id"])
             result = await chat_orchestrator.execute_tool(
                 request.tool_name, 
                 request.parameters,
@@ -158,6 +166,7 @@ async def get_conversation_history(
             )
         
         result = await conversation_orchestrator.get_conversation_history(
+            organization_id=current_user["organization_id"],
             conversation_id=conversation_id,
             user_id=current_user["user_id"],
             limit=pagination.limit

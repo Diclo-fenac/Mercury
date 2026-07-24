@@ -5,7 +5,13 @@ Image upload, analysis, and search functionality
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 
-from app.api.dependencies import get_container_dependency, require_auth
+from app.api.dependencies import (
+    TenantContext,
+    get_container_dependency,
+    get_tenant_context,
+    require_auth,
+    require_same_tenant,
+)
 from app.models.requests import ImageSearchRequest, ImageUploadRequest
 from app.models.responses import ImageUploadResponse
 
@@ -15,6 +21,7 @@ router = APIRouter()
 async def upload_image(
     request: ImageUploadRequest,
     container = Depends(get_container_dependency),
+    tenant: TenantContext = Depends(get_tenant_context),
     current_user = Depends(require_auth)
 ):
     """Upload and analyze image via image orchestrator (max 5MB, JPEG/PNG/WEBP)"""
@@ -26,8 +33,10 @@ async def upload_image(
                 detail="Image service not available"
             )
 
+        require_same_tenant(current_user, tenant)
         result = await image_orchestrator.process_image_upload(
             image_data=request.image_data,
+            organization_id=tenant.organization_id,
             user_id=current_user["user_id"],
             message=request.message
         )
@@ -72,6 +81,7 @@ async def upload_image(
 async def get_image_details(
     image_id: str = Path(..., description="Image identifier"),
     container = Depends(get_container_dependency),
+    tenant: TenantContext = Depends(get_tenant_context),
     current_user = Depends(require_auth)
 ):
     """Get image metadata and analysis results"""
@@ -83,7 +93,9 @@ async def get_image_details(
                 detail="Image service not available"
             )
 
+        require_same_tenant(current_user, tenant)
         result = await image_orchestrator.get_image_metadata(
+            organization_id=tenant.organization_id,
             image_id=image_id,
             user_id=current_user["user_id"]
         )
@@ -110,6 +122,7 @@ async def get_image_details(
 async def search_by_image(
     request: ImageSearchRequest,
     container = Depends(get_container_dependency),
+    tenant: TenantContext = Depends(get_tenant_context),
     current_user = Depends(require_auth)
 ):
     """Search products by image via image orchestrator"""
@@ -121,10 +134,13 @@ async def search_by_image(
                 detail="Image search service not available"
             )
 
+        require_same_tenant(current_user, tenant)
         result = await image_orchestrator.search_by_image(
             image_id=request.image_id,
             image_data=request.image_data,
+            organization_id=tenant.organization_id,
             user_id=current_user["user_id"],
+            tenant_context=tenant,
             search_type=request.search_type,
             limit=request.limit
         )
@@ -155,6 +171,7 @@ async def search_by_image(
 async def get_image_analysis(
     image_id: str = Path(..., description="Image identifier"),
     container = Depends(get_container_dependency),
+    tenant: TenantContext = Depends(get_tenant_context),
     current_user = Depends(require_auth)
 ):
     """Get cached image analysis results (legacy)"""
@@ -166,7 +183,9 @@ async def get_image_analysis(
                 detail="Image service not available"
             )
 
+        require_same_tenant(current_user, tenant)
         result = await image_orchestrator.get_image_metadata(
+            organization_id=tenant.organization_id,
             image_id=image_id,
             user_id=current_user["user_id"]
         )
@@ -192,25 +211,31 @@ async def get_image_analysis(
             detail=f"Failed to get image analysis: {str(e)}"
         )
 
-import os
-from pathlib import Path as FilePath
-
 from fastapi.responses import FileResponse
 
 
 @router.get("/{image_id}/raw")
 async def get_raw_image(
     image_id: str = Path(..., description="Image identifier"),
-    container = Depends(get_container_dependency)
+    container = Depends(get_container_dependency),
+    tenant: TenantContext = Depends(get_tenant_context),
+    current_user = Depends(require_auth),
 ):
     """Serve the raw uploaded image file from storage (MinIO or local disk)"""
-    # Sanitize to prevent directory traversal
-    safe_image_id = os.path.basename(image_id)
-    if not safe_image_id.endswith(".jpg"):
-        filename = f"{safe_image_id}.jpg"
-    else:
-        filename = safe_image_id
-        
+    image_orchestrator = container.get("image_orchestrator")
+    if not image_orchestrator:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Image service not available")
+    require_same_tenant(current_user, tenant)
+    metadata = await image_orchestrator.get_image_metadata(
+        tenant.organization_id, image_id, current_user["user_id"]
+    )
+    if not metadata.get("success"):
+        status_code = status.HTTP_404_NOT_FOUND if metadata.get("error") == "not_found" else status.HTTP_403_FORBIDDEN
+        raise HTTPException(status_code=status_code, detail="Image not available")
+    filename = metadata["image"].get("blob_name")
+    if not filename:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image file not found")
+
     storage = container.get('storage')
     if not storage:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage service not available")
@@ -218,8 +243,7 @@ async def get_raw_image(
     # Optimisation for LocalStorageClient to serve directly from file
     from app.infrastructure.storage.local import LocalStorageClient
     if isinstance(storage, LocalStorageClient):
-        uploads_dir = FilePath("uploads")
-        filepath = uploads_dir / filename
+        filepath = storage.base_dir / filename
         if not filepath.exists():
             raise HTTPException(status_code=404, detail="Image file not found")
         return FileResponse(filepath, media_type="image/jpeg")

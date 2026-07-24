@@ -79,15 +79,20 @@ async def get_current_user(
     token = credentials.credentials
     
     try:
-        # Development override: allow "dev_user_*" tokens
-        if settings.DEBUG and token.startswith("user_"):
-            user_id = token.replace("user_", "")
-            return {"user_id": user_id, "authenticated": True, "roles": ["user"]}
-
-        # Development override: allow "admin_*" tokens for local administrative tasks
-        if settings.DEBUG and token.startswith("admin_"):
-            user_id = token.replace("admin_", "")
-            return {"user_id": user_id, "authenticated": True, "roles": ["user", "admin"]}
+        # Debug tokens still carry tenant scope: user_<org_id>:<user_id>.
+        # Unscoped debug identities are forbidden because they bypass isolation.
+        if settings.DEBUG and (token.startswith("user_") or token.startswith("admin_")):
+            is_admin = token.startswith("admin_")
+            subject = token.split("_", 1)[1]
+            organization_id, separator, user_id = subject.partition(":")
+            if not separator or not organization_id or not user_id:
+                return None
+            return {
+                "user_id": user_id,
+                "organization_id": organization_id,
+                "authenticated": True,
+                "roles": ["user", "admin"] if is_admin else ["user"],
+            }
 
         payload = jwt.decode(
             token, 
@@ -98,8 +103,13 @@ async def get_current_user(
         if user_id is None:
             return None
         
+        organization_id = payload.get("organization_id") or payload.get("org_id")
+        if not organization_id:
+            return None
+
         return {
             "user_id": user_id,
+            "organization_id": organization_id,
             "authenticated": True,
             "roles": payload.get("roles", ["user"]),
             "email": payload.get("email")
@@ -124,6 +134,15 @@ async def require_auth(
     return current_user
 
 
+def require_same_tenant(current_user: Dict[str, Any], tenant: "TenantContext") -> None:
+    """Reject a JWT/API-key pair that resolves to different organizations."""
+    if current_user.get("organization_id") != tenant.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User and API key belong to different organizations",
+        )
+
+
 async def require_admin(
     current_user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
@@ -136,14 +155,17 @@ async def require_admin(
     return current_user
 
 
+import hashlib
 import time
 from collections import defaultdict
 
 # Simple in-memory rate limiter (in production, use Redis)
 _RATE_LIMITS = defaultdict(list)
 
-async def check_rate_limit(key: str, limit: int = 60, window: int = 60) -> bool:
+async def check_rate_limit(key: str, limit: int = 60, window: int = 60, cache=None) -> bool:
     """Simple rate limiting using token bucket / sliding window"""
+    if cache:
+        return await cache.allow_rate_limit(key, limit, window)
     now = time.time()
     # Clean up old timestamps
     _RATE_LIMITS[key] = [t for t in _RATE_LIMITS[key] if now - t < window]
@@ -174,6 +196,7 @@ class TenantContext:
     plan: str
     config: dict
     collection_name: str   # 'tenant_{org_id}_products'
+    seller_id: Optional[str] = None
 
 
 from fastapi import Request
@@ -181,26 +204,28 @@ from fastapi import Request
 
 async def get_tenant_context(
     request: Request,
-    x_api_key: str = Header(..., alias="X-API-Key", description="Tenant API Key"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key", description="Tenant API Key"),
+    authorization: Optional[str] = Header(None, alias="Authorization", description="Bearer Authorization Token"),
     container = Depends(get_container_dependency)
 ) -> TenantContext:
     """Resolve tenant from API key. Raises 401/403/429."""
-    
-    # Backdoor for load testing
-    if x_api_key == "stress_test_key_123":
-        return TenantContext(
-            organization_id="00000000-0000-0000-0000-000000000000",
-            organization_slug="stress-test",
-            key_type="public_search",
-            scopes=["search"],
-            plan="enterprise",
-            config={},
-            collection_name="tenant_stress_products"
-        )
+    api_key = x_api_key
+    if not api_key and authorization:
+        if authorization.startswith("Bearer "):
+            api_key = authorization[7:].strip()
+        else:
+            api_key = authorization.strip()
 
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API Key required (via X-API-Key or Authorization Bearer header)"
+        )
+    
     # 1. IP Rate Limiting
     client_ip = request.client.host if request.client else "unknown"
-    if not await check_rate_limit(f"ip:{client_ip}", limit=50, window=1):
+    cache = container.get('redis')
+    if not await check_rate_limit(f"ip:{client_ip}", limit=1000, window=1, cache=cache):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many requests from this IP"
@@ -213,7 +238,7 @@ async def get_tenant_context(
             detail="Tenant service not initialized"
         )
 
-    ctx_dict = await tenant_service.validate_api_key(x_api_key)
+    ctx_dict = await tenant_service.validate_api_key(api_key)
         
     if not ctx_dict:
         raise HTTPException(
@@ -221,8 +246,9 @@ async def get_tenant_context(
             detail="Invalid or inactive API key"
         )
 
-    # 2. Key-based rate limiting (100 req/sec)
-    if not await check_rate_limit(f"key:{x_api_key}", limit=100, window=1):
+    # 2. Key-based rate limiting (2000 req/sec)
+    key_fingerprint = hashlib.sha256(api_key.encode()).hexdigest()
+    if not await check_rate_limit(f"key:{key_fingerprint}", limit=2000, window=1, cache=cache):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Rate limit exceeded for this API key"
@@ -244,6 +270,11 @@ async def get_tenant_context(
         pass
 
     org_id = ctx_dict["organization_id"]
+    
+    # Check if a specific seller scope is requested/authorized
+    # In a full RBAC system, this would extract seller_id from a scoped token
+    seller_id = request.headers.get("X-Seller-Id")
+    
     return TenantContext(
         organization_id=org_id,
         organization_slug=ctx_dict["organization_slug"],
@@ -251,7 +282,8 @@ async def get_tenant_context(
         scopes=ctx_dict["scopes"],
         plan=ctx_dict["plan"],
         config=ctx_dict["config"],
-        collection_name=f"tenant_{org_id}_products"
+        collection_name=f"tenant_{org_id}_products",
+        seller_id=seller_id
     )
 
 
@@ -265,3 +297,15 @@ async def require_admin_key(
             detail="Admin key required for this operation"
         )
     return ctx
+
+
+def require_scope(required_scope: str):
+    """Require a specific scope for the operation"""
+    def scope_checker(ctx: TenantContext = Depends(require_admin_key)) -> TenantContext:
+        if required_scope not in ctx.scopes and "admin" not in ctx.scopes:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required scope: {required_scope}"
+            )
+        return ctx
+    return scope_checker

@@ -24,6 +24,7 @@ TYPESENSE_SCHEMA = {
         {"name": "online_available", "type": "bool", "optional": True},
         {"name": "selling_price", "type": "float", "optional": True},
         {"name": "embedding", "type": "float[]", "num_dim": 384, "optional": True},  # 384 dimensions for all-MiniLM-L6-v2
+        {"name": "image_vector", "type": "float[]", "num_dim": 512, "optional": True},
     ],
     "default_sorting_field": "rating",
 }

@@ -2,22 +2,34 @@
 Recommendation Engine - Layer 5: Domain
 Pure business logic for recommendations using actual database schema
 """
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.domain.products.service import ProductService
 from app.domain.users.service import UserService
+from app.infrastructure.cache.keys import build_cache_key
+from app.infrastructure.cache.redis import RedisClient
 
 
 class RecommendationEngine:
     """Recommendation business logic using actual schema"""
     
-    def __init__(self, product_service: ProductService, user_service: UserService):
+    def __init__(self, product_service: ProductService, user_service: UserService, cache: Optional[RedisClient] = None):
         self.products = product_service
         self.users = user_service
+        self.cache = cache
     
-    async def get_similar_products(self, product_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_similar_products(
+        self, organization_id: str, product_id: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
         """Get similar products based on actual schema fields"""
-        product = await self.products.get_product(product_id)
+        cache_key = None
+        if self.cache:
+            cache_key = build_cache_key("recommendations", {"type": "similar", "product_id": product_id, "limit": limit}, tenant_id=organization_id)
+            cached = await self.cache.get_json(cache_key)
+            if cached:
+                return cached
+                
+        product = await self.products.get_product(organization_id, product_id)
         if not product:
             return []
         
@@ -31,7 +43,7 @@ class RecommendationEngine:
         if sub_category:
             filters['sub_category'] = sub_category
         
-        similar = await self.products.search_products(filters, limit * 2)
+        similar = await self.products.search_products(organization_id, filters, limit * 2)
         
         # Filter out the original product and prioritize same brand
         similar_products = []
@@ -46,11 +58,25 @@ class RecommendationEngine:
         
         # Return same brand first, then others
         result = same_brand[:limit] + similar_products[:limit - len(same_brand)]
-        return result[:limit]
+        result = result[:limit]
+        
+        if self.cache and cache_key:
+            await self.cache.set_json(cache_key, result, 3600)
+            
+        return result
     
-    async def get_complementary_products(self, product_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_complementary_products(
+        self, organization_id: str, product_id: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
         """Get complementary products using actual schema"""
-        product = await self.products.get_product(product_id)
+        cache_key = None
+        if self.cache:
+            cache_key = build_cache_key("recommendations", {"type": "complementary", "product_id": product_id, "limit": limit}, tenant_id=organization_id)
+            cached = await self.cache.get_json(cache_key)
+            if cached:
+                return cached
+                
+        product = await self.products.get_product(organization_id, product_id)
         if not product:
             return []
         
@@ -69,21 +95,35 @@ class RecommendationEngine:
             # Fallback to different sub_category in same category
             sub_category = product.get('sub_category')
             filters = {'category': category}
-            products = await self.products.search_products(filters, limit * 2)
+            products = await self.products.search_products(organization_id, filters, limit * 2)
             return [p for p in products if p.get('sub_category') != sub_category][:limit]
         
         # Search in complementary categories
         complementary = []
         for comp_category in complementary_categories:
             filters = {'category': comp_category}
-            products = await self.products.search_products(filters, limit)
+            products = await self.products.search_products(organization_id, filters, limit)
             complementary.extend(products)
         
-        return complementary[:limit]
+        result = complementary[:limit]
+        
+        if self.cache and cache_key:
+            await self.cache.set_json(cache_key, result, 3600)
+            
+        return result
     
-    async def get_substitute_products(self, product_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_substitute_products(
+        self, organization_id: str, product_id: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
         """Get substitute products using actual schema"""
-        product = await self.products.get_product(product_id)
+        cache_key = None
+        if self.cache:
+            cache_key = build_cache_key("recommendations", {"type": "substitute", "product_id": product_id, "limit": limit}, tenant_id=organization_id)
+            cached = await self.cache.get_json(cache_key)
+            if cached:
+                return cached
+                
+        product = await self.products.get_product(organization_id, product_id)
         if not product:
             return []
         
@@ -97,7 +137,7 @@ class RecommendationEngine:
         if sub_category:
             filters['sub_category'] = sub_category
         
-        candidates = await self.products.search_products(filters, limit * 3)
+        candidates = await self.products.search_products(organization_id, filters, limit * 3)
         
         # Filter substitutes with similar price range (±30%)
         substitutes = []
@@ -112,14 +152,28 @@ class RecommendationEngine:
             if price_range_min <= candidate_price <= price_range_max:
                 substitutes.append(candidate)
         
-        return substitutes[:limit]
+        result = substitutes[:limit]
+        
+        if self.cache and cache_key:
+            await self.cache.set_json(cache_key, result, 3600)
+            
+        return result
     
-    async def get_personalized_recommendations(self, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_personalized_recommendations(
+        self, organization_id: str, user_id: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
         """Get recommendations based on user preferences using actual schema"""
-        profile = await self.users.get_user_profile(user_id)
+        cache_key = None
+        if self.cache:
+            cache_key = build_cache_key("recommendations", {"type": "personalized", "user_id": user_id, "limit": limit}, tenant_id=organization_id)
+            cached = await self.cache.get_json(cache_key)
+            if cached:
+                return cached
+                
+        profile = await self.users.get_user_profile(organization_id, user_id)
         if not profile:
             # Return trending products for new users
-            return await self.products.get_trending_products(limit=limit)
+            return await self.products.search_products(organization_id, {}, limit)
         
         preferences = profile.get('preferences', {})
         
@@ -132,7 +186,7 @@ class RecommendationEngine:
         if favorite_category:
             filters['category'] = favorite_category
         
-        products = await self.products.search_products(filters, limit * 2)
+        products = await self.products.search_products(organization_id, filters, limit * 2)
         
         # Score products based on preferences
         scored_products = []
@@ -160,4 +214,29 @@ class RecommendationEngine:
         
         # Sort by score and return top results
         scored_products.sort(key=lambda x: x.get('recommendation_score', 0), reverse=True)
-        return scored_products[:limit]
+        result = scored_products[:limit]
+        
+        if self.cache and cache_key:
+            await self.cache.set_json(cache_key, result, 3600)
+            
+        return result
+        
+    async def get_frequently_bought_together(
+        self, organization_id: str, product_id: str, limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Get Frequently Bought Together (FBT) recommendations"""
+        cache_key = None
+        if self.cache:
+            cache_key = build_cache_key("recommendations", {"type": "fbt", "product_id": product_id, "limit": limit}, tenant_id=organization_id)
+            cached = await self.cache.get_json(cache_key)
+            if cached:
+                return cached
+                
+        # For now, fallback to complementary products as a surrogate for FBT
+        # In a real system, this would query order history/co-occurrence matrix
+        result = await self.get_complementary_products(organization_id, product_id, limit)
+        
+        if self.cache and cache_key:
+            await self.cache.set_json(cache_key, result, 3600)
+            
+        return result

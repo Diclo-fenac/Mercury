@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.api.dependencies import get_current_user as get_tenant_scoped_current_user
 from app.container import Container
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -75,23 +76,9 @@ async def get_current_user(
     Get current user from token (optional)
     Returns None if no token provided (for public endpoints)
     """
-    if not credentials:
-        return None
-    
-    try:
-        # TODO: Implement proper JWT token validation
-        # For now, just extract user_id from token
-        token = credentials.credentials
-        
-        # Simple token validation (replace with proper JWT)
-        if token.startswith("user_"):
-            user_id = token.replace("user_", "")
-            return {"user_id": user_id, "authenticated": True}
-        
-        return None
-    except Exception as e:
-        logger.error(f"Token validation error: {e}")
-        return None
+    # Legacy import path. Authentication must use the API dependency because it
+    # verifies the token and requires an organization scope.
+    return await get_tenant_scoped_current_user(credentials)
 
 async def require_auth(
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user)
