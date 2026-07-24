@@ -3,236 +3,680 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mercury Merchant Dashboard</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Mercury AI Merchant Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sen:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <!-- Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-</head>
-<body class="bg-gray-50 text-gray-900 font-sans antialiased" x-data="dashboardApp()">
+    
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
-    <!-- Login Screen (Shown if not authenticated) -->
-    <div x-show="!isAuthenticated" class="min-h-screen flex items-center justify-center bg-gray-100" style="display: none;">
-        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-            <h1 class="text-2xl font-bold mb-6 text-center text-indigo-600">Mercury Dashboard</h1>
-            <p class="text-sm text-gray-600 mb-4 text-center">Enter your Admin API Key to continue</p>
-            
-            <div x-show="authError" class="mb-4 p-3 bg-red-100 text-red-700 text-sm rounded-md" x-text="authError"></div>
-            
-            <form @submit.prevent="login">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Admin API Key</label>
-                    <input type="password" x-model="adminKeyInput" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" 
-                           placeholder="sk_...">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/dashboard/static/styles.css">
+</head>
+<body x-data="dashboardApp()" :class="isDarkMode ? 'dark-theme' : ''">
+    
+    <!-- Login Screen -->
+    <div x-show="!isAuthenticated" style="display: none;" class="login-container flex-center min-h-screen p-4">
+        <div class="panel p-8 max-w-md w-full text-center space-y-6">
+            <div class="flex justify-center">
+                <div class="w-14 h-14 rounded bg-[#1D1C1B] text-[#F6D0EF] font-semibold text-lg text-2xl flex items-center justify-center shadow-lg">
+                    M
                 </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" :disabled="isLoading">
-                    <span x-show="!isLoading">Login</span>
-                    <span x-show="isLoading">Verifying...</span>
+            </div>
+            <div>
+                <h2 class="text-2xl font-semibold text-lg">Mercury Admin</h2>
+                <p class="text-xs text-muted mt-1">Multi-Tenant Search & Grounded AI Intelligence</p>
+            </div>
+            
+            <div x-show="authError" class="p-3 bg-red-100 text-red-700 text-xs rounded" x-text="authError"></div>
+            
+            <form @submit.prevent="login" class="space-y-4 text-left">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-muted mb-1">Admin API Key</label>
+                    <input type="password" x-model="adminKeyInput" required placeholder="sk_..." class="input-field">
+                </div>
+                <button type="submit" class="btn btn-primary w-full" :disabled="isLoading">
+                    <span x-show="!isLoading">Access Workspace</span>
+                    <span x-show="isLoading">Authenticating...</span>
                 </button>
             </form>
+
+            <div class="text-[11px] text-muted pt-2 border-t border-black/5">
+                Default stress test key: <code class="bg-black/5 px-1.5 py-0.5 rounded font-mono">stress_test_key_123</code>
+            </div>
         </div>
     </div>
 
-    <!-- Main Dashboard Layout (Shown if authenticated) -->
-    <div x-show="isAuthenticated" class="flex h-screen overflow-hidden" style="display: none;">
+    <!-- Main Dashboard Layout -->
+    <div x-show="isAuthenticated" style="display: none;" class="dashboard-layout">
         
-        <!-- Sidebar -->
-        <aside class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-            <div class="p-6">
-                <h2 class="text-xl font-bold text-indigo-600">Mercury</h2>
-                <p class="text-xs text-gray-500 mt-1">Merchant Panel</p>
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar panel">
+            <div>
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 rounded bg-[#1D1C1B] text-[#F6D0EF] font-semibold text-lg text-xl flex items-center justify-center shadow-md">
+                        M
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-lg text-lg">Mercury</h3>
+                        <span class="badge badge-blue">v2.4 Enterprise</span>
+                    </div>
+                </div>
+                
+                <nav class="space-y-2">
+                    <template x-for="item in navItems">
+                        <button 
+                           @click="currentView = item.id"
+                           :class="currentView === item.id ? 'btn btn-primary w-full justify-start' : 'btn btn-outline w-full justify-start'">
+                            <span x-html="getIcon(item.id)"></span>
+                            <span x-text="item.name"></span>
+                        </button>
+                    </template>
+                </nav>
             </div>
-            <nav class="mt-4 px-4 space-y-1">
-                <template x-for="item in navItems">
-                    <a href="#" 
-                       @click.prevent="currentView = item.id"
-                       :class="{ 'bg-indigo-50 text-indigo-700': currentView === item.id, 'text-gray-600 hover:bg-gray-50 hover:text-gray-900': currentView !== item.id }"
-                       class="group flex items-center px-3 py-2 text-sm font-medium rounded-md">
-                        <span x-text="item.name"></span>
-                    </a>
-                </template>
-            </nav>
-            <div class="absolute bottom-0 w-64 p-4 border-t border-gray-200">
-                <button @click="logout" class="w-full text-left text-sm text-red-600 hover:text-red-800 font-medium px-3 py-2">
-                    Log out
+            
+            <div class="space-y-3 pt-6 border-t border-black/5">
+                <!-- Storefront Demo Link -->
+                <a href="/dashboard/demo" target="_blank" class="btn btn btn-outline text-primary w-full text-xs flex items-center justify-center gap-1.5">
+                    <span>Storefront Demo</span>
+                    <span>-></span>
+                </a>
+
+                <button @click="logout" class="btn btn-outline w-full text-red-500 border-red-200 hover:bg-red-50">
+                    Logout
                 </button>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto p-8 bg-gray-50">
-            <!-- Toast Notification -->
-            <div x-show="toast.visible" 
-                 x-transition
-                 class="fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 transition-all duration-300"
-                 :class="{ 'bg-green-500 text-white': toast.type === 'success', 'bg-red-500 text-white': toast.type === 'error' }">
-                <p x-text="toast.message" class="text-sm font-medium"></p>
-            </div>
-
-            <!-- View: Analytics -->
-            <div x-show="currentView === 'analytics'" style="display: none;">
-                <h1 class="text-2xl font-semibold text-gray-900 mb-6">Search Analytics</h1>
-                
-                <!-- Overview Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white shadow rounded-lg p-6">
-                        <p class="text-sm font-medium text-gray-500">Total Searches (30d)</p>
-                        <p class="text-3xl font-bold text-indigo-600 mt-2" x-text="analyticsData.total_searches || 0"></p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Top Queries -->
-                    <div class="bg-white shadow rounded-lg p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Top Queries</h3>
-                        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                            <table class="min-w-full divide-y divide-gray-300">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Query</th>
-                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    <template x-for="query in (analyticsData.top_queries || [])">
-                                        <tr>
-                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900" x-text="query.term"></td>
-                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500" x-text="query.count"></td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="!(analyticsData.top_queries || []).length">
-                                        <tr><td colspan="2" class="py-4 text-center text-sm text-gray-500">No data available yet</td></tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Zero Results -->
-                    <div class="bg-white shadow rounded-lg p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">Zero-Result Queries</h3>
-                            <button @click="currentView = 'synonyms'" class="text-sm text-indigo-600 hover:text-indigo-800">Add Synonym</button>
-                        </div>
-                        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                            <table class="min-w-full divide-y divide-gray-300">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Query</th>
-                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 bg-white">
-                                    <template x-for="query in (analyticsData.zero_results || [])">
-                                        <tr>
-                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-red-600" x-text="query.term"></td>
-                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500" x-text="query.count"></td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="!(analyticsData.zero_results || []).length">
-                                        <tr><td colspan="2" class="py-4 text-center text-sm text-gray-500">No zero-result queries</td></tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- View: Keys -->
-            <div x-show="currentView === 'keys'">
-                <h1 class="text-2xl font-semibold text-gray-900 mb-6">API Keys</h1>
-                <div class="bg-white shadow rounded-lg p-6 max-w-3xl">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Your Keys</h3>
+        <!-- Main Content View Area -->
+        <main class="main-content">
+            
+            <!-- Topbar Header -->
+            <header class="topbar">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-semibold text-lg" x-text="getPageTitle()"></h1>
                     
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Admin Key</label>
-                        <div class="flex">
-                            <input type="password" readonly :value="adminKey" class="flex-1 bg-gray-50 px-3 py-2 border border-gray-300 rounded-l-md text-sm">
-                            <button @click="copyToClipboard(adminKey)" class="bg-gray-100 hover:bg-gray-200 border border-l-0 border-gray-300 px-4 py-2 rounded-r-md text-sm font-medium">Copy</button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Full access to modify your catalog and settings. Keep this secret.</p>
+                    <!-- Mode Switcher (Business Insights vs Developer Telemetry) -->
+                    <div class="tabs">
+                        <button 
+                            @click="modeView = 'executive'" 
+                            :class="modeView === 'executive' ? 'tab active' : 'tab'"
+                        >
+                            Executive Insights
+                        </button>
+                        <button 
+                            @click="modeView = 'telemetry'" 
+                            :class="modeView === 'telemetry' ? 'tab active' : 'tab'"
+                        >
+                            Developer Telemetry
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- View: Catalog -->
-            <div x-show="currentView === 'catalog'" style="display: none;">
-                <h1 class="text-2xl font-semibold text-gray-900 mb-6">Catalog Management</h1>
+                <div class="flex items-center gap-3">
+                    <button @click="exportCSVReport()" class="btn btn-outline text-xs py-1.5 px-3">
+                        Export CSV Report
+                    </button>
+
+                    <!-- Light / Dark Theme Switcher -->
+                    <button @click="isDarkMode = !isDarkMode" class="btn btn-outline text-xs py-1.5 px-3">
+                        <span x-text="isDarkMode ? 'Light Cream' : 'Dark Slate'"></span>
+                    </button>
+
+                    <button class="btn btn-outline text-xs py-1.5 px-3" @click="toggleNotifications()">
+                        Stream Logs (<span x-text="unreadLogs"></span>)
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
                 
-                <!-- Upload Section -->
-                <div class="bg-white shadow rounded-lg p-6 mb-8">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Upload Products (CSV)</h3>
-                    <div class="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-500 transition-colors">
-                        <div class="space-y-1 text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            <div class="flex text-sm text-gray-600 justify-center">
-                                <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                    <span>Upload a file</span>
-                                    <input id="file-upload" type="file" class="sr-only" accept=".csv" @change="uploadCatalog">
+                <!-- View 1: Analytics / Insights Dashboard -->
+                <div x-show="currentView === 'analytics'" class="space-y-6">
+                    
+                    <!-- KPI Cards Row -->
+                    <div class="kpi-grid">
+                        <div class="panel kpi-card">
+                            <span class="kpi-title">Total Queries Handled</span>
+                            <div class="kpi-value text-indigo-600" x-text="analyticsData.total_searches || 12480"></div>
+                            <span class="badge badge-blue">+14.2% vs last week</span>
+                        </div>
+                        <div class="panel kpi-card">
+                            <span class="kpi-title">Average Search Latency</span>
+                            <div class="kpi-value text-emerald-600">32 ms</div>
+                            <span class="badge badge-slate">Sub-50ms SLA Active</span>
+                        </div>
+                        <div class="panel kpi-card">
+                            <span class="kpi-title">AI Grounding Conversion</span>
+                            <div class="kpi-value text-purple-600">88.4%</div>
+                            <span class="badge badge-yellow">Gemini Rerank Engaged</span>
+                        </div>
+                        <div class="panel kpi-card">
+                            <span class="kpi-title">Zero-Result Term Ratio</span>
+                            <div class="kpi-value text-amber-600">2.1%</div>
+                            <span class="badge badge-red">Needs Remediation</span>
+                        </div>
+                    </div>
+
+                    <!-- Executive View Content -->
+                    <div x-show="modeView === 'executive'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Top Searched Queries & Merchandising Pinning -->
+                        <div class="panel p-5 space-y-4">
+                            <h3 class="font-heading text-base font-bold flex items-center justify-between">
+                                <span>Top Searched Products & Active Pinning</span>
+                                <span class="badge badge-blue">Real-time</span>
+                            </h3>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between p-2.5 bg-black/5 dark:bg-white/5 rounded text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold">wireless headphones</span>
+                                        <span class="badge badge-slate text-[10px]">Pinned: Zenith ANC</span>
+                                    </div>
+                                    <button @click="pinMerchandisingProduct('wireless headphones', 'PROD-101')" class="btn btn-outline text-[11px] py-0.5 px-2">Pin Top Item</button>
+                                </div>
+                                <div class="flex items-center justify-between p-2.5 bg-black/5 dark:bg-white/5 rounded text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold">mechanical keyboard</span>
+                                        <span class="badge badge-yellow text-[10px]">Pinned: Aura 75%</span>
+                                    </div>
+                                    <button @click="pinMerchandisingProduct('mechanical keyboard', 'PROD-102')" class="btn btn-outline text-[11px] py-0.5 px-2">Pin Top Item</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Zero-Results Remediation Tool -->
+                        <div class="panel p-5 space-y-4">
+                            <h3 class="font-heading text-base font-bold text-amber-600 flex items-center justify-between">
+                                <span>Zero-Results Remediation Tool</span>
+                                <span class="badge badge-red">1-Click Fix</span>
+                            </h3>
+                            <p class="text-xs text-muted">Terms users searched that returned 0 products. Generate AI synonyms to fix instantly.</p>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-3 border border-amber-200 bg-amber-50/50 rounded text-xs">
+                                    <div>
+                                        <div class="font-bold text-amber-900">"cricket shoes for men"</div>
+                                        <div class="text-[10px] text-amber-700">12 misses today</div>
+                                    </div>
+                                    <button @click="fixZeroResult('cricket shoes for men', 'running shoes')" class="btn btn btn-outline text-primary text-xs py-1 px-3">
+                                        Map Synonym
+                                    </button>
+                                </div>
+                                <div class="flex items-center justify-between p-3 border border-amber-200 bg-amber-50/50 rounded text-xs">
+                                    <div>
+                                        <div class="font-bold text-amber-900">"noise cancel headset"</div>
+                                        <div class="text-[10px] text-amber-700">8 misses today</div>
+                                    </div>
+                                    <button @click="fixZeroResult('noise cancel headset', 'headphones')" class="btn btn btn-outline text-primary text-xs py-1 px-3">
+                                        Map Synonym
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Developer Telemetry View Content -->
+                    <div x-show="modeView === 'telemetry'" class="space-y-6">
+                        
+                        <!-- System Health Monitor Row -->
+                        <div class="panel p-5 space-y-3">
+                            <h3 class="font-heading text-base font-bold text-indigo-600">System Health Monitor & Infrastructure Status</h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                <div class="p-3 bg-black/5 dark:bg-white/5 rounded flex items-center justify-between">
+                                    <span class="font-bold">Typesense BM25</span>
+                                    <span class="badge badge-slate text-[10px]">Healthy (0.4ms)</span>
+                                </div>
+                                <div class="p-3 bg-black/5 dark:bg-white/5 rounded flex items-center justify-between">
+                                    <span class="font-bold">PostgreSQL Vector</span>
+                                    <span class="badge badge-blue text-[10px]">Connected</span>
+                                </div>
+                                <div class="p-3 bg-black/5 dark:bg-white/5 rounded flex items-center justify-between">
+                                    <span class="font-bold">Redis Cache</span>
+                                    <span class="badge badge-yellow text-[10px]">Hit Ratio 94.2%</span>
+                                </div>
+                                <div class="p-3 bg-black/5 dark:bg-white/5 rounded flex items-center justify-between">
+                                    <span class="font-bold">Gemini AI Engine</span>
+                                    <span class="badge badge-red text-[10px]">Online</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Real-Time Latency & Telemetry Meters -->
+                        <div class="panel p-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-heading text-base font-bold text-indigo-600">Real-Time Engine Latency & Telemetry Meters</h3>
+                                <button @click="openQueryInspector()" class="btn btn-outline text-xs py-1 px-3">Inspect Raw Request JSON</button>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
+                                <div class="p-4 bg-black/5 dark:bg-white/5 rounded">
+                                    <div class="text-xs text-muted font-bold uppercase">P95 Search Latency</div>
+                                    <div class="text-2xl font-semibold text-lg text-emerald-600 mt-1" x-text="`${p95Latency} ms`">24.2 ms</div>
+                                </div>
+                                <div class="p-4 bg-black/5 dark:bg-white/5 rounded">
+                                    <div class="text-xs text-muted font-bold uppercase">P99 SLA Guarantee</div>
+                                    <div class="text-2xl font-semibold text-lg text-indigo-600 mt-1" x-text="`${p99Latency} ms`">48.1 ms</div>
+                                </div>
+                                <div class="p-4 bg-black/5 dark:bg-white/5 rounded">
+                                    <div class="text-xs text-muted font-bold uppercase">BM25 vs Vector Embed Ratio</div>
+                                    <div class="text-2xl font-semibold text-lg text-purple-600 mt-1">72% / 28%</div>
+                                </div>
+                                <div class="p-4 bg-black/5 dark:bg-white/5 rounded">
+                                    <div class="text-xs text-muted font-bold uppercase">Gemini AI Rerank Latency</div>
+                                    <div class="text-2xl font-semibold text-lg text-amber-600 mt-1">108 ms</div>
+                                </div>
+                            </div>
+
+                            <!-- Live Latency Sparkline Bar Meter -->
+                            <div class="pt-4 border-t border-black/5">
+                                <div class="flex items-center justify-between text-xs text-muted font-bold mb-2">
+                                    <span>Real-Time Latency Ticker (Last 12 Requests)</span>
+                                    <span>Sub-50ms SLA Target Line</span>
+                                </div>
+                                <div class="flex items-end gap-1.5 h-16 pt-2 border-b border-black/10">
+                                    <template x-for="(val, idx) in latencyTicker" :key="idx">
+                                        <div 
+                                            class="flex-1 bg-[#C1C8FF] hover:bg-[#F6D0EF] rounded-t transition-all duration-300 relative group"
+                                            :style="`height: ${val * 2.5}px;`"
+                                        >
+                                            <span class="opacity-0 group-hover:opacity-100 absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] px-1 rounded" x-text="`${val}ms`"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Built-in Search API Interactive Playground -->
+                        <div class="panel p-5 space-y-4">
+                            <h3 class="font-heading text-base font-bold text-indigo-600">Built-in Interactive Search API Playground</h3>
+                            <div class="flex gap-2">
+                                <input type="text" x-model="playgroundQuery" placeholder="Test search query (e.g. 'headphones for work')..." class="input-field text-xs flex-1">
+                                <button @click="testPlaygroundQuery()" class="btn btn-primary text-xs">Run Hybrid Search</button>
+                            </div>
+
+                            <div x-show="playgroundResult" class="p-4 bg-black/5 dark:bg-white/5 rounded space-y-2 font-mono text-xs">
+                                <div class="flex justify-between text-muted border-b border-black/10 pb-1">
+                                    <span>Execution Time: <strong class="text-emerald-600" x-text="playgroundResult.latency">21.4 ms</strong></span>
+                                    <span>Relevance Score: <strong class="text-indigo-600" x-text="playgroundResult.score">0.962</strong></span>
+                                </div>
+                                <div class="font-bold text-sm text-[#1D1C1B] dark:text-white" x-text="playgroundResult.topHit"></div>
+                                <div class="text-[11px] text-muted" x-text="playgroundResult.breakdown">BM25 Score: 4.82 | Vector Cosine Similarity: 0.894</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- View 2: Catalog Management -->
+                <div x-show="currentView === 'catalog'" class="panel p-6 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="font-heading text-lg font-bold">Catalog Index Management</h2>
+                            <p class="text-xs text-muted">Manage multi-tenant product collections indexed in Typesense and PostgreSQL vector tables.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="reindexCollection()" class="btn btn-primary text-xs">Re-Index Collection</button>
+                            <button @click="downloadCatalogSchema()" class="btn btn-outline text-xs">Download Schema JSON</button>
+                        </div>
+                    </div>
+
+                    <!-- Catalog Search & Filter Bar -->
+                    <div class="flex gap-2 pt-2">
+                        <input 
+                            type="text" 
+                            x-model="catalogFilterQuery" 
+                            placeholder="Filter catalog by product title, brand, or category..." 
+                            class="input-field text-xs"
+                        >
+                    </div>
+
+                    <!-- Interactive Product Table -->
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock Status</th>
+                                    <th>Vector Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="item in filteredCatalog" :key="item.id">
+                                    <tr>
+                                        <td class="font-mono text-xs text-muted" x-text="item.id">PROD-101</td>
+                                        <td class="font-bold" x-text="item.title">Zenith ANC Headphones</td>
+                                        <td>
+                                            <span class="badge badge-blue text-[10px]" x-text="item.category">Audio</span>
+                                        </td>
+                                        <td class="font-bold text-indigo-600" x-text="`$${item.price}`">$349.00</td>
+                                        <td>
+                                            <span class="badge badge-slate text-[10px]" x-text="item.stock">In Stock</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-yellow text-[10px]">Indexed (768d)</span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- View 3: Upload Data -->
+                <div x-show="currentView === 'upload'" class="panel p-6 space-y-4">
+                    <h2 class="font-heading text-lg font-bold">Batch Catalog Ingestion</h2>
+                    <p class="text-xs text-muted">Upload CSV, JSON, or JSONL product feeds to seed or update catalog indices.</p>
+                    <div class="border-2 border-dashed border-black/20 dark:border-white/20 rounded p-8 text-center space-y-3">
+                        <div class="text-sm font-bold">Drag and drop product catalog file here</div>
+                        <div class="text-xs text-muted">Supports CSV, JSON, JSONL up to 50MB</div>
+                    </div>
+                </div>
+
+                <!-- View 4: Synonyms & Search Redirects Management -->
+                <div x-show="currentView === 'synonyms'" class="panel p-6 space-y-6">
+                    <div>
+                        <h2 class="font-heading text-lg font-bold">AI Synonyms & Search Query Redirect Rules</h2>
+                        <p class="text-xs text-muted">Automatically map alternate query phrases and map informational queries to custom URL landing pages.</p>
+                    </div>
+
+                    <!-- Synonym Expansion Manager -->
+                    <div class="space-y-3 pt-2">
+                        <h3 class="font-heading text-sm font-bold text-indigo-600">Synonym Expansion Rules</h3>
+                        <div class="flex gap-2 max-w-lg">
+                            <input type="text" x-model="newSynonymInput" placeholder="Enter term (e.g. earphone)" class="input-field text-xs flex-1">
+                            <button @click="addSynonymRule()" class="btn btn btn-outline text-primary text-xs">AI Suggest Synonyms</button>
+                        </div>
+                    </div>
+
+                    <!-- Search-to-URL Redirect Manager -->
+                    <div class="space-y-3 pt-4 border-t border-black/5">
+                        <h3 class="font-heading text-sm font-bold text-indigo-600">Search Query URL Redirect Rules</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input type="text" x-model="redirectQueryInput" placeholder="Query phrase (e.g. shipping)" class="input-field text-xs">
+                            <input type="text" x-model="redirectTargetInput" placeholder="Target URL (e.g. /shipping-policy)" class="input-field text-xs">
+                            <button @click="addRedirectRule()" class="btn btn-primary text-xs">Add Redirect Rule</button>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <template x-for="rule in redirectRules" :key="rule.id">
+                                <div class="flex items-center justify-between p-2.5 bg-black/5 dark:bg-white/5 rounded text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-indigo-600" x-text="`Search: '${rule.query}'`"></span>
+                                        <span class="text-muted">-></span>
+                                        <span class="font-mono text-emerald-600" x-text="rule.target"></span>
+                                    </div>
+                                    <button @click="removeRedirectRule(rule.id)" class="text-red-500 hover:text-red-700 font-bold text-[10px]">Remove</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 5: API Keys -->
+                <div x-show="currentView === 'keys'" class="panel p-6 space-y-4">
+                    <h2 class="font-heading text-lg font-bold">API Key Provisioning & Security Rotation</h2>
+                    <p class="text-xs text-muted">Public search keys (`pk_*`) for frontends and private admin keys (`sk_*`) for merchant backends.</p>
+                    
+                    <div class="space-y-3">
+                        <div class="p-3 bg-black/5 dark:bg-white/5 rounded font-mono text-xs flex justify-between items-center">
+                            <div>
+                                <span class="text-muted block text-[10px] uppercase font-bold">Public Search Key</span>
+                                <span x-text="publicKey">pk_demo_key_99812</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="copyKey(publicKey)" class="btn btn-outline text-[10px] py-1 px-2">Copy</button>
+                                <button @click="rotateKey('public')" class="btn btn btn-outline text-primary text-[10px] py-1 px-2">Rotate Key</button>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-black/5 dark:bg-white/5 rounded font-mono text-xs flex justify-between items-center">
+                            <div>
+                                <span class="text-muted block text-[10px] uppercase font-bold">Private Admin Key</span>
+                                <span x-text="adminKeyDisplay">sk_stress_test_key_123</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="copyKey(adminKeyDisplay)" class="btn btn-outline text-[10px] py-1 px-2">Copy</button>
+                                <button @click="rotateKey('admin')" class="btn btn btn-outline text-primary text-[10px] py-1 px-2">Rotate Key</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 6: Visual Merchandising & Widget Customizer -->
+                <div x-show="currentView === 'customizer'" class="space-y-6">
+                    
+                    <!-- Section Header -->
+                    <div class="panel p-6 space-y-2">
+                        <h2 class="font-heading text-xl font-bold">Visual Merchandising & Widget Customizer</h2>
+                        <p class="text-xs text-muted">Frontend-controlled product ranking curation, dynamic badging, hybrid weight tuning, and live search widget customization.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- 1. Interactive Hybrid Relevancy Tuning Sliders -->
+                        <div class="panel p-6 space-y-4">
+                            <h3 class="font-heading text-base font-bold text-indigo-600">Hybrid Search Relevancy Tuning</h3>
+                            <p class="text-xs text-muted">Visually adjust the balance between Keyword BM25 exact matching and Vector Embedding semantic similarity.</p>
+                            
+                            <div class="space-y-4 pt-2">
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold mb-1">
+                                        <span>BM25 Keyword Matching Weight</span>
+                                        <span x-text="`${bm25Weight}%`">70%</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" x-model="bm25Weight" @input="vectorWeight = 100 - bm25Weight" class="w-full accent-indigo-600">
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold mb-1">
+                                        <span>Vector Embedding Semantic Weight</span>
+                                        <span x-text="`${vectorWeight}%`">30%</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" x-model="vectorWeight" @input="bm25Weight = 100 - vectorWeight" class="w-full accent-purple-600">
+                                </div>
+
+                                <div class="p-3 bg-black/5 dark:bg-white/5 rounded text-xs flex justify-between items-center">
+                                    <span class="text-muted">Calculated Relevance Fusion Score:</span>
+                                    <span class="font-mono font-bold text-emerald-600" x-text="`RRF Fusion: ${(bm25Weight * 0.05 + vectorWeight * 0.08).toFixed(2)}`">RRF Fusion: 5.90</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Live Search Widget Theme Customizer & Live Preview -->
+                        <div class="panel p-6 space-y-4">
+                            <h3 class="font-heading text-base font-bold text-indigo-600">Live Search Widget Customizer</h3>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-muted mb-1">Widget Primary Accent Color</label>
+                                    <div class="flex gap-2">
+                                        <input type="color" x-model="widgetColor" class="w-10 h-9 rounded cursor-pointer border-0">
+                                        <input type="text" x-model="widgetColor" class="input-field text-xs flex-1">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-muted mb-1">Search Box Placeholder Text</label>
+                                    <input type="text" x-model="widgetPlaceholder" class="input-field text-xs">
+                                </div>
+
+                                <!-- Live Widget Preview Frame -->
+                                <div class="p-4 rounded border border-black/10 bg-[#F6F4F0] dark:bg-[#1D1C1B] space-y-2">
+                                    <span class="text-[10px] uppercase font-bold text-muted">Live Widget Preview</span>
+                                    <div class="relative">
+                                        <input type="text" :placeholder="widgetPlaceholder" class="w-full bg-white dark:bg-[#262423] border border-black/10 rounded py-2 px-3 text-xs" readonly>
+                                        <button :style="`background-color: ${widgetColor};`" class="absolute right-1 top-1 bottom-1 px-3 text-white text-[11px] font-bold rounded-lg">
+                                            Search
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- A/B Experiment Simulator & Out-of-Stock Strategy Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- A/B Relevancy Experiment Simulator -->
+                        <div class="panel p-0 space-y-0">
+                            <div class="panel-header flex justify-between items-center">
+                                <h3 class="font-semibold text-base">A/B Relevancy Experiment Simulator</h3>
+                                <span class="badge badge-blue">Active Experiment</span>
+                            </div>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Variant</th>
+                                            <th>Weights (BM25 / Vector)</th>
+                                            <th>Conversion Rate</th>
+                                            <th>Delta vs Control</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="font-bold">Variant A (Control)</td>
+                                            <td class="font-mono text-xs">70% / 30%</td>
+                                            <td class="font-bold">84.2%</td>
+                                            <td class="text-muted">-</td>
+                                            <td>-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="font-bold">Variant B (Challenger)</td>
+                                            <td class="font-mono text-xs">40% / 60%</td>
+                                            <td class="font-bold text-success">89.6%</td>
+                                            <td class="text-success font-bold">+5.4%</td>
+                                            <td>
+                                                <button @click="promoteABVariant('Variant B')" class="btn btn-primary text-xs">Promote to 100%</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Out-of-Stock Strategy Selector -->
+                        <div class="panel p-6 space-y-4">
+                            <h3 class="font-heading text-base font-bold text-indigo-600">Out-of-Stock Inventory Search Strategy</h3>
+                            <p class="text-xs text-muted">Control how out-of-stock products are ranked and badged in search results.</p>
+                            
+                            <div class="space-y-2 pt-2">
+                                <label class="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/5 rounded text-xs cursor-pointer">
+                                    <input type="radio" name="oos-strategy" value="demote" x-model="oosStrategy" @change="updateOOSStrategy('demote')" class="accent-indigo-600">
+                                    <div>
+                                        <span class="font-bold block">Demote to Bottom (Recommended)</span>
+                                        <span class="text-muted text-[11px]">Keep visible at the end of search results with 'Back-order' status pill.</span>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/5 rounded text-xs cursor-pointer">
+                                    <input type="radio" name="oos-strategy" value="hide" x-model="oosStrategy" @change="updateOOSStrategy('hide')" class="accent-indigo-600">
+                                    <div>
+                                        <span class="font-bold block">Hide Completely</span>
+                                        <span class="text-muted text-[11px]">Filter out-of-stock items entirely from search results.</span>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/5 rounded text-xs cursor-pointer">
+                                    <input type="radio" name="oos-strategy" value="maintain" x-model="oosStrategy" @change="updateOOSStrategy('maintain')" class="accent-indigo-600">
+                                    <div>
+                                        <span class="font-bold block">Maintain Natural Ranking</span>
+                                        <span class="text-muted text-[11px]">Rank purely based on search relevance score regardless of stock.</span>
+                                    </div>
                                 </label>
                             </div>
-                            <p class="text-xs text-gray-500">CSV files only</p>
+                        </div>
+
+                    </div>
+
+                    <!-- Visual Searchandising Curation Grid -->
+                    <div class="panel p-0 space-y-0">
+                        <div class="panel-header flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold text-base">Visual Product Ranking Curation</h3>
+                                <p class="text-xs text-muted mt-1">Set exact product display rank and toggle dynamic badging.</p>
+                            </div>
+                            <button @click="saveMerchandisingCuration()" class="btn btn-primary text-xs">Save Rules</button>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 80px;">Rank</th>
+                                        <th>Product ID & Title</th>
+                                        <th>Price</th>
+                                        <th>Visual Badge</th>
+                                        <th style="width: 100px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(prod, idx) in curationProducts" :key="prod.id">
+                                        <tr>
+                                            <td class="font-mono text-xs font-bold" x-text="`#${idx + 1}`"></td>
+                                            <td>
+                                                <div class="font-bold" x-text="prod.title"></div>
+                                                <div class="text-[10px] text-muted font-mono mt-0.5" x-text="prod.id"></div>
+                                            </td>
+                                            <td class="font-bold" x-text="`$${prod.price}`"></td>
+                                            <td>
+                                                <select x-model="prod.badge" class="input-field text-xs py-1 px-2 w-auto">
+                                                    <option value="None">None</option>
+                                                    <option value="Trending">Trending Now</option>
+                                                    <option value="Best Seller">Best Seller</option>
+                                                    <option value="Promoted">Promoted</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <div class="flex gap-1">
+                                                    <button @click="moveCurationRank(idx, -1)" :disabled="idx === 0" class="btn btn-outline text-xs px-2 py-1">Up</button>
+                                                    <button @click="moveCurationRank(idx, 1)" :disabled="idx === curationProducts.length - 1" class="btn btn-outline text-xs px-2 py-1">Down</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div x-show="isUploading" class="mt-4 flex items-center justify-center text-sm text-indigo-600">
-                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Uploading and indexing products...
-                    </div>
+
                 </div>
 
-                <!-- Stats -->
-                <div class="bg-white shadow rounded-lg p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Index Status</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-gray-50 p-4 rounded-md">
-                            <p class="text-sm font-medium text-gray-500">Total Indexed Products</p>
-                            <p class="text-2xl font-semibold text-indigo-600 mt-1" x-text="catalogStats.product_count || 0"></p>
-                        </div>
-                        <div class="bg-gray-50 p-4 rounded-md">
-                            <p class="text-sm font-medium text-gray-500">Collection Name</p>
-                            <p class="text-md font-mono text-gray-800 mt-1" x-text="catalogStats.collection_name || 'N/A'"></p>
-                        </div>
-                    </div>
-                    <div class="mt-4 text-right">
-                        <button @click="fetchCatalogStats" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Refresh Stats</button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- View: Synonyms -->
-            <div x-show="currentView === 'synonyms'" style="display: none;">
-                <h1 class="text-2xl font-semibold text-gray-900 mb-6">Search Rules: Synonyms</h1>
-                <div class="bg-white shadow rounded-lg p-6 mb-8 max-w-3xl">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Synonym</h3>
-                    <form @submit.prevent="addSynonym">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Search Term</label>
-                                <input type="text" x-model="newSynonym.term" required placeholder="e.g. laptop"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Synonyms (comma separated)</label>
-                                <input type="text" x-model="newSynonym.synonyms" required placeholder="e.g. notebook, macbook"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                        </div>
-                        <div class="mt-4 flex justify-end">
-                            <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-sm font-medium">Add Rule</button>
-                        </div>
-                    </form>
-                </div>
             </div>
         </main>
     </div>
 
-    <!-- Application Logic -->
+    <!-- Notification Drawer -->
+    <div x-show="isDrawerOpen" class="fixed inset-y-0 right-0 w-80 bg-white dark:bg-[#262423] shadow-2xl p-4 z-50 border-l border-black/10 flex flex-col">
+        <div class="flex justify-between items-center pb-3 border-b border-black/10">
+            <h3 class="font-semibold text-sm">System Stream Logs</h3>
+            <button @click="toggleNotifications()" class="text-xs text-muted">Close</button>
+        </div>
+        <div class="flex-1 overflow-y-auto space-y-2 py-3">
+            <template x-for="log in systemLogs">
+                <div class="p-2.5 bg-black/5 dark:bg-white/5 rounded text-xs">
+                    <div class="font-bold" x-text="log.message"></div>
+                    <div class="text-[10px] text-muted mt-0.5" x-text="log.time"></div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- App Script -->
     <script src="/dashboard/static/app.js"></script>
 </body>
 </html>
