@@ -960,4 +960,3 @@ P3.6 Governed MCP writes
 ```
 
 No P2 feature should weaken P0 tenant isolation. No P3 enterprise feature should create a separate application architecture unless deployment isolation specifically requires it.
-

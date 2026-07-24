@@ -162,4 +162,3 @@ async def update_user_consent(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update user consent: {str(e)}"
         )
-

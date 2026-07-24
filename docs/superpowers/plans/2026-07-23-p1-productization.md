@@ -124,4 +124,3 @@
 - [ ] Add worker entrypoint/Compose role.
 - [ ] Add metrics, alerts, cache policy, restore docs.
 - [ ] Run Compose config, migration smoke, worker integration test; commit.
-
