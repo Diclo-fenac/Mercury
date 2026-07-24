@@ -4,10 +4,17 @@ import json
 import os
 import time
 
+import pytest
 import requests
 import websockets
 
-BASE_URL = "http://localhost:8000/api/v1"
+if not os.getenv("MERCURY_E2E_URL"):
+    pytest.skip(
+        "E2E suite requires deployed Mercury stack; set MERCURY_E2E_URL to enable it.",
+        allow_module_level=True,
+    )
+
+BASE_URL = os.environ["MERCURY_E2E_URL"].rstrip("/") + "/api/v1"
 
 print("Starting E2E Integration Test...")
 

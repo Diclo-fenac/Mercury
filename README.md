@@ -6,7 +6,7 @@ Designed to be truly plug-and-play for small e-commerce businesses, it features 
 
 ---
 
-## 🚀 Quick Start (Install Steps)
+## Quick Start (Install Steps)
 
 Mercury can be deployed with a single command. Out of the box, it automatically provisions databases, runs migrations, and seeds demo data for you to test immediately.
 
@@ -33,7 +33,7 @@ docker compose down
 
 ---
 
-## 💻 Hardware Requirements
+## Hardware Requirements
 
 Mercury is highly optimized and heavily modular.
 
@@ -49,7 +49,7 @@ Mercury is highly optimized and heavily modular.
 
 ---
 
-## ⚙️ Supported Modes
+## Supported Modes
 
 Mercury uses the `MERCURY_MODE` environment variable in your `.env` to gate heavy ML resources dynamically:
 
@@ -61,7 +61,7 @@ Mercury uses the `MERCURY_MODE` environment variable in your `.env` to gate heav
 
 ---
 
-## 🛍️ Demo Dataset & Onboarding
+## Demo Dataset & Onboarding
 
 When you run `docker compose up`, Mercury automatically seeds a demo electronics catalog containing laptops, smartphones, and accessories.
 
@@ -75,7 +75,7 @@ This returns a public `search_key` and a private `admin_key` for your store.
 
 ---
 
-## 🔧 Troubleshooting Common Failures
+## Troubleshooting Common Failures
 
 | Issue | Cause | Fix |
 |-------|-------|-----|

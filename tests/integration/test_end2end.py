@@ -148,6 +148,7 @@ class TestEnd2EndIntegration:
         # Test with invalid image data
         result = await image_orchestrator.process_image_upload(
             image_data="invalid_base64_data",
+            organization_id="00000000-0000-0000-0000-000000000001",
             user_id=user_id
         )
         

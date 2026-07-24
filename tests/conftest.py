@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+os.environ.setdefault("MERCURY_TEST_MODE", "true")
+
 # Add app to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -26,8 +28,14 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
     from main import app
     
     # Override authentication and tenant dependencies for testing
-    app.dependency_overrides[require_auth] = lambda: {"user_id": "test_user", "authenticated": True, "roles": ["user", "admin"]}
-    app.dependency_overrides[get_current_user] = lambda: {"user_id": "test_user", "authenticated": True, "roles": ["user", "admin"]}
+    test_identity = {
+        "user_id": "test_user",
+        "organization_id": "00000000-0000-0000-0000-000000000000",
+        "authenticated": True,
+        "roles": ["user", "admin"],
+    }
+    app.dependency_overrides[require_auth] = lambda: test_identity
+    app.dependency_overrides[get_current_user] = lambda: test_identity
     
     dummy_tenant = TenantContext(
         organization_id="00000000-0000-0000-0000-000000000000",
@@ -360,11 +368,14 @@ def pytest_configure(config):
     )
 
 
-# Async test support
-@pytest.fixture
-def event_loop():
-    """Create event loop for async tests"""
-    import asyncio
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+def pytest_collection_modifyitems(config, items):
+    """External-service suites run only when an operator explicitly enables them."""
+    if os.getenv("MERCURY_RUN_INTEGRATION") == "1":
+        return
+    skip = pytest.mark.skip(reason="Set MERCURY_RUN_INTEGRATION=1 with Docker services to run integration tests.")
+    for item in items:
+        if "/tests/integration/" in str(item.fspath):
+            item.add_marker(skip)
+
+
+# Async test support provided by pytest-asyncio natively
