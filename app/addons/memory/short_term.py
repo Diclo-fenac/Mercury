@@ -10,16 +10,16 @@ from app.infrastructure.cache.redis import RedisClient
 
 class ShortTermMemory:
     """Short-term memory for current session"""
-    
+
     def __init__(self, cache: RedisClient):
         self.cache = cache
-    
+
     async def get_context(self, organization_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user context from cache"""
         if not self.cache:
             return None
         return await self.cache.get_json(build_user_context_cache_key(organization_id, user_id))
-    
+
     async def save_context(
         self, organization_id: str, user_id: str, context: Dict[str, Any], ttl: int = 1800
     ) -> bool:
@@ -29,7 +29,7 @@ class ShortTermMemory:
         return await self.cache.set_json(
             build_user_context_cache_key(organization_id, user_id), context, ttl
         )
-    
+
     async def get_conversation(
         self, organization_id: str, user_id: str, conversation_id: str
     ) -> Optional[Dict[str, Any]]:
@@ -43,7 +43,7 @@ class ShortTermMemory:
                 tenant_id=organization_id,
             )
         )
-    
+
     async def save_conversation(
         self, organization_id: str, user_id: str, conversation_id: str, messages: List[Dict[str, Any]]
     ) -> bool:

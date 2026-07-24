@@ -27,42 +27,42 @@ async def generate_report(org_id: str = None):
     settings = get_settings()
     engine = create_async_engine(settings.DATABASE_URL)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+
     print("Generating SOC2 / ISO 27001 Audit Report...")
     if org_id:
         print(f"Filtering for Organization: {org_id}")
-    
+
     report_filename = f"audit_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    
+
     async with async_session() as session:
         query = select(AuditLog)
         if org_id:
             query = query.where(AuditLog.organization_id == org_id)
-        
+
         query = query.order_by(AuditLog.created_at.desc())
-        
+
         try:
             result = await session.execute(query)
             logs = result.scalars().all()
         except Exception as e:
             print(f"Error querying database: {e}")
             return
-    
+
     with open(report_filename, mode='w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         # SOC2 Standard Headers
         writer.writerow([
-            "Timestamp", 
-            "OrganizationID", 
-            "ActorID", 
-            "ActorType", 
-            "Action", 
-            "ResourceType", 
-            "ResourceID", 
-            "IPAddress", 
+            "Timestamp",
+            "OrganizationID",
+            "ActorID",
+            "ActorType",
+            "Action",
+            "ResourceType",
+            "ResourceID",
+            "IPAddress",
             "PayloadSummary"
         ])
-        
+
         for log in logs:
             writer.writerow([
                 log.created_at.isoformat() if log.created_at else "",
@@ -75,7 +75,7 @@ async def generate_report(org_id: str = None):
                 log.ip_address,
                 str(log.payload) if log.payload else "{}"
             ])
-            
+
     print(f"Report generated successfully: {report_filename}")
     print(f"Total events recorded: {len(logs)}")
 

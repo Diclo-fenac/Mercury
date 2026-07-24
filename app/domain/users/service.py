@@ -11,7 +11,7 @@ from app.infrastructure.db.postgres import PostgresClient
 
 class UserService:
     """User business logic"""
-    
+
     def __init__(self, db: PostgresClient, cache: RedisClient):
         self.db = db
         self.cache = cache
@@ -27,7 +27,7 @@ class UserService:
         if not tenant:
             raise ValueError("Tenant context required for customer data")
         return tenant.organization_id, organization_id
-    
+
     async def get_user_profile(
         self, organization_id: str, user_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
@@ -38,13 +38,13 @@ class UserService:
             cached = await self.cache.get_json(cache_key)
             if cached:
                 return cached
-        
+
         profile = await self.db.get_user_profile(organization_id, user_id)
         if profile and self.cache:
             await self.cache.set_json(cache_key, profile, ttl=3600)
-        
+
         return profile
-    
+
     async def update_preferences(
         self,
         organization_id: str,
@@ -60,7 +60,7 @@ class UserService:
             organization_id, user_id = self._scope(organization_id, None)
         else:
             organization_id, user_id = self._scope(organization_id, user_id)
-        
+
         success = await self.db.update_user(organization_id, user_id, {
             'preferences': preferences,
             'updated_at': IDGenerator.timestamp()
@@ -68,7 +68,7 @@ class UserService:
         if success and self.cache:
             await self.cache.delete(build_user_profile_cache_key(organization_id, user_id))
         return success
-    
+
     async def log_activity(
         self,
         organization_id: str,
@@ -86,14 +86,14 @@ class UserService:
             organization_id, user_id = self._scope(organization_id, None)
         else:
             organization_id, user_id = self._scope(organization_id, user_id)
-        
+
         activity_data = {
             'user_id': user_id,
             'activity_type': activity_type,
             'metadata': metadata or {},
             'timestamp': IDGenerator.timestamp()
         }
-        
+
         # Save to user's activity subcollection
         activity_id = await self.db.log_user_activity(organization_id, activity_data)
         return activity_id is not None

@@ -32,9 +32,9 @@ async def search_products(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Search service not available"
             )
-        
+
         user_id = request.user_context.user_id if request.user_context else request.user_id
-        
+
         result = await search_orchestrator.handle(
             query=request.query,
             user_id=user_id,
@@ -46,13 +46,13 @@ async def search_products(
             include_suggestions=request.include.suggestions if request.include else False,
             tenant_context=tenant
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Search failed"
             )
-        
+
         # Record usage event in background
         tenant_service = container.get('tenant_service')
         if tenant_service:
@@ -77,7 +77,7 @@ async def search_products(
                 "suggestions": result.get("suggestions", []) if request.include and request.include.suggestions else None
             }
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -101,25 +101,25 @@ async def get_search_suggestions(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Search service not available"
             )
-        
+
         result = await search_orchestrator.get_suggestions(
             query=q,
             limit=limit,
             tenant_context=tenant
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to get suggestions"
             )
-        
+
         return {
             "query": q,
             "suggestions": result.get("suggestions", []),
             "total": len(result.get("suggestions", []))
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -144,13 +144,13 @@ async def get_product(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Product service not available"
             )
-        
+
         result = await product_orchestrator.get_product_details(
             product_id=product_id,
             user_id=user_id,
             organization_id=tenant.organization_id,
         )
-        
+
         if not result.get('success'):
             if result.get('error') == 'not_found':
                 raise HTTPException(
@@ -162,9 +162,9 @@ async def get_product(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to get product"
                 )
-        
+
         return result.get("product")
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -198,7 +198,7 @@ async def get_product_recommendations(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Recommendation service not available"
             )
-        
+
         result = await recommendation_orchestrator.get_product_recommendations(
             product_id=product_id,
             user_id=user_id,
@@ -206,7 +206,7 @@ async def get_product_recommendations(
             limit=pagination.limit,
             organization_id=tenant.organization_id,
         )
-        
+
         if not result.get('success'):
             if result.get('error') == 'not_found':
                 raise HTTPException(
@@ -218,10 +218,10 @@ async def get_product_recommendations(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to get recommendations"
                 )
-        
+
         recommendations = result.get("recommendations", [])
         total = len(recommendations)
-        
+
         return {
             "product_id": product_id,
             "recommendations": recommendations,
@@ -233,7 +233,7 @@ async def get_product_recommendations(
                 "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

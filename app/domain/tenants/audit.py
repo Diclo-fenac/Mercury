@@ -49,7 +49,7 @@ class AuditService:
         except Exception as e:
             logger.error(f"Failed to write audit log: {e}")
             return False
-            
+
     async def get_audit_logs(
         self,
         organization_id: str,
@@ -63,19 +63,19 @@ class AuditService:
         try:
             async with self.async_session() as session:
                 query = select(AuditLog).where(AuditLog.organization_id == organization_id)
-                
+
                 if actor_id:
                     query = query.where(AuditLog.actor_id == actor_id)
                 if resource_type:
                     query = query.where(AuditLog.resource_type == resource_type)
                 if action:
                     query = query.where(AuditLog.action == action)
-                    
+
                 query = query.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit)
-                
+
                 result = await session.execute(query)
                 logs = result.scalars().all()
-                
+
                 return [
                     {
                         "id": str(log.id),

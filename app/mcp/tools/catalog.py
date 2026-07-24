@@ -39,7 +39,7 @@ async def get_collections() -> str:
     typesense = container.get("typesense")
     if not typesense:
         return json.dumps({"error": "Typesense not available"})
-        
+
     try:
         results = await typesense.search(
             collection=ctx.collection_name,
@@ -66,7 +66,7 @@ async def get_categories() -> str:
     typesense = container.get("typesense")
     if not typesense:
         return json.dumps({"error": "Typesense not available"})
-        
+
     try:
         results = await typesense.search(
             collection=ctx.collection_name,

@@ -26,7 +26,7 @@ class CLIPEmbedder(BaseVisionEmbeddingProvider):
     async def _load_model(self) -> None:
         if self._initialized or self.model:
             return
-            
+
         from app.settings import get_settings
         settings = get_settings()
         if getattr(settings, 'MERCURY_MODE', 'standard') == 'lite':
@@ -81,28 +81,28 @@ class CLIPEmbedder(BaseVisionEmbeddingProvider):
         except Exception as e:
             logger.error(f"Failed to encode batch with CLIP: {e}")
             return [self._mock_vector(t) for t in texts]
-            
+
     async def embed_image(self, image_data: str) -> Optional[List[float]]:
         """Generate a 512-dim embedding for an image"""
         await self._load_model()
         if not self._initialized or not self.model:
             return self._mock_vector(image_data[:50])
-            
+
         try:
             import base64
             import io
 
             from PIL import Image
-            
+
             # parse base64
             if image_data.startswith('data:image/'):
                 _, data = image_data.split(',', 1)
             else:
                 data = image_data
-                
+
             image_bytes = base64.b64decode(data)
             img = Image.open(io.BytesIO(image_bytes))
-            
+
             loop = asyncio.get_event_loop()
             embedding = await loop.run_in_executor(None, lambda: self.model.encode(img).tolist())
             return embedding

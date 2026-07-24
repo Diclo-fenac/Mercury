@@ -8,7 +8,7 @@ logger = get_logger("openai_provider")
 
 class OpenAIProvider(BaseAIProvider):
     """OpenAI implementation of BaseAIProvider."""
-    
+
     def __init__(self, api_key: str, model: str = "gpt-4o-mini"):
         self.api_key = api_key
         self.model = model
@@ -38,8 +38,8 @@ class OpenAIProvider(BaseAIProvider):
         }
 
     async def generate_with_tools(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         context: Optional[Dict[str, Any]] = None,
         tenant_context: Optional[Any] = None
     ) -> Dict[str, Any]:
@@ -56,7 +56,7 @@ class OpenAIProvider(BaseAIProvider):
     async def generate(self, prompt: str) -> Optional[str]:
         if not self.client:
             return f"[OpenAI Mock] {prompt}"
-        
+
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,

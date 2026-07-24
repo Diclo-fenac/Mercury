@@ -12,13 +12,13 @@ logger = get_logger("image_tools")
 
 class ImageTools:
     """Image intelligence tools for LLM function calling"""
-    
+
     def __init__(self, image_processor: ImageProcessor):
         self.image_processor = image_processor
-    
+
     async def analyze_product_image(
-        self, 
-        image_data: str, 
+        self,
+        image_data: str,
         organization_id: str,
         user_id: str,
         user_context: Optional[Dict[str, Any]] = None
@@ -29,24 +29,24 @@ class ImageTools:
         """
         try:
             logger.info(f"🖼️ Starting comprehensive image analysis for user {user_id}")
-            
+
             # Process image with full analysis
             result = await self.image_processor.process_image_upload(
-                image_data, 
+                image_data,
                 organization_id,
-                user_id, 
+                user_id,
                 user_context
             )
-            
+
             if not result.get('success'):
                 return {
                     "success": False,
                     "error": result.get('error', 'Image processing failed'),
                     "analysis_type": "failed"
                 }
-            
+
             analysis = result.get('analysis', {})
-            
+
             # Extract key information for LLM
             response = {
                 "success": True,
@@ -54,7 +54,7 @@ class ImageTools:
                 "analysis_type": analysis.get('analysis_type', 'enhanced'),
                 "workflow_completed": analysis.get('workflow_completed', False)
             }
-            
+
             # Add barcode information if detected
             barcode_info = analysis.get('barcode_detection', {})
             if barcode_info.get('is_barcode'):
@@ -63,7 +63,7 @@ class ImageTools:
                     "barcode_type": barcode_info.get('barcode_type'),
                     "confidence": barcode_info.get('confidence', 0.0)
                 }
-            
+
             # Add product identification
             product_info = analysis.get('product_identification', {})
             if product_info.get('success'):
@@ -75,7 +75,7 @@ class ImageTools:
                     "confidence": product_info.get('confidence', 0.0),
                     "description": product_info.get('description', '')
                 }
-            
+
             # Add search suggestions
             search_suggestions = analysis.get('search_suggestions', {})
             if search_suggestions:
@@ -85,10 +85,10 @@ class ImageTools:
                     "category_suggestions": search_suggestions.get('category_suggestions', []),
                     "recommended_strategy": search_suggestions.get('search_strategy', 'hybrid')
                 }
-            
+
             logger.info(f"✅ Image analysis completed for user {user_id}")
             return response
-            
+
         except Exception as e:
             logger.error(f"❌ Image analysis error for user {user_id}: {e}")
             return {
@@ -96,7 +96,7 @@ class ImageTools:
                 "error": str(e),
                 "analysis_type": "error"
             }
-    
+
     async def detect_barcode(self, image_data: str, organization_id: str) -> Dict[str, Any]:
         """
         Focused barcode detection
@@ -104,16 +104,16 @@ class ImageTools:
         """
         try:
             logger.info("🔍 Starting barcode detection")
-            
+
             result = await self.image_processor.detect_barcode(image_data, organization_id)
-            
+
             if not result.get('success'):
                 return {
                     "success": False,
                     "error": result.get('error', 'Barcode detection failed'),
                     "is_barcode": False
                 }
-            
+
             response = {
                 "success": True,
                 "is_barcode": result.get('is_barcode', False),
@@ -121,14 +121,14 @@ class ImageTools:
                 "barcode_type": result.get('barcode_type'),
                 "confidence": result.get('confidence', 0.0)
             }
-            
+
             if response["is_barcode"]:
                 logger.info(f"✅ Barcode detected: {response['barcode_data']} ({response['barcode_type']})")
             else:
                 logger.info("ℹ️ No barcode detected in image")
-            
+
             return response
-            
+
         except Exception as e:
             logger.error(f"❌ Barcode detection error: {e}")
             return {
@@ -136,12 +136,12 @@ class ImageTools:
                 "error": str(e),
                 "is_barcode": False
             }
-    
+
     async def get_cached_analysis(self, organization_id: str, image_id: str) -> Dict[str, Any]:
         """Get previously cached image analysis"""
         try:
             cached_data = await self.image_processor.get_cached_analysis(organization_id, image_id)
-            
+
             if cached_data:
                 return {
                     "success": True,
@@ -156,7 +156,7 @@ class ImageTools:
                     "error": "No cached analysis found",
                     "image_id": image_id
                 }
-                
+
         except Exception as e:
             logger.error(f"❌ Cache retrieval error for image {image_id}: {e}")
             return {
@@ -164,7 +164,7 @@ class ImageTools:
                 "error": str(e),
                 "image_id": image_id
             }
-    
+
     def get_tool_definitions(self) -> Dict[str, Dict[str, Any]]:
         """Get tool definitions for LLM registration"""
         return {
@@ -178,7 +178,7 @@ class ImageTools:
                             "description": "Base64 encoded image data with data URL prefix"
                         },
                         "user_id": {
-                            "type": "string", 
+                            "type": "string",
                             "description": "User identifier for context and caching"
                         },
                         "user_context": {

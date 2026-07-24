@@ -42,7 +42,7 @@ Mercury is highly optimized and heavily modular.
 - **1 vCPU**
 - **10 GB Disk Space**
 
-*Note on 1GB RAM Guarantee:* Mercury comfortably boots under 512MB RAM in `lite` mode. 
+*Note on 1GB RAM Guarantee:* Mercury comfortably boots under 512MB RAM in `lite` mode.
 - **Idle RAM:** ~380MB (across all containers)
 - **Startup Time:** ~12 seconds
 - **First-Query Latency:** < 50ms

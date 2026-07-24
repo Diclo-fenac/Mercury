@@ -42,7 +42,7 @@ async def authenticate_mcp_request(
     settings = get_settings()
     container = await get_container_dependency()
     tenant_service = container.get("tenant_service")
-    
+
     if not tenant_service:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -54,7 +54,7 @@ async def authenticate_mcp_request(
     if not key_to_check and bearer and not bearer.credentials.startswith("ey"):
         # Sometimes API keys are passed in Bearer token if they aren't JWTs
         key_to_check = bearer.credentials
-        
+
     if key_to_check:
         ctx_dict = await tenant_service.validate_api_key(key_to_check)
         if ctx_dict:
@@ -74,7 +74,7 @@ async def authenticate_mcp_request(
         token = bearer.credentials
         issuer = settings.MCP_OIDC_ISSUER
         audience = settings.MCP_OIDC_AUDIENCE
-        
+
         if issuer and audience:
             try:
                 # In a real system, we'd fetch and cache the JWKS, and pass it as the key.
@@ -83,7 +83,7 @@ async def authenticate_mcp_request(
                 jwks = _get_oidc_public_keys(issuer)
                 if not jwks:
                     raise HTTPException(status_code=401, detail="Failed to fetch OIDC public keys")
-                
+
                 unverified_header = jwt.get_unverified_header(token)
                 rsa_key = {}
                 for key in jwks.get("keys", []):
@@ -96,10 +96,10 @@ async def authenticate_mcp_request(
                             "e": key["e"]
                         }
                         break
-                
+
                 if not rsa_key:
                     raise HTTPException(status_code=401, detail="OIDC Public key not found")
-                
+
                 payload = jwt.decode(
                     token,
                     rsa_key,
@@ -107,11 +107,11 @@ async def authenticate_mcp_request(
                     audience=audience,
                     issuer=issuer,
                 )
-                
+
                 org_id = payload.get("organization_id") or payload.get("org_id") or payload.get("tenant_id")
                 if not org_id:
                     raise HTTPException(status_code=401, detail="OIDC token missing organization claim")
-                
+
                 # We need to construct a TenantContext for this OIDC service account
                 # For simplicity, we assume OIDC tokens map to the tenant with a default 'service_account' plan
                 return TenantContext(
@@ -123,10 +123,10 @@ async def authenticate_mcp_request(
                     config={},
                     collection_name=f"tenant_{org_id}_products"
                 )
-                
+
             except JWTError as e:
                 raise HTTPException(status_code=401, detail=f"Invalid OIDC token: {str(e)}")
-        
+
         # Fallback to local JWT if not OIDC
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
@@ -143,7 +143,7 @@ async def authenticate_mcp_request(
                 )
         except JWTError:
             pass
-            
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Valid MCP authentication credentials required (API Key or OIDC token)"

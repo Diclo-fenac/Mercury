@@ -20,7 +20,7 @@ logger = get_logger("chat_orchestrator")
 
 class ChatOrchestrator:
     """Orchestrates chat workflow with enhanced AI and function calling"""
-    
+
     def __init__(
         self,
         llm_engine: LLMEngine,
@@ -38,31 +38,31 @@ class ChatOrchestrator:
         self.image_processor = image_processor
         self.product_tools = product_tools
         self.user_tools = user_tools
-        
+
         # Initialize image tools if image processor available
         self.image_tools = ImageTools(image_processor) if image_processor else None
-        
+
         # Initialize variant tools (always available since HybridSearch is required)
         # Get hybrid_search from container - this will be injected properly in production
         self.variant_tools = None  # Will be set via dependency injection
-        
+
         # Initialize personalization tools
         self.personalization_tools = None  # Will be set via dependency injection
-        
+
         # Initialize workflow tools
         self.workflow_tools = None  # Will be set via dependency injection
-        
+
         # Register tools with LLM
         self._register_tools()
-    
+
     def _register_tools(self):
         """Register only the three approved tools with LLM"""
         if not self.llm:
             return
-            
+
         # Clear any existing tools in self.llm.tools
         self.llm.tools.clear()
-        
+
         # 1. Register search_products
         self.llm.register_tool(
             'search_products',
@@ -78,7 +78,7 @@ class ChatOrchestrator:
                 'required': ['query']
             }
         )
-        
+
         # 2. Register get_variants
         self.llm.register_tool(
             'get_variants',
@@ -92,7 +92,7 @@ class ChatOrchestrator:
                 'required': ['product_id']
             }
         )
-        
+
         # 3. Register get_user_preferences
         self.llm.register_tool(
             'get_user_preferences',
@@ -106,10 +106,10 @@ class ChatOrchestrator:
 
     def set_variant_tools(self, tools: Any):
         self.variant_tools = tools
-        
+
     def set_personalization_tools(self, tools: Any):
         self.personalization_tools = tools
-        
+
     def set_workflow_tools(self, tools: Any):
         self.workflow_tools = tools
 
@@ -117,15 +117,15 @@ class ChatOrchestrator:
         """Search products scoped by the active tenant"""
         from app.container import get_container
         from app.core.security.context import tenant_context_var, user_id_var
-        
+
         tenant = tenant_context_var.get()
         user_id = user_id_var.get() or "guest"
-        
+
         container = get_container()
         search_orchestrator = container.get("search_orchestrator")
         if not search_orchestrator:
             return [{"error": "Search service not available"}]
-            
+
         result = await search_orchestrator.handle(
             query=query,
             user_id=user_id,
@@ -133,7 +133,7 @@ class ChatOrchestrator:
             limit=limit,
             tenant_context=tenant
         )
-        
+
         products = result.get("results", [])
         return [
             {
@@ -157,13 +157,13 @@ class ChatOrchestrator:
         """Get product variants scoped by active tenant collection"""
         from app.core.security.context import tenant_context_var
         tenant = tenant_context_var.get()
-        
+
         if not self.variant_tools:
             return [{"error": "Variant service not available"}]
-            
+
         # Get variants from service
         collection = tenant.collection_name if tenant else "products"
-        
+
         # Call the underlying hybrid search find_strict_variants
         variants = await self.variant_tools.hybrid_search.find_strict_variants(
             product_id=product_id,
@@ -171,7 +171,7 @@ class ChatOrchestrator:
             limit=10,
             collection=collection
         )
-        
+
         return [
             {
                 'id': p.get('id'),
@@ -192,11 +192,11 @@ class ChatOrchestrator:
         tenant = tenant_context_var.get()
         if not user_id or not tenant:
             return {}
-            
+
         profile = await self.users.get_user_profile(tenant.organization_id, user_id)
         if not profile:
             return {}
-            
+
         prefs = profile.get('preferences', {})
         # Strip PII — only return category/brand/price preferences
         safe_prefs = {
@@ -214,11 +214,11 @@ class ChatOrchestrator:
         try:
             user_id = user_id or request.user_id
             conversation_id = request.conversation_id
-            
+
             # Use last message as the primary query for existing handle logic
             # In a real upgrade, handle() would be refactored to support full message arrays
             last_message = request.messages[-1].content if request.messages else ""
-            
+
             # Map request to existing handle logic
             # This maintains compatibility while we transition
             result = await self.handle(
@@ -229,9 +229,9 @@ class ChatOrchestrator:
                 image_data=request.image_data,
                 tenant_context=tenant_context
             )
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Chat completion failed: {e}")
             return {"success": False, "error": str(e)}
@@ -252,9 +252,9 @@ class ChatOrchestrator:
             for chunk in result.get("response", "").split():
                 data = json.dumps({"choices": [{"delta": {"content": chunk + " "}}]})
                 yield f"data: {data}\n\n"
-                
+
             yield "data: [DONE]\n\n"
-            
+
         except Exception as e:
             logger.error(f"Streaming error: {e}")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -271,10 +271,10 @@ class ChatOrchestrator:
         """Directly execute a registered tool"""
         if tool_name not in self.llm.tools:
             raise Exception(f"Tool {tool_name} not found")
-        
+
         tool_info = self.llm.tools[tool_name]
         func = tool_info['function']
-        
+
         # In a real app, you might need to inject user_id into parameters
         if asyncio.iscoroutinefunction(func):
             return await func(**parameters)
@@ -285,9 +285,9 @@ class ChatOrchestrator:
         return await self.handle(*args, **kwargs)
 
     async def handle(
-        self, 
-        message: str, 
-        user_id: str, 
+        self,
+        message: str,
+        user_id: str,
         conversation_id: str,
         message_type: str = 'text',
         image_data: Optional[str] = None,
@@ -297,13 +297,13 @@ class ChatOrchestrator:
         try:
             from app.core.security.context import tenant_context_var, user_id_var
             from app.core.security.input_sanitizer import sanitize_user_input
-            
+
             tenant_context_var.set(tenant_context)
             user_id_var.set(user_id)
             if not tenant_context:
                 return {"success": False, "error": "Tenant context required"}
             organization_id = tenant_context.organization_id
-            
+
             # Apply input sanitizer
             sanitized_message, is_suspicious = sanitize_user_input(message)
             if is_suspicious:
@@ -319,9 +319,9 @@ class ChatOrchestrator:
                         "reason": "input_sanitization"
                     }
                 }
-            
+
             logger.info(f"🎯 Processing {message_type} message for user {user_id}")
-            
+
             # CRITICAL: Ensure conversation exists before saving messages
             conversation = await self.conversations.get_conversation(organization_id, conversation_id)
             if not conversation:
@@ -333,31 +333,31 @@ class ChatOrchestrator:
             elif conversation.get('user_id') != user_id:
                 # User doesn't own this conversation
                 raise Exception(f"Access denied to conversation {conversation_id}")
-            
+
             # Get user context for personalization
             context = await self._build_user_context(organization_id, user_id, conversation_id)
-            
+
             # Enhanced image handling with new intelligence capabilities
             image_analysis = None
             enhanced_message = sanitized_message
-            
+
             if message_type == 'image' and image_data and self.image_tools:
                 logger.info("🖼️ Processing image with enhanced intelligence")
-                
+
                 # Use enhanced image analysis
                 image_result = await self.image_tools.analyze_product_image(
-                    image_data, 
+                    image_data,
                     organization_id,
                     user_id,
                     context.get('user_preferences', {})
                 )
-                
+
                 if image_result.get('success'):
                     image_analysis = image_result
-                    
+
                     # Build enhanced message with analysis results
                     enhanced_message = self._build_enhanced_image_message(sanitized_message, image_result)
-                    
+
                     logger.info(f"✅ Enhanced image analysis completed: {image_result.get('analysis_type')}")
                 else:
                     logger.warning(f"⚠️ Image analysis failed: {image_result.get('error')}")
@@ -370,25 +370,25 @@ class ChatOrchestrator:
                             basic_analysis = await self.llm.analyze_image(image_data)
                             if basic_analysis:
                                 enhanced_message = f"{sanitized_message}\n\nImage analysis: {basic_analysis}"
-            
+
             # Generate response with function calling
             result = await self.llm.generate_with_tools(enhanced_message, context, tenant_context)
-            
+
             if not result.get('success'):
                 return {"success": False, "error": result.get('error', 'Failed to generate response')}
-            
+
             response_text = result.get('response', '')
-            
+
             # Save user message with enhanced metadata
             await self.conversations.save_message(
                 organization_id, conversation_id, user_id, message, role='user',
                 metadata={
-                    'type': message_type, 
+                    'type': message_type,
                     'image_analysis': image_analysis,
                     'enhanced_processing': bool(image_analysis)
                 }
             )
-            
+
             # Save assistant message
             assistant_message_id = await self.conversations.save_message(
                 organization_id, conversation_id, user_id, response_text, role='assistant',
@@ -398,10 +398,10 @@ class ChatOrchestrator:
                     'image_intelligence_used': bool(image_analysis)
                 }
             )
-            
+
             # Update context cache
             await self._update_context_cache(organization_id, user_id, context, message, response_text)
-            
+
             return {
                 "success": True,
                 "response": response_text,
@@ -420,11 +420,11 @@ class ChatOrchestrator:
                     "personalization": bool(context.get('user_preferences'))
                 }
             }
-            
+
         except Exception as e:
             logger.error(f"❌ Chat handling error for user {user_id}: {e}")
             return {"success": False, "error": str(e)}
-    
+
     async def _build_user_context(
         self, organization_id: str, user_id: str, conversation_id: str
     ) -> Dict[str, Any]:
@@ -434,37 +434,37 @@ class ChatOrchestrator:
             # Build context from user profile and conversation
             profile = await self.users.get_user_profile(organization_id, user_id)
             messages = await self.conversations.get_messages(organization_id, conversation_id, limit=5)
-            
+
             context = {
                 'user_preferences': profile.get('preferences') if profile else {},
                 'user_behavior': profile.get('behavior') if profile else {},
                 'recent_messages': messages
             }
-            
+
             # Cache context
             await self.memory.save_context(organization_id, user_id, context)
-        
+
         return context
-    
+
     def _build_enhanced_image_message(self, original_message: str, image_analysis: Dict[str, Any]) -> str:
         """Build enhanced message with image analysis results"""
         parts = [original_message] if original_message.strip() else []
-        
+
         # Add barcode information
         if image_analysis.get('barcode_detected'):
             barcode_info = image_analysis['barcode_detected']
             parts.append(f"Barcode detected: {barcode_info['barcode_data']} ({barcode_info['barcode_type']})")
-        
+
         # Add product identification
         if image_analysis.get('product_identified'):
             product_info = image_analysis['product_identified']
             parts.append(f"Product identified: {product_info.get('description', 'Product detected')}")
-            
+
             if product_info.get('category'):
                 parts.append(f"Category: {product_info['category']}")
             if product_info.get('brand'):
                 parts.append(f"Brand: {product_info['brand']}")
-        
+
         # Add search suggestions context
         if image_analysis.get('search_suggestions'):
             suggestions = image_analysis['search_suggestions']
@@ -474,9 +474,9 @@ class ChatOrchestrator:
                 parts.append("Similar products can be found")
             elif suggestions.get('category_suggestions'):
                 parts.append("Category browsing suggestions available")
-        
+
         return "\n".join(parts)
-    
+
     async def _update_context_cache(
         self,
         organization_id: str,
@@ -489,9 +489,9 @@ class ChatOrchestrator:
         if context:
             context['recent_messages'].append({'role': 'user', 'message': user_message})
             context['recent_messages'].append({'role': 'assistant', 'message': assistant_response})
-            
+
             # Keep only last 10 messages for context
             if len(context['recent_messages']) > 10:
                 context['recent_messages'] = context['recent_messages'][-10:]
-            
+
             await self.memory.save_context(organization_id, user_id, context)

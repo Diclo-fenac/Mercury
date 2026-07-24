@@ -53,7 +53,7 @@ async def search_documents(query: str, limit: int = 10, page: int = 1) -> str:
         typesense = container.get("typesense")
         if not typesense:
             return json.dumps({"error": "Typesense not available"})
-            
+
         collection_name = f"tenant_{ctx.organization_id}_documents"
         results = await typesense.search(
             collection=collection_name,

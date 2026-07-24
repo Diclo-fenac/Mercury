@@ -13,8 +13,8 @@ from app.container import get_container
 class PaginationParams:
     """Dependency for common pagination parameters"""
     def __init__(
-        self, 
-        page: int = Query(1, ge=1, description="Page number"), 
+        self,
+        page: int = Query(1, ge=1, description="Page number"),
         limit: int = Query(20, ge=1, le=100, description="Items per page")
     ):
         self.page = page
@@ -74,10 +74,10 @@ async def get_current_user(
     """
     if not credentials:
         return None
-    
+
     settings = get_settings()
     token = credentials.credentials
-    
+
     try:
         # Debug tokens still carry tenant scope: user_<org_id>:<user_id>.
         # Unscoped debug identities are forbidden because they bypass isolation.
@@ -95,14 +95,14 @@ async def get_current_user(
             }
 
         payload = jwt.decode(
-            token, 
-            settings.SECRET_KEY, 
+            token,
+            settings.SECRET_KEY,
             algorithms=["HS256"]
         )
         user_id: str = payload.get("sub")
         if user_id is None:
             return None
-        
+
         organization_id = payload.get("organization_id") or payload.get("org_id")
         if not organization_id:
             return None
@@ -169,10 +169,10 @@ async def check_rate_limit(key: str, limit: int = 60, window: int = 60, cache=No
     now = time.time()
     # Clean up old timestamps
     _RATE_LIMITS[key] = [t for t in _RATE_LIMITS[key] if now - t < window]
-    
+
     if len(_RATE_LIMITS[key]) >= limit:
         return False
-        
+
     _RATE_LIMITS[key].append(now)
     return True
 
@@ -221,7 +221,7 @@ async def get_tenant_context(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API Key required (via X-API-Key or Authorization Bearer header)"
         )
-    
+
     # 1. IP Rate Limiting
     client_ip = request.client.host if request.client else "unknown"
     cache = container.get('redis')
@@ -239,7 +239,7 @@ async def get_tenant_context(
         )
 
     ctx_dict = await tenant_service.validate_api_key(api_key)
-        
+
     if not ctx_dict:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -270,11 +270,11 @@ async def get_tenant_context(
         pass
 
     org_id = ctx_dict["organization_id"]
-    
+
     # Check if a specific seller scope is requested/authorized
     # In a full RBAC system, this would extract seller_id from a scoped token
     seller_id = request.headers.get("X-Seller-Id")
-    
+
     return TenantContext(
         organization_id=org_id,
         organization_slug=ctx_dict["organization_slug"],

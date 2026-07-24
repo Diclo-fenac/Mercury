@@ -9,12 +9,12 @@ logger = get_logger("ai_factory")
 
 class AIProviderFactory:
     """Factory for creating AI providers based on configuration."""
-    
+
     @staticmethod
     def create_provider(settings: Settings) -> BaseAIProvider:
         """Create and return the configured AI provider."""
         provider_type = getattr(settings, "AI_PROVIDER", "gemini").lower()
-        
+
         if provider_type == "gemini":
             logger.info("Instantiating Gemini AI provider")
             api_key = settings.GOOGLE_API_KEY

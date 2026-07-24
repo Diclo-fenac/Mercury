@@ -14,7 +14,7 @@ async def test_openai_grounding_mock():
     )
     provider = AIProviderFactory.create_provider(settings)
     await provider.initialize()
-    
+
     result = await provider.generate_with_tools("test query")
     assert result["success"] is True
     assert "[OpenAI]" in result["response"]

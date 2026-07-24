@@ -10,11 +10,11 @@ function dashboardApp() {
         adminKey: '',
         authError: '',
         isLoading: false,
-        
+
         // Theme & Mode State
         isDarkMode: false,
         modeView: 'executive',
-        
+
         // Playground State
         playgroundQuery: 'headphones for focus',
         playgroundResult: null,
@@ -29,7 +29,7 @@ function dashboardApp() {
             };
             this.addLog({ type: 'success', message: `Executed hybrid search playground test for query "${this.playgroundQuery}".`, time: 'Just now' });
         },
-        
+
         // Navigation State
         currentView: 'analytics',
         navItems: [
@@ -117,9 +117,9 @@ function dashboardApp() {
         get filteredCatalog() {
             if (!this.catalogFilterQuery.trim()) return this.catalogItems;
             const q = this.catalogFilterQuery.toLowerCase();
-            return this.catalogItems.filter(i => 
-                i.title.toLowerCase().includes(q) || 
-                i.category.toLowerCase().includes(q) || 
+            return this.catalogItems.filter(i =>
+                i.title.toLowerCase().includes(q) ||
+                i.category.toLowerCase().includes(q) ||
                 i.id.toLowerCase().includes(q)
             );
         },
@@ -164,7 +164,7 @@ function dashboardApp() {
                 alert(`New ${type} API Key generated successfully!`);
             }
         },
-        
+
         // Data State
         analyticsData: { total_searches: 12480, top_queries: [], zero_results: [] },
         catalogStats: { product_count: 8, collection_name: 'tenant_demo_products' },
@@ -209,13 +209,13 @@ function dashboardApp() {
             }, null, 2);
             alert("Raw Search API Request JSON & Gemini Prompt:\n\n" + rawJson);
         },
-        
+
         // Notifications & SSE
         isDrawerOpen: false,
         systemLogs: [],
         unreadLogs: 0,
         sseSource: null,
-        
+
         // Upload & Preview State
         isDragging: false,
         isUploading: false,
@@ -224,7 +224,7 @@ function dashboardApp() {
         previewData: null,
         previewHeaders: [],
         pendingFile: null,
-        
+
         // Telemetry Live Sparkline Data
         latencyTicker: [14, 18, 12, 22, 19, 15, 14, 16, 21, 13, 17, 14],
         p95Latency: 24.2,
@@ -247,7 +247,7 @@ function dashboardApp() {
                 this.p95Latency = (20 + Math.random() * 8).toFixed(1);
                 this.p99Latency = (42 + Math.random() * 10).toFixed(1);
             }, 3000);
-            
+
             // Watch for view changes to load appropriate data
             this.$watch('currentView', value => {
                 if (value === 'catalog') {
@@ -262,7 +262,7 @@ function dashboardApp() {
             const item = this.navItems.find(n => n.id === this.currentView);
             return item ? item.name : 'Dashboard';
         },
-        
+
         getIcon(id) {
             const icons = {
                 'analytics': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>',
@@ -279,7 +279,7 @@ function dashboardApp() {
             axios.defaults.baseURL = '/api/v1';
             axios.defaults.headers.common['Authorization'] = `Bearer ${this.adminKey}`;
             axios.defaults.headers.common['X-API-Key'] = this.adminKey;
-            
+
             // Global error handler
             axios.interceptors.response.use(
                 response => response,
@@ -298,7 +298,7 @@ function dashboardApp() {
         async verifyAuth() {
             this.isLoading = true;
             this.authError = '';
-            
+
             try {
                 await axios.get('/admin/config');
                 this.isAuthenticated = true;
@@ -331,7 +331,7 @@ function dashboardApp() {
                 this.sseSource = null;
             }
         },
-        
+
         // ---- SSE & Logs ----
         connectSSE() {
             // Placeholder for SSE connection to real-time logs
@@ -340,30 +340,30 @@ function dashboardApp() {
             //     const log = JSON.parse(e.data);
             //     this.addLog(log);
             // };
-            
+
             // Simulation for demo
             setTimeout(() => this.addLog({ type: 'success', message: 'System connected successfully.', time: 'Just now' }), 1000);
         },
-        
+
         addLog(log) {
             this.systemLogs.unshift(log);
             if (this.systemLogs.length > 50) this.systemLogs.pop();
             if (!this.isDrawerOpen) this.unreadLogs++;
-            
+
             if (log.type === 'error' || log.type === 'success') {
                 this.showToast(log.message, log.type);
             }
         },
-        
+
         toggleNotifications() {
             this.isDrawerOpen = !this.isDrawerOpen;
             if (this.isDrawerOpen) {
                 this.unreadLogs = 0;
             }
         },
-        
+
         // ---- API Interactions ----
-        
+
         async fetchAnalytics() {
             try {
                 const response = await axios.get('/admin/analytics');
@@ -372,7 +372,7 @@ function dashboardApp() {
                 console.error("Failed to fetch analytics", err);
             }
         },
-        
+
         async fetchCatalogStats() {
             try {
                 const response = await axios.get('/admin/catalog/stats');
@@ -381,25 +381,25 @@ function dashboardApp() {
                 console.error("Failed to fetch stats", err);
             }
         },
-        
+
         // ---- Upload & Preview Logic ----
-        
+
         handleFileDrop(event) {
             this.isDragging = false;
             if (event.dataTransfer.files.length > 0) {
                 this.processFile(event.dataTransfer.files[0]);
             }
         },
-        
+
         handleFileSelect(event) {
             if (event.target.files.length > 0) {
                 this.processFile(event.target.files[0]);
             }
         },
-        
+
         processFile(file) {
             this.pendingFile = file;
-            
+
             // Read first few kilobytes to preview data
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -412,7 +412,7 @@ function dashboardApp() {
                     } else if (file.name.endsWith('.jsonl')) {
                         parsed = text.split('\n').filter(l => l.trim()).slice(0, 5).map(l => JSON.parse(l));
                     }
-                    
+
                     if (parsed.length > 0) {
                         this.previewData = parsed.slice(0, 5);
                         this.previewHeaders = Object.keys(this.previewData[0]);
@@ -424,39 +424,39 @@ function dashboardApp() {
             // Read just a chunk for preview (simplification for demo)
             reader.readAsText(file.slice(0, 50000));
         },
-        
+
         cancelUpload() {
             this.previewData = null;
             this.previewHeaders = [];
             this.pendingFile = null;
             document.getElementById('catalog-upload').value = '';
         },
-        
+
         async confirmUpload() {
             if (!this.pendingFile) return;
-            
+
             this.isUploading = true;
             this.uploadProgress = 10;
             this.uploadStatusText = 'Parsing file...';
-            
+
             const formData = new FormData();
             formData.append('file', this.pendingFile);
-            
+
             try {
                 // Simulate progress
                 const progressInterval = setInterval(() => {
                     if (this.uploadProgress < 90) this.uploadProgress += 10;
                     this.uploadStatusText = `Processed ${this.uploadProgress * 100} items...`;
                 }, 500);
-                
+
                 const response = await axios.post('/admin/catalog/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                
+
                 clearInterval(progressInterval);
                 this.uploadProgress = 100;
                 this.uploadStatusText = 'Complete!';
-                
+
                 if (response.data.success) {
                     this.showToast(`Successfully imported ${response.data.stats.total_processed || 0} products!`, 'success');
                     this.addLog({ type: 'success', message: `Imported ${response.data.stats.total_processed} products`, time: 'Just now' });
@@ -472,19 +472,19 @@ function dashboardApp() {
                 this.addLog({ type: 'error', message: 'Upload failed', time: 'Just now' });
             }
         },
-        
+
         // ---- Data Visualization (ECharts) ----
         renderEChart(type = 'treemap') {
             const chartDom = document.getElementById('catalog-chart');
             if (!chartDom) return;
-            
+
             if (this.chartInstance) {
                 this.chartInstance.dispose();
             }
-            
+
             // Use dark theme
             this.chartInstance = echarts.init(chartDom, 'dark', { backgroundColor: 'transparent' });
-            
+
             // Mock hierarchical data based on catalog stats
             const count = this.catalogStats.product_count || 100;
             const data = [
@@ -512,7 +512,7 @@ function dashboardApp() {
             ];
 
             let option = {};
-            
+
             if (type === 'treemap') {
                 option = {
                     tooltip: { trigger: 'item', formatter: '{b}: {c} items' },
@@ -555,7 +555,7 @@ function dashboardApp() {
             }
 
             this.chartInstance.setOption(option);
-            
+
             // Handle resize
             window.addEventListener('resize', () => {
                 if (this.chartInstance) this.chartInstance.resize();
@@ -563,11 +563,11 @@ function dashboardApp() {
         },
 
         // ---- Utilities ----
-        
+
         async addSynonym() {
             if (!this.newSynonym.term || !this.newSynonym.synonyms) return;
             const synonymsArray = this.newSynonym.synonyms.split(',').map(s => s.trim()).filter(s => s);
-            
+
             try {
                 await axios.post('/admin/rules/synonyms', {
                     term: this.newSynonym.term.trim(),
@@ -583,7 +583,7 @@ function dashboardApp() {
         generateKey() {
             this.showToast('Key generation not fully implemented in demo.', 'info');
         },
-        
+
         async copyToClipboard(text) {
             try {
                 await navigator.clipboard.writeText(text);
@@ -592,16 +592,16 @@ function dashboardApp() {
                 this.showToast('Failed to copy', 'error');
             }
         },
-        
+
         showToast(message, type = 'success') {
             const id = this.toastIdCounter++;
             this.toasts.push({ id, message, type });
-            
+
             setTimeout(() => {
                 this.dismissToast(id);
             }, 5000);
         },
-        
+
         dismissToast(id) {
             this.toasts = this.toasts.filter(t => t.id !== id);
         }

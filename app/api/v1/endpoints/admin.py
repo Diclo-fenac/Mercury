@@ -229,18 +229,18 @@ async def add_synonym(
             )
             session.add(syn)
             await session.commit()
-            
+
         typesense_client = container.get("typesense")
         if typesense_client:
             collection_name = f"tenant_{tenant_ctx.organization_id}_products"
             synonym_id = f"syn_{request.term.replace(' ', '_')}"
             await typesense_client.upsert_synonym(
-                collection_name, 
-                synonym_id, 
-                [s.lower() for s in request.synonyms], 
+                collection_name,
+                synonym_id,
+                [s.lower() for s in request.synonyms],
                 root=request.term.lower()
             )
-            
+
         return {"success": True}
     except Exception as e:
         raise HTTPException(
@@ -356,7 +356,7 @@ async def upload_csv_catalog(
     try:
         content_bytes = await file.read()
         csv_content = content_bytes.decode("utf-8", errors="ignore")
-        
+
         stats = await catalog_importer.import_csv(tenant_ctx.organization_id, csv_content)
         return {
             "success": stats.get("success", False),
@@ -391,7 +391,7 @@ async def get_catalog_stats(
                 "product_count": 0,
                 "collection_name": collection_name
             }
-        
+
         loop = typesense_client.client.collections[collection_name].documents.search
         import asyncio
         res = await asyncio.get_event_loop().run_in_executor(
@@ -399,7 +399,7 @@ async def get_catalog_stats(
             lambda: loop({"q": "*", "per_page": 0})
         )
         found = res.get("found", 0)
-        
+
         return {
             "exists": True,
             "product_count": found,
@@ -427,14 +427,14 @@ async def upsert_product(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Catalog service unavailable",
         )
-    
+
     prod_id = product_id or str(product.get("id", ""))
     if not prod_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Product ID is required either in URL or body"
         )
-        
+
     try:
         title = product.get("title") or product.get("name") or ""
         name = product.get("name") or product.get("title") or ""
@@ -442,22 +442,22 @@ async def upsert_product(
         brand = product.get("brand") or "Unknown"
         category = product.get("category") or "General"
         sub_category = product.get("sub_category") or ""
-        
+
         try:
             price_val = product.get("selling_price") or product.get("price") or 0.0
             selling_price = float(price_val)
         except (ValueError, TypeError):
             selling_price = 0.0
-            
+
         try:
             rating_val = product.get("rating") or 0.0
             rating = float(rating_val)
         except (ValueError, TypeError):
             rating = 0.0
-            
+
         stock = bool(product.get("stock", True))
         online_available = bool(product.get("online_available", True))
-        
+
         doc = {
             "id": prod_id,
             "name": name,
@@ -480,7 +480,7 @@ async def upsert_product(
             "index_status": "pending",
             "index_event_id": persisted[0]["index_event_id"],
         }
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -500,7 +500,7 @@ async def delete_product(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Catalog service unavailable",
         )
-    
+
     try:
         deleted = await catalog_service.delete_product(tenant_ctx.organization_id, product_id)
         return {
@@ -525,7 +525,7 @@ async def get_webhooks(
     tenant_service = container.get("tenant_service")
     if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
-    
+
     config = await tenant_service.get_config(tenant_ctx.organization_id)
     return {"webhook_urls": config.get("webhook_urls", []) if config else []}
 
@@ -540,7 +540,7 @@ async def update_webhooks(
     tenant_service = container.get("tenant_service")
     if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
-    
+
     urls = payload.get("webhook_urls", [])
     await tenant_service.update_config(tenant_ctx.organization_id, webhook_urls=urls)
     return {"success": True, "webhook_urls": urls}
@@ -555,7 +555,7 @@ async def get_all_synonyms(
     tenant_service = container.get("tenant_service")
     if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
-    
+
     synonyms = await tenant_service.get_all_synonyms(tenant_ctx.organization_id)
     return {"synonyms": synonyms}
 
@@ -571,14 +571,14 @@ async def create_synonym(
     typesense_client = container.get("typesense")
     if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
-    
+
     term = payload.get("term")
     synonyms = payload.get("synonyms", [])
     if not term or not synonyms:
         raise HTTPException(status_code=400, detail="term and synonyms required")
-        
+
     await tenant_service.add_synonym(tenant_ctx.organization_id, term, synonyms)
-    
+
     # Push to Typesense natively
     collection_name = f"tenant_{tenant_ctx.organization_id}_products"
     synonym_id = f"syn_{term.replace(' ', '_')}"
@@ -589,7 +589,7 @@ async def create_synonym(
         typesense_synced = await typesense_client.upsert_synonym(
             collection_name, synonym_id, synonyms, root=term
         )
-    
+
     return {"success": True, "typesense_synced": typesense_synced}
 
 
@@ -604,14 +604,14 @@ async def delete_synonym(
     typesense_client = container.get("typesense")
     if not tenant_service:
         raise HTTPException(status_code=500, detail="Service unavailable")
-        
+
     await tenant_service.remove_synonym(tenant_ctx.organization_id, term)
-    
+
     if typesense_client:
         collection_name = f"tenant_{tenant_ctx.organization_id}_products"
         synonym_id = f"syn_{term.replace(' ', '_')}"
         await typesense_client.delete_synonym(collection_name, synonym_id)
-        
+
     return {"success": True}
 
 @router.get("/system/metrics")
@@ -627,7 +627,7 @@ async def get_system_metrics(
     except ImportError:
         gpu_enabled = False
         gpu_name = "N/A"
-        
+
     return {
         "cpu_percent": psutil.cpu_percent(interval=0.1),
         "ram_percent": psutil.virtual_memory().percent,

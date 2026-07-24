@@ -11,7 +11,7 @@ Set `AI_PROVIDER` in your `.env` to switch between supported models:
 ### Security and Grounding
 Regardless of which AI provider is configured, the `BaseAIProvider` protocol enforces that:
 1. **Tool calls** are bound by the same `TenantContext` policy.
-2. **Catalog evidence** is automatically injected into prompts. 
+2. **Catalog evidence** is automatically injected into prompts.
 3. **P1 Phase Constraints:** Hallucination and off-topic prevention instructions are sent to all providers identically.
 
 ## Configurable Embedding Providers

@@ -2,7 +2,7 @@
 
 ## Service Level Objectives (SLOs)
 - **Recovery Time Objective (RTO):** 30 minutes (Time to restore full service).
-- **Recovery Point Objective (RPO):** 
+- **Recovery Point Objective (RPO):**
   - PostgreSQL Data: Depends on Postgres backup schedule (e.g. 1 hour).
   - Search Index: 0 minutes (Rebuilt completely from PostgreSQL).
   - Cache (Redis): 5 minutes of cache loss is acceptable.

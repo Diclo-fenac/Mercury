@@ -13,16 +13,16 @@ logger = get_logger("dashboard_service")
 class DashboardService:
     def __init__(self, db: PostgresClient):
         self.db = db
-        
+
     async def get_dashboard_metrics(self, organization_id: str, days: int = 30) -> Dict[str, Any]:
         """Get aggregate metrics for the dashboard"""
         try:
             # We would typically aggregate tenant_activities table here
             # For MVP, we return placeholder structure that the frontend expects
-            
+
             # TODO: Implement actual SQL aggregation queries using PostgresClient
             # e.g., SELECT count(*) from tenant_activities WHERE organization_id = ...
-            
+
             return {
                 "organization_id": organization_id,
                 "period_days": days,

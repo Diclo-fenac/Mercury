@@ -26,7 +26,7 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
         require_auth,
     )
     from main import app
-    
+
     # Override authentication and tenant dependencies for testing
     test_identity = {
         "user_id": "test_user",
@@ -36,7 +36,7 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
     }
     app.dependency_overrides[require_auth] = lambda: test_identity
     app.dependency_overrides[get_current_user] = lambda: test_identity
-    
+
     dummy_tenant = TenantContext(
         organization_id="00000000-0000-0000-0000-000000000000",
         organization_slug="default-org",
@@ -53,10 +53,10 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
         collection_name="products"
     )
     app.dependency_overrides[get_tenant_context] = lambda: dummy_tenant
-    
+
     # Configure mock container
     mock_container = MagicMock()
-    
+
     # Mock recommendation orchestrator
     mock_rec_service = AsyncMock()
     mock_rec_service.get_personalized_recommendations = AsyncMock(return_value={
@@ -69,10 +69,10 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
         "success": True,
         "recommendations": []
     })
-    
+
     # Mock chat orchestrator
     mock_chat_service = AsyncMock()
-    
+
     mock_container.get.side_effect = lambda service_name: {
         'search_orchestrator': mock_search_service,
         'product_orchestrator': mock_product_service,
@@ -82,11 +82,11 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
         'conversation_orchestrator': mock_conversation_service,
         'chat_orchestrator': mock_chat_service
     }.get(service_name)
-    
+
     app.dependency_overrides[get_container_dependency] = lambda: mock_container
-    
+
     yield TestClient(app)
-    
+
     app.dependency_overrides.clear()
 
 

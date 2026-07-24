@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mercury AI Merchant Dashboard</title>
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sen:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
+
     <!-- Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    
+
     <!-- ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="/dashboard/static/styles.css">
 </head>
 <body x-data="dashboardApp()" :class="isDarkMode ? 'dark-theme' : ''">
-    
+
     <!-- Login Screen -->
     <div x-show="!isAuthenticated" style="display: none;" class="login-container flex-center min-h-screen p-4">
         <div class="panel p-8 max-w-md w-full text-center space-y-6">
@@ -36,9 +36,9 @@
                 <h2 class="text-2xl font-semibold text-lg">Mercury Admin</h2>
                 <p class="text-xs text-muted mt-1">Multi-Tenant Search & Grounded AI Intelligence</p>
             </div>
-            
+
             <div x-show="authError" class="p-3 bg-red-100 text-red-700 text-xs rounded" x-text="authError"></div>
-            
+
             <form @submit.prevent="login" class="space-y-4 text-left">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-muted mb-1">Admin API Key</label>
@@ -58,7 +58,7 @@
 
     <!-- Main Dashboard Layout -->
     <div x-show="isAuthenticated" style="display: none;" class="dashboard-layout">
-        
+
         <!-- Sidebar Navigation -->
         <aside class="sidebar panel">
             <div>
@@ -71,10 +71,10 @@
                         <span class="badge badge-blue">v2.4 Enterprise</span>
                     </div>
                 </div>
-                
+
                 <nav class="space-y-2">
                     <template x-for="item in navItems">
-                        <button 
+                        <button
                            @click="currentView = item.id"
                            :class="currentView === item.id ? 'btn btn-primary w-full justify-start' : 'btn btn-outline w-full justify-start'">
                             <span x-html="getIcon(item.id)"></span>
@@ -83,7 +83,7 @@
                     </template>
                 </nav>
             </div>
-            
+
             <div class="space-y-3 pt-6 border-t border-black/5">
                 <!-- Storefront Demo Link -->
                 <a href="/dashboard/demo" target="_blank" class="btn btn btn-outline text-primary w-full text-xs flex items-center justify-center gap-1.5">
@@ -99,22 +99,22 @@
 
         <!-- Main Content View Area -->
         <main class="main-content">
-            
+
             <!-- Topbar Header -->
             <header class="topbar">
                 <div class="flex items-center gap-4">
                     <h1 class="text-xl font-semibold text-lg" x-text="getPageTitle()"></h1>
-                    
+
                     <!-- Mode Switcher (Business Insights vs Developer Telemetry) -->
                     <div class="tabs">
-                        <button 
-                            @click="modeView = 'executive'" 
+                        <button
+                            @click="modeView = 'executive'"
                             :class="modeView === 'executive' ? 'tab active' : 'tab'"
                         >
                             Executive Insights
                         </button>
-                        <button 
-                            @click="modeView = 'telemetry'" 
+                        <button
+                            @click="modeView = 'telemetry'"
                             :class="modeView === 'telemetry' ? 'tab active' : 'tab'"
                         >
                             Developer Telemetry
@@ -139,10 +139,10 @@
             </header>
 
             <div class="content-wrapper">
-                
+
                 <!-- View 1: Analytics / Insights Dashboard -->
                 <div x-show="currentView === 'analytics'" class="space-y-6">
-                    
+
                     <!-- KPI Cards Row -->
                     <div class="kpi-grid">
                         <div class="panel kpi-card">
@@ -225,7 +225,7 @@
 
                     <!-- Developer Telemetry View Content -->
                     <div x-show="modeView === 'telemetry'" class="space-y-6">
-                        
+
                         <!-- System Health Monitor Row -->
                         <div class="panel p-5 space-y-3">
                             <h3 class="font-heading text-base font-bold text-indigo-600">System Health Monitor & Infrastructure Status</h3>
@@ -255,7 +255,7 @@
                                 <h3 class="font-heading text-base font-bold text-indigo-600">Real-Time Engine Latency & Telemetry Meters</h3>
                                 <button @click="openQueryInspector()" class="btn btn-outline text-xs py-1 px-3">Inspect Raw Request JSON</button>
                             </div>
-                            
+
                             <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
                                 <div class="p-4 bg-black/5 dark:bg-white/5 rounded">
                                     <div class="text-xs text-muted font-bold uppercase">P95 Search Latency</div>
@@ -283,7 +283,7 @@
                                 </div>
                                 <div class="flex items-end gap-1.5 h-16 pt-2 border-b border-black/10">
                                     <template x-for="(val, idx) in latencyTicker" :key="idx">
-                                        <div 
+                                        <div
                                             class="flex-1 bg-[#C1C8FF] hover:bg-[#F6D0EF] rounded-t transition-all duration-300 relative group"
                                             :style="`height: ${val * 2.5}px;`"
                                         >
@@ -330,10 +330,10 @@
 
                     <!-- Catalog Search & Filter Bar -->
                     <div class="flex gap-2 pt-2">
-                        <input 
-                            type="text" 
-                            x-model="catalogFilterQuery" 
-                            placeholder="Filter catalog by product title, brand, or category..." 
+                        <input
+                            type="text"
+                            x-model="catalogFilterQuery"
+                            placeholder="Filter catalog by product title, brand, or category..."
                             class="input-field text-xs"
                         >
                     </div>
@@ -427,7 +427,7 @@
                 <div x-show="currentView === 'keys'" class="panel p-6 space-y-4">
                     <h2 class="font-heading text-lg font-bold">API Key Provisioning & Security Rotation</h2>
                     <p class="text-xs text-muted">Public search keys (`pk_*`) for frontends and private admin keys (`sk_*`) for merchant backends.</p>
-                    
+
                     <div class="space-y-3">
                         <div class="p-3 bg-black/5 dark:bg-white/5 rounded font-mono text-xs flex justify-between items-center">
                             <div>
@@ -455,7 +455,7 @@
 
                 <!-- View 6: Visual Merchandising & Widget Customizer -->
                 <div x-show="currentView === 'customizer'" class="space-y-6">
-                    
+
                     <!-- Section Header -->
                     <div class="panel p-6 space-y-2">
                         <h2 class="font-heading text-xl font-bold">Visual Merchandising & Widget Customizer</h2>
@@ -463,12 +463,12 @@
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        
+
                         <!-- 1. Interactive Hybrid Relevancy Tuning Sliders -->
                         <div class="panel p-6 space-y-4">
                             <h3 class="font-heading text-base font-bold text-indigo-600">Hybrid Search Relevancy Tuning</h3>
                             <p class="text-xs text-muted">Visually adjust the balance between Keyword BM25 exact matching and Vector Embedding semantic similarity.</p>
-                            
+
                             <div class="space-y-4 pt-2">
                                 <div>
                                     <div class="flex justify-between text-xs font-bold mb-1">
@@ -496,7 +496,7 @@
                         <!-- 2. Live Search Widget Theme Customizer & Live Preview -->
                         <div class="panel p-6 space-y-4">
                             <h3 class="font-heading text-base font-bold text-indigo-600">Live Search Widget Customizer</h3>
-                            
+
                             <div class="space-y-3">
                                 <div>
                                     <label class="block text-xs font-bold text-muted mb-1">Widget Primary Accent Color</label>
@@ -528,14 +528,14 @@
 
                     <!-- A/B Experiment Simulator & Out-of-Stock Strategy Row -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        
+
                         <!-- A/B Relevancy Experiment Simulator -->
                         <div class="panel p-0 space-y-0">
                             <div class="panel-header flex justify-between items-center">
                                 <h3 class="font-semibold text-base">A/B Relevancy Experiment Simulator</h3>
                                 <span class="badge badge-blue">Active Experiment</span>
                             </div>
-                            
+
                             <div class="overflow-x-auto">
                                 <table class="data-table">
                                     <thead>
@@ -573,7 +573,7 @@
                         <div class="panel p-6 space-y-4">
                             <h3 class="font-heading text-base font-bold text-indigo-600">Out-of-Stock Inventory Search Strategy</h3>
                             <p class="text-xs text-muted">Control how out-of-stock products are ranked and badged in search results.</p>
-                            
+
                             <div class="space-y-2 pt-2">
                                 <label class="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/5 rounded text-xs cursor-pointer">
                                     <input type="radio" name="oos-strategy" value="demote" x-model="oosStrategy" @change="updateOOSStrategy('demote')" class="accent-indigo-600">

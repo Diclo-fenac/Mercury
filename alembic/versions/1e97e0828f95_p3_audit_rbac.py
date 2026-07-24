@@ -41,14 +41,14 @@ def upgrade() -> None:
     op.create_index(op.f('idx_audit_org_actor'), 'audit_logs', ['organization_id', 'actor_id'], unique=False)
     op.create_index(op.f('idx_audit_org_resource'), 'audit_logs', ['organization_id', 'resource_type', 'resource_id'], unique=False)
     op.create_index(op.f('idx_audit_org_time'), 'audit_logs', ['organization_id', 'created_at'], unique=False)
-    
+
     op.add_column('tenant_users', sa.Column('roles', postgresql.ARRAY(sa.String()), server_default='{"user"}', nullable=True))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column('tenant_users', 'roles')
-    
+
     op.drop_index(op.f('idx_audit_org_time'), table_name='audit_logs')
     op.drop_index(op.f('idx_audit_org_resource'), table_name='audit_logs')
     op.drop_index(op.f('idx_audit_org_actor'), table_name='audit_logs')

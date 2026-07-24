@@ -51,17 +51,17 @@ async def public_chat(
         chat_orchestrator = container.get('chat_orchestrator')
         if not chat_orchestrator:
             raise HTTPException(status_code=503, detail="Chat unavailable")
-            
+
         chat_req = ChatCompletionRequest(
             messages=[ChatCompletionMessage(role="user", content=request.message)],
             user_id=request.session_id or "anonymous_shopper"
         )
-        
+
         result = await chat_orchestrator.handle_completion(chat_req, tenant)
-        
+
         if not result.get('success'):
             raise HTTPException(status_code=500, detail="Chat failed")
-            
+
         return {"success": True, "answer": result.get("response", "")}
     except Exception:
         return {"success": False, "answer": "I'm sorry, I cannot process your request right now."}
@@ -88,9 +88,9 @@ async def search_products(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Query too long. Max 100 characters."
             )
-        
+
         user_id = request.user_context.user_id if request.user_context else request.id if hasattr(request, "id") else request.user_id
-        
+
         result = await search_orchestrator.handle(
             query=request.query,
             user_id=user_id,
@@ -102,21 +102,21 @@ async def search_products(
             include_suggestions=request.include.suggestions if request.include else False,
             tenant_context=tenant
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Search failed"
             )
-        
+
         # Generate unique search ID for telemetry
         import uuid
         search_id = str(uuid.uuid4())
-        
+
         # Add search_id to result metadata
         meta = result.get("meta", {})
         meta["search_id"] = search_id
-        
+
         # Record usage event and telemetry in background
         tenant_service = container.get('tenant_service')
         if tenant_service:
@@ -129,7 +129,7 @@ async def search_products(
                 result_count=result.get("total_results", 0),
                 api_key_id=getattr(tenant, "key_id", None)
             )
-            
+
         cache = container.get('redis')
         if cache:
             telemetry_key = f"telemetry:{tenant.organization_id}:trending_searches:7d"
@@ -139,7 +139,7 @@ async def search_products(
                 amount=1.0,
                 member=request.query.lower().strip()
             )
-        
+
         return SearchResult(
             query=request.query,
             results=result.get("results", []),
@@ -174,19 +174,19 @@ async def get_search_suggestions(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Search service not available"
             )
-        
+
         result = await search_orchestrator.get_suggestions(
             query=q,
             limit=limit,
             tenant_context=tenant
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to get suggestions"
             )
-        
+
         return {
             "query": q,
             "suggestions": result.get("suggestions", []),
@@ -216,19 +216,19 @@ async def get_trending_searches(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Search service not available"
             )
-        
+
         result = await search_orchestrator.get_trending_searches(
             limit=limit,
             category=category,
             tenant_context=tenant
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to get trending searches"
             )
-        
+
         return {
             "trending_searches": result.get("searches", []),
             "total": len(result.get("searches", [])),
@@ -257,18 +257,18 @@ async def get_popular_searches(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Search service not available"
             )
-        
+
         result = await search_orchestrator.get_trending_searches(
             limit=limit,
             tenant_context=tenant
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to get popular searches"
             )
-        
+
         return {
             "popular_searches": result.get("searches", []),
             "total": len(result.get("searches", []))
@@ -297,7 +297,7 @@ async def search_by_image_legacy(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Image search service not available"
             )
-        
+
         require_same_tenant(current_user, tenant)
         result = await image_orchestrator.search_by_image(
             image_id=payload.get("image_id"),
@@ -308,13 +308,13 @@ async def search_by_image_legacy(
             search_type=payload.get("search_type", "similar"),
             limit=payload.get("limit", 10)
         )
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=result.get("error", "Image search failed")
             )
-        
+
         return {
             "success": True,
             "results": result.get("results", []),

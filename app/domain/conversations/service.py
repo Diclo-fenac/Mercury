@@ -11,25 +11,25 @@ from app.infrastructure.id_generator import IDGenerator
 
 class ConversationService:
     """Conversation business logic"""
-    
+
     def __init__(self, db: PostgresClient, cache: Optional[RedisClient]):
         self.db = db
         self.cache = cache
         self.id_gen = IDGenerator()
-    
+
     async def get_user_conversations(
         self, organization_id: str, user_id: str, limit: int = 20
     ) -> List[Dict[str, Any]]:
         """Get user's conversations"""
         conversations = await self.db.get_conversations_by_user(organization_id, user_id, limit)
         return conversations
-    
+
     async def get_conversation(
         self, organization_id: str, conversation_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get conversation by ID"""
         return await self.db.get_conversation(organization_id, conversation_id)
-    
+
     async def create_conversation(
         self, organization_id: str, user_id: str, title: Optional[str] = None, channel: str = "rest"
     ) -> str:
@@ -44,7 +44,7 @@ class ConversationService:
         }
         await self.db.create_conversation(organization_id, conversation_id, user_id, title, channel)
         return conversation_id
-    
+
     async def save_message(
         self,
         organization_id: str,
@@ -65,7 +65,7 @@ class ConversationService:
             'timestamp': self.id_gen.timestamp(),
             'metadata': metadata or {}
         }
-        
+
         await self.db.save_message(
             organization_id,
             message_data['message_id'],
@@ -76,13 +76,13 @@ class ConversationService:
             message_data.get('metadata', {}),
         )
         return message_id
-    
+
     async def get_messages(
         self, organization_id: str, conversation_id: str, limit: int = 50
     ) -> List[Dict[str, Any]]:
         """Get conversation messages"""
         return await self.db.get_messages(organization_id, conversation_id, limit)
-    
+
     async def delete_conversation(self, organization_id: str, conversation_id: str) -> bool:
         """Delete conversation"""
         return await self.db.delete_conversation(organization_id, conversation_id)

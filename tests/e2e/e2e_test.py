@@ -159,7 +159,7 @@ async def test_websocket():
             await ws.send(json.dumps({"event": "user_auth", "data": {"user_id": "e2e_test_user"}}))
             auth_res = await ws.recv()
             print(f"   WS Auth: {auth_res}")
-            
+
             # Chat message
             await ws.send(json.dumps({"event": "chat_message", "data": {"message": "best smartphone under 10k", "user_id": "e2e_test_user"}}))
             chat_res = await ws.recv()

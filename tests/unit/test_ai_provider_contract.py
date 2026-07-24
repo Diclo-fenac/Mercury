@@ -13,7 +13,7 @@ def test_ai_provider_factory_gemini():
         GOOGLE_API_KEY="dummy_key",
         AI_PROVIDER="gemini"
     )
-    
+
     provider = AIProviderFactory.create_provider(settings)
     assert isinstance(provider, BaseAIProvider)
     assert isinstance(provider, LLMEngine)
@@ -26,7 +26,7 @@ def test_ai_provider_factory_fallback():
         GOOGLE_API_KEY="dummy_key",
         AI_PROVIDER="unknown"
     )
-    
+
     provider = AIProviderFactory.create_provider(settings)
     assert isinstance(provider, BaseAIProvider)
     # Should fallback to Gemini

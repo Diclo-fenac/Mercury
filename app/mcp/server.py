@@ -19,7 +19,7 @@ class MCPAuthMiddleware:
             return await self.app(scope, receive, send)
 
         request = Request(scope, receive)
-        
+
         # Extract credentials
         api_key = request.headers.get("x-api-key")
         auth_header = request.headers.get("authorization")
@@ -36,7 +36,7 @@ class MCPAuthMiddleware:
                 import json
                 detail = getattr(e, "detail", "Unauthorized")
                 status_code = getattr(e, "status_code", 401)
-                
+
                 await send({
                     "type": "http.response.start",
                     "status": status_code,
@@ -62,9 +62,9 @@ def get_mcp_app():
     """
     # Force import of tools so they register with FastMCP
     from app.mcp.tools import catalog, chat, recommendations, search
-    
+
     # Get the raw Starlette app from FastMCP
     raw_app = mcp.sse_app()
-    
+
     # Wrap in authentication middleware
     return MCPAuthMiddleware(raw_app)

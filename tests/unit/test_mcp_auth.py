@@ -26,7 +26,7 @@ async def test_authenticate_mcp_request_with_valid_api_key(mock_container):
         "plan": "free",
         "config": {}
     }
-    
+
     with patch("app.mcp.auth.get_container_dependency", return_value=mock_container):
         request = MagicMock()
         ctx = await authenticate_mcp_request(request, api_key="valid-key", bearer=None)
@@ -37,7 +37,7 @@ async def test_authenticate_mcp_request_with_valid_api_key(mock_container):
 async def test_authenticate_mcp_request_invalid_api_key(mock_container):
     tenant_service = mock_container.get.return_value
     tenant_service.validate_api_key.return_value = None
-    
+
     with patch("app.mcp.auth.get_container_dependency", return_value=mock_container):
         request = MagicMock()
         with pytest.raises(HTTPException) as exc:
@@ -47,14 +47,14 @@ async def test_authenticate_mcp_request_invalid_api_key(mock_container):
 @pytest.mark.asyncio
 async def test_authenticate_mcp_request_valid_jwt(mock_container):
     tenant_service = mock_container.get.return_value
-    
+
     from jose import jwt
     settings = get_settings()
     token = jwt.encode({"organization_id": "org_jwt", "roles": ["user"]}, settings.SECRET_KEY, algorithm="HS256")
-    
+
     bearer = MagicMock()
     bearer.credentials = token
-    
+
     with patch("app.mcp.auth.get_container_dependency", return_value=mock_container):
         request = MagicMock()
         ctx = await authenticate_mcp_request(request, api_key=None, bearer=bearer)

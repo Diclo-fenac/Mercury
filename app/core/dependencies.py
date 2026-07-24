@@ -95,18 +95,18 @@ async def require_auth(
 # Rate limiting dependency
 class RateLimiter:
     """Simple in-memory rate limiter"""
-    
+
     def __init__(self):
         self._requests: Dict[str, list] = {}
         self._lock = asyncio.Lock()
-    
+
     async def check_rate_limit(self, key: str, limit: int = 60, window: int = 60) -> bool:
         """Check if request is within rate limit"""
         import time
-        
+
         async with self._lock:
             now = time.time()
-            
+
             # Clean old requests
             if key in self._requests:
                 self._requests[key] = [
@@ -115,11 +115,11 @@ class RateLimiter:
                 ]
             else:
                 self._requests[key] = []
-            
+
             # Check limit
             if len(self._requests[key]) >= limit:
                 return False
-            
+
             # Add current request
             self._requests[key].append(now)
             return True
@@ -167,12 +167,12 @@ async def check_service_health() -> Dict[str, Any]:
     """Check health of all services"""
     container = get_service_container()
     health_status = {}
-    
+
     try:
         # Check Redis
         redis_service = await container.get_service("redis")
         health_status["redis"] = await redis_service.is_available() if redis_service else False
-        
+
         # Check other services
         services = ["llm", "user", "product", "chat"]
         for service_name in services:
@@ -181,7 +181,7 @@ async def check_service_health() -> Dict[str, Any]:
                 health_status[service_name] = service is not None
             except Exception:
                 health_status[service_name] = False
-        
+
         return health_status
     except Exception as e:
         logger.error(f"Health check error: {e}")

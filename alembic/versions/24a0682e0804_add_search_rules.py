@@ -31,7 +31,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_redirects_org_query', 'redirect_rules', ['organization_id', 'query_pattern'], unique=False)
-    
+
     op.create_table('boost_rules',
     sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
     sa.Column('organization_id', sa.UUID(), nullable=False),

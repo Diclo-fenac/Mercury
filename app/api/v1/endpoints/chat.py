@@ -35,7 +35,7 @@ async def chat_completion(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Chat service not available"
             )
-        
+
         # Verify user authorization
         user_id = request.user_id or current_user["user_id"]
         if current_user["user_id"] != user_id:
@@ -51,13 +51,13 @@ async def chat_completion(
 
         # Map new model to orchestrator
         result = await chat_orchestrator.handle_completion(request, tenant, user_id=user_id)
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=result.get('error', 'Chat processing failed')
             )
-        
+
         return ChatResponse(
             response=result.get("response", ""),
             conversation_id=request.conversation_id or result.get("conversation_id", "unknown"),
@@ -65,7 +65,7 @@ async def chat_completion(
             features_used=result.get("features_used", {}),
             citations=result.get("citations", []),
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -89,7 +89,7 @@ async def chat_stream(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Chat service not available"
             )
-        
+
         user_id = request.user_id or current_user["user_id"]
         if current_user["user_id"] != user_id:
              raise HTTPException(
@@ -106,7 +106,7 @@ async def chat_stream(
             chat_orchestrator.stream_completion(request, tenant, user_id=user_id),
             media_type="text/event-stream"
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -137,12 +137,12 @@ async def chat_tools(
             tenant_context_var.set(tenant)
             user_id_var.set(current_user["user_id"])
             result = await chat_orchestrator.execute_tool(
-                request.tool_name, 
+                request.tool_name,
                 request.parameters,
                 user_id=current_user["user_id"]
             )
             return {"success": True, "result": result}
-            
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -164,14 +164,14 @@ async def get_conversation_history(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Conversation service not available"
             )
-        
+
         result = await conversation_orchestrator.get_conversation_history(
             organization_id=current_user["organization_id"],
             conversation_id=conversation_id,
             user_id=current_user["user_id"],
             limit=pagination.limit
         )
-        
+
         if not result.get('success'):
             if result.get('error') == 'not_found':
                 raise HTTPException(
@@ -188,10 +188,10 @@ async def get_conversation_history(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to get conversation history"
                 )
-        
+
         messages = result.get("messages", [])
         total = len(messages)
-        
+
         return {
             "success": True,
             "conversation_id": conversation_id,
@@ -203,7 +203,7 @@ async def get_conversation_history(
                 "pages": (total + pagination.limit - 1) // pagination.limit if pagination.limit > 0 else 1
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

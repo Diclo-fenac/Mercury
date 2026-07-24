@@ -22,16 +22,16 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.add_column('catalog_items', sa.Column('seller_id', sa.String(255), nullable=True))
     op.create_index(op.f('ix_catalog_items_seller_id'), 'catalog_items', ['seller_id'], unique=False)
-    
+
     op.add_column('products', sa.Column('seller_id', sa.String(255), nullable=True))
     op.create_index(op.f('ix_products_seller_id'), 'products', ['seller_id'], unique=False)
-    
+
     op.add_column('tenant_users', sa.Column('seller_id', sa.String(255), nullable=True))
     op.create_index(op.f('ix_tenant_users_seller_id'), 'tenant_users', ['seller_id'], unique=False)
-    
+
     op.add_column('tenant_conversations', sa.Column('seller_id', sa.String(255), nullable=True))
     op.create_index(op.f('ix_tenant_conversations_seller_id'), 'tenant_conversations', ['seller_id'], unique=False)
-    
+
     op.add_column('tenant_activities', sa.Column('seller_id', sa.String(255), nullable=True))
     op.create_index(op.f('ix_tenant_activities_seller_id'), 'tenant_activities', ['seller_id'], unique=False)
 
@@ -40,15 +40,15 @@ def downgrade() -> None:
     """Downgrade schema."""
     op.drop_index(op.f('ix_tenant_activities_seller_id'), table_name='tenant_activities')
     op.drop_column('tenant_activities', 'seller_id')
-    
+
     op.drop_index(op.f('ix_tenant_conversations_seller_id'), table_name='tenant_conversations')
     op.drop_column('tenant_conversations', 'seller_id')
-    
+
     op.drop_index(op.f('ix_tenant_users_seller_id'), table_name='tenant_users')
     op.drop_column('tenant_users', 'seller_id')
-    
+
     op.drop_index(op.f('ix_products_seller_id'), table_name='products')
     op.drop_column('products', 'seller_id')
-    
+
     op.drop_index(op.f('ix_catalog_items_seller_id'), table_name='catalog_items')
     op.drop_column('catalog_items', 'seller_id')

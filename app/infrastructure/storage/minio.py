@@ -38,7 +38,7 @@ class MinIOStorageClient:
         """Initialize MinIO client and ensure bucket exists"""
         try:
             loop = asyncio.get_event_loop()
-            
+
             # Initialize the MinIO client in the executor to avoid blocking the main event loop
             self.client = await loop.run_in_executor(
                 None,
@@ -49,20 +49,20 @@ class MinIOStorageClient:
                     secure=self.secure
                 )
             )
-            
+
             # Check/create bucket
             bucket_exists = await loop.run_in_executor(
                 None,
                 lambda: self.client.bucket_exists(self.bucket_name)
             )
-            
+
             if not bucket_exists:
                 await loop.run_in_executor(
                     None,
                     lambda: self.client.make_bucket(self.bucket_name)
                 )
                 logger.info(f"📁 Created MinIO bucket: {self.bucket_name}")
-            
+
             self._connected = True
             logger.info(f"✅ MinIO storage connected: {self.endpoint}/{self.bucket_name}")
         except Exception as e:
@@ -99,9 +99,9 @@ class MinIOStorageClient:
         try:
             if not self.client:
                 return False
-            
+
             data_stream = io.BytesIO(data)
-            
+
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None,
@@ -140,9 +140,9 @@ class MinIOStorageClient:
         try:
             if not self.client:
                 return None
-            
+
             loop = asyncio.get_event_loop()
-            
+
             response = await loop.run_in_executor(
                 None,
                 lambda: self.client.get_object(self.bucket_name, blob_name)
@@ -152,7 +152,7 @@ class MinIOStorageClient:
             finally:
                 response.close()
                 response.release_conn()
-            
+
             return data
         except Exception as e:
             logger.error(f"Error downloading file from MinIO {blob_name}: {e}")

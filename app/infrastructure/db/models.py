@@ -94,23 +94,23 @@ class Store(Base):
 class User(Base):
     """User table with JSONB for preferences and behavior"""
     __tablename__ = 'users'
-    
+
     id = Column(String(255), primary_key=True)
     email = Column(String(255), unique=True)
     name = Column(String(255))
     gender = Column(String(50))
-    
+
     # JSONB columns
     preferences = Column(JSONB)  # {budget_range, preferred_brands, preferred_categories, preferred_colors, preferred_size}
     behavior = Column(JSONB)    # {most_viewed_products, stats, last_activity}
     health = Column(JSONB)      # array of health conditions
     location = Column(JSONB)    # {address, city, state, lat, lon}
     extra_data = Column('metadata', JSONB)
-    
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    
+
     __table_args__ = (
         Index('idx_users_email', 'email'),
         Index('idx_users_preferences', 'preferences', postgresql_using='gin'),
@@ -121,22 +121,22 @@ class User(Base):
 class Conversation(Base):
     """Conversation table"""
     __tablename__ = 'conversations'
-    
+
     id = Column(String(255), primary_key=True)
     user_id = Column(String(255), ForeignKey('users.id'), nullable=False)
     title = Column(String(500))
-    
+
     # JSONB for metadata
     extra_data = Column('metadata', JSONB)
-    
+
     # Stats
     message_count = Column(Integer, default=0)
     last_message_at = Column(DateTime)
-    
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    
+
     __table_args__ = (
         Index('idx_conversations_user_id', 'user_id'),
         Index('idx_conversations_last_message', 'last_message_at'),
@@ -146,20 +146,20 @@ class Conversation(Base):
 class Message(Base):
     """Message table for conversation history"""
     __tablename__ = 'messages'
-    
+
     id = Column(String(255), primary_key=True)
     conversation_id = Column(String(255), ForeignKey('conversations.id'), nullable=False)
     user_id = Column(String(255), ForeignKey('users.id'), nullable=False)
-    
+
     role = Column(String(50), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
-    
+
     # JSONB for metadata
     extra_data = Column('metadata', JSONB)  # {type: str, image_analysis: {}, function_called: str}
-    
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
-    
+
     __table_args__ = (
         Index('idx_messages_conversation_id', 'conversation_id'),
         Index('idx_messages_user_id', 'user_id'),
@@ -192,18 +192,18 @@ class Barcode(Base):
 class Activity(Base):
     """User activity log"""
     __tablename__ = 'activities'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String(255), ForeignKey('users.id'), nullable=False)
-    
+
     activity_type = Column(String(100), nullable=False)  # search, view, purchase, etc.
-    
+
     # JSONB for activity data
     data = Column(JSONB)  # {product_id: str, query: str, ...}
-    
+
     # Timestamp
     created_at = Column(DateTime, server_default=func.now())
-    
+
     __table_args__ = (
         Index('idx_activities_user_id', 'user_id'),
         Index('idx_activities_type', 'activity_type'),
@@ -332,17 +332,17 @@ class CatalogIntegration(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     organization_id = Column(UUID(as_uuid=True), ForeignKey('organizations.id', ondelete='CASCADE'), nullable=False)
-    
+
     integration_type = Column(String(50), nullable=False)  # csv, webhook, shopify
-    
+
     # JSONB for credentials/configuration (e.g., webhook url, api keys, mapping config)
     config = Column(JSONB, nullable=False, server_default='{}')
-    
+
     # State tracking
     last_sync_at = Column(DateTime(timezone=True))
     sync_status = Column(String(50))  # pending, running, success, error
     last_error = Column(Text)
-    
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

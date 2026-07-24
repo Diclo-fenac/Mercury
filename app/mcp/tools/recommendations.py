@@ -13,7 +13,7 @@ async def find_similar_products(product_id: str, limit: int = 5) -> str:
     ctx = get_mcp_tenant_context()
     container = get_container()
     recommendation_engine = container.get("recommendation_engine")
-    
+
     if not recommendation_engine:
         return json.dumps({"error": "Recommendation engine not available"})
 
@@ -36,7 +36,7 @@ async def recommend_products(user_id: str, limit: int = 5) -> str:
     ctx = get_mcp_tenant_context()
     container = get_container()
     recommendation_orchestrator = container.get("recommendation_orchestrator")
-    
+
     if not recommendation_orchestrator:
         return json.dumps({"error": "Recommendation orchestrator not available"})
 

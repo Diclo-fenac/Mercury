@@ -26,15 +26,15 @@ class CatalogImporter:
         Parse CSV content, generate local embeddings, and bulk index to Typesense.
         """
         collection_name = f"tenant_{org_id}_products"
-        
+
         # 1. Parse CSV
         f = io.StringIO(csv_content.strip())
         reader = csv.DictReader(f)
-        
+
         docs = []
         for i, row in enumerate(reader):
             docs.append(self._normalize_product(row, i))
-            
+
         return await self._process_and_index(org_id, collection_name, docs)
 
     async def import_json(self, org_id: str, products: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -42,17 +42,17 @@ class CatalogImporter:
         Parse JSON array, generate local embeddings, and bulk index to Typesense.
         """
         collection_name = f"tenant_{org_id}_products"
-        
+
         docs = []
         for i, row in enumerate(products):
             docs.append(self._normalize_product(row, i))
-            
+
         return await self._process_and_index(org_id, collection_name, docs)
 
     def _normalize_product(self, row: Dict[str, Any], index: int) -> Dict[str, Any]:
         """Normalize a single product dict"""
         prod_id = row.get("id") or row.get("product_id") or f"prod_{index}_{uuid.uuid4().hex[:8]}"
-        
+
         # Map columns and normalize types based on tenant product schema
         title = row.get("title") or row.get("name") or ""
         name = row.get("name") or row.get("title") or ""
@@ -60,28 +60,28 @@ class CatalogImporter:
         category = row.get("category") or "General"
         sub_category = row.get("sub_category") or ""
         description = row.get("description") or ""
-        
+
         # Price
         try:
             price_val = row.get("selling_price") or row.get("price") or "0"
             selling_price = float(price_val)
         except (ValueError, TypeError):
             selling_price = 0.0
-            
+
         # Rating
         try:
             rating_val = row.get("rating") or "0.0"
             rating = float(rating_val)
         except (ValueError, TypeError):
             rating = 0.0
-            
+
         # Stock & Availability
         stock_str = str(row.get("stock", "true")).lower()
         stock = stock_str in ("true", "1", "yes", "in_stock")
-        
+
         online_str = str(row.get("online_available", "true")).lower()
         online_available = online_str in ("true", "1", "yes", "available")
-        
+
         return {
             "id": str(prod_id),
             "name": str(name),
@@ -114,7 +114,7 @@ class CatalogImporter:
                 if val:
                     parts.append(val)
             texts.append(" ".join(parts))
-            
+
         # 3. Generate local embeddings
         try:
             vectors = await self.embeddings.embed_batch(texts)
@@ -137,7 +137,7 @@ class CatalogImporter:
         batch_size = 50
         indexed_count = 0
         error_count = 0
-        
+
         for i in range(0, len(persisted_docs), batch_size):
             batch = persisted_docs[i:i + batch_size]
             try:
@@ -166,7 +166,7 @@ class CatalogImporter:
                 await self.catalog_service.record_index_results(
                     [{"event_id": doc["index_event_id"], "success": False, "error": str(e)} for doc in batch]
                 )
-                
+
         return {
             "success": error_count == 0,
             "total": len(persisted_docs),

@@ -26,9 +26,9 @@ async def get_dashboard(
     organization_id = admin_user.get("organization_id")
     if not organization_id:
         raise HTTPException(status_code=403, detail="Not associated with an organization")
-        
+
     metrics = await service.get_dashboard_metrics(organization_id, days)
     if "error" in metrics:
         raise HTTPException(status_code=500, detail=metrics["error"])
-        
+
     return metrics

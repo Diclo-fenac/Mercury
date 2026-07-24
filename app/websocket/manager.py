@@ -14,20 +14,20 @@ logger = StructuredLogger("websocket")
 
 class ConnectionManager:
     """Manages individual WebSocket connections"""
-    
+
     def __init__(self):
         # Active connections: {websocket: connection_info}
         self.active_connections: Dict[WebSocket, Dict[str, Any]] = {}
-        
+
         # User connections: {user_id: {websocket, ...}}
         self.user_connections: Dict[str, Set[WebSocket]] = {}
-        
+
         # Room connections: {room_id: {websocket, ...}}
         self.room_connections: Dict[str, Set[WebSocket]] = {}
-        
+
         # Connection metadata
         self.connection_metadata: Dict[WebSocket, Dict[str, Any]] = {}
-    
+
     async def connect(
         self,
         websocket: WebSocket,
@@ -36,7 +36,7 @@ class ConnectionManager:
     ):
         """Accept WebSocket connection"""
         await websocket.accept()
-        
+
         connection_info = {
             "connected_at": datetime.now(),
             "user_id": user_id,
@@ -44,34 +44,34 @@ class ConnectionManager:
             "rooms": set(),
             "session_id": id(websocket)  # Use object id as session id
         }
-        
+
         self.active_connections[websocket] = connection_info
         self.connection_metadata[websocket] = {}
-        
+
         if user_id and organization_id:
             user_key = self._user_key(organization_id, user_id)
             if user_key not in self.user_connections:
                 self.user_connections[user_key] = set()
             self.user_connections[user_key].add(websocket)
-        
+
         logger.log_websocket_event("connection", user_id, session_id=connection_info["session_id"])
 
     @staticmethod
     def _user_key(organization_id: str, user_id: str) -> str:
         return f"{organization_id}:{user_id}"
-    
+
     def disconnect(self, websocket: WebSocket):
         """Remove WebSocket connection"""
         if websocket not in self.active_connections:
             return
-        
+
         connection_info = self.active_connections[websocket]
         user_id = connection_info.get("user_id")
         rooms = connection_info.get("rooms", set())
-        
+
         # Remove from active connections
         del self.active_connections[websocket]
-        
+
         # Remove from user connections
         organization_id = connection_info.get("organization_id")
         if user_id and organization_id:
@@ -80,20 +80,20 @@ class ConnectionManager:
                 self.user_connections[user_key].discard(websocket)
                 if not self.user_connections[user_key]:
                     del self.user_connections[user_key]
-        
+
         # Remove from rooms
         for room_id in rooms:
             if room_id in self.room_connections:
                 self.room_connections[room_id].discard(websocket)
                 if not self.room_connections[room_id]:
                     del self.room_connections[room_id]
-        
+
         # Remove metadata
         if websocket in self.connection_metadata:
             del self.connection_metadata[websocket]
-        
+
         logger.log_websocket_event("disconnection", user_id)
-    
+
     async def send_personal_message(self, message: Dict[str, Any], websocket: WebSocket):
         """Send message to specific WebSocket"""
         try:
@@ -101,13 +101,13 @@ class ConnectionManager:
         except Exception as e:
             logger.log_error(e, {"event": "send_personal_message"})
             self.disconnect(websocket)
-    
+
     async def send_to_user(self, message: Dict[str, Any], organization_id: str, user_id: str):
         """Send a message only to one tenant-local user's connections."""
         user_key = self._user_key(organization_id, user_id)
         if user_key not in self.user_connections:
             return
-        
+
         disconnected = []
         for websocket in self.user_connections[user_key].copy():
             try:
@@ -115,94 +115,94 @@ class ConnectionManager:
             except Exception as e:
                 logger.log_error(e, {"event": "send_to_user", "user_id": user_id, "organization_id": organization_id})
                 disconnected.append(websocket)
-        
+
         # Clean up disconnected sockets
         for websocket in disconnected:
             self.disconnect(websocket)
-    
+
     async def broadcast_to_room(self, message: Dict[str, Any], room_id: str, exclude: Optional[WebSocket] = None):
         """Broadcast message to all connections in a room"""
         if room_id not in self.room_connections:
             return
-        
+
         disconnected = []
         for websocket in self.room_connections[room_id].copy():
             if websocket == exclude:
                 continue
-            
+
             try:
                 await websocket.send_text(json.dumps(message, default=str))
             except Exception as e:
                 logger.log_error(e, {"event": "broadcast_to_room", "room_id": room_id})
                 disconnected.append(websocket)
-        
+
         # Clean up disconnected sockets
         for websocket in disconnected:
             self.disconnect(websocket)
-    
+
     async def broadcast_to_all(self, message: Dict[str, Any], exclude: Optional[WebSocket] = None):
         """Broadcast message to all active connections"""
         disconnected = []
         for websocket in list(self.active_connections.keys()):
             if websocket == exclude:
                 continue
-            
+
             try:
                 await websocket.send_text(json.dumps(message, default=str))
             except Exception as e:
                 logger.log_error(e, {"event": "broadcast_to_all"})
                 disconnected.append(websocket)
-        
+
         # Clean up disconnected sockets
         for websocket in disconnected:
             self.disconnect(websocket)
-    
+
     def join_room(self, websocket: WebSocket, room_id: str):
         """Add connection to a room"""
         if websocket not in self.active_connections:
             return False
-        
+
         # Add to room connections
         if room_id not in self.room_connections:
             self.room_connections[room_id] = set()
         self.room_connections[room_id].add(websocket)
-        
+
         # Update connection info
         self.active_connections[websocket]["rooms"].add(room_id)
-        
+
         logger.log_websocket_event(
-            "join_room", 
+            "join_room",
             self.active_connections[websocket].get("user_id"),
             room_id=room_id
         )
         return True
-    
+
     def leave_room(self, websocket: WebSocket, room_id: str):
         """Remove connection from a room"""
         if websocket not in self.active_connections:
             return False
-        
+
         # Remove from room connections
         if room_id in self.room_connections:
             self.room_connections[room_id].discard(websocket)
             if not self.room_connections[room_id]:
                 del self.room_connections[room_id]
-        
+
         # Update connection info
         self.active_connections[websocket]["rooms"].discard(room_id)
-        
+
         logger.log_websocket_event(
             "leave_room",
             self.active_connections[websocket].get("user_id"),
             room_id=room_id
         )
         return True
-    
+
     def set_user_id(self, websocket: WebSocket, user_id: str):
         """Associate user ID with WebSocket connection"""
         if websocket not in self.active_connections:
             return False
-        
+
         # Remove from old user connections if exists
         organization_id = self.active_connections[websocket].get("organization_id")
         if not organization_id:
@@ -214,31 +214,31 @@ class ConnectionManager:
                 self.user_connections[old_user_key].discard(websocket)
                 if not self.user_connections[old_user_key]:
                     del self.user_connections[old_user_key]
-        
+
         # Add to new user connections
         user_key = self._user_key(organization_id, user_id)
         if user_key not in self.user_connections:
             self.user_connections[user_key] = set()
         self.user_connections[user_key].add(websocket)
-        
+
         # Update connection info
         self.active_connections[websocket]["user_id"] = user_id
-        
+
         logger.log_websocket_event("user_auth", user_id)
         return True
-    
+
     def get_connection_info(self, websocket: WebSocket) -> Optional[Dict[str, Any]]:
         """Get connection information"""
         return self.active_connections.get(websocket)
-    
+
     def get_user_connections(self, organization_id: str, user_id: str) -> Set[WebSocket]:
         """Get all connections for one tenant-local user."""
         return self.user_connections.get(self._user_key(organization_id, user_id), set())
-    
+
     def get_room_connections(self, room_id: str) -> Set[WebSocket]:
         """Get all connections in a room"""
         return self.room_connections.get(room_id, set())
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get connection statistics"""
         return {
@@ -246,7 +246,7 @@ class ConnectionManager:
             "unique_users": len(self.user_connections),
             "active_rooms": len(self.room_connections),
             "connections_per_user": {
-                user_id: len(connections) 
+                user_id: len(connections)
                 for user_id, connections in self.user_connections.items()
             },
             "connections_per_room": {
@@ -257,18 +257,18 @@ class ConnectionManager:
 
 class WebSocketManager:
     """High-level WebSocket manager with additional features"""
-    
+
     def __init__(self):
         self.connection_manager = ConnectionManager()
         self.message_handlers: Dict[str, callable] = {}
         self.middleware: List[callable] = []
-    
+
     async def connect(
         self, websocket: WebSocket, user_id: Optional[str] = None, organization_id: Optional[str] = None
     ):
         """Connect WebSocket with enhanced features"""
         await self.connection_manager.connect(websocket, user_id, organization_id)
-        
+
         # Send connection confirmation
         await self.send_message(websocket, {
             "event": "connection_response",
@@ -287,34 +287,34 @@ class WebSocketManager:
                 ]
             }
         })
-    
+
     def disconnect(self, websocket: WebSocket):
         """Disconnect WebSocket"""
         self.connection_manager.disconnect(websocket)
-    
+
     async def send_message(self, websocket: WebSocket, message: Dict[str, Any]):
         """Send message with timestamp"""
         message["timestamp"] = datetime.now().isoformat()
         await self.connection_manager.send_personal_message(message, websocket)
-    
+
     async def send_to_user(self, organization_id: str, user_id: str, message: Dict[str, Any]):
         """Send message to a tenant-local user with timestamp."""
         message["timestamp"] = datetime.now().isoformat()
         await self.connection_manager.send_to_user(message, organization_id, user_id)
-    
+
     async def broadcast_to_room(self, room_id: str, message: Dict[str, Any], exclude: Optional[WebSocket] = None):
         """Broadcast to room with timestamp"""
         message["timestamp"] = datetime.now().isoformat()
         await self.connection_manager.broadcast_to_room(message, room_id, exclude)
-    
+
     def register_handler(self, event_type: str, handler: callable):
         """Register message handler for event type"""
         self.message_handlers[event_type] = handler
-    
+
     def add_middleware(self, middleware: callable):
         """Add middleware function"""
         self.middleware.append(middleware)
-    
+
     async def handle_message(self, websocket: WebSocket, message: Dict[str, Any]):
         """Handle incoming WebSocket message"""
         try:
@@ -323,24 +323,24 @@ class WebSocketManager:
                 message = await middleware_func(websocket, message)
                 if message is None:  # Middleware can block message
                     return
-            
+
             # Get event type
             event_type = message.get("event")
             if not event_type:
                 await self.send_error(websocket, "Missing event type")
                 return
-            
+
             # Find and execute handler
             handler = self.message_handlers.get(event_type)
             if handler:
                 await handler(websocket, message.get("data", {}))
             else:
                 await self.send_error(websocket, f"Unknown event type: {event_type}")
-        
+
         except Exception as e:
             logger.log_error(e, {"event": "handle_message"})
             await self.send_error(websocket, "Message handling failed")
-    
+
     async def send_error(self, websocket: WebSocket, error_message: str):
         """Send error message"""
         await self.send_message(websocket, {
@@ -350,19 +350,19 @@ class WebSocketManager:
                 "timestamp": datetime.now().isoformat()
             }
         })
-    
+
     # Delegate methods to connection manager
     def join_room(self, websocket: WebSocket, room_id: str):
         return self.connection_manager.join_room(websocket, room_id)
-    
+
     def leave_room(self, websocket: WebSocket, room_id: str):
         return self.connection_manager.leave_room(websocket, room_id)
-    
+
     def set_user_id(self, websocket: WebSocket, user_id: str):
         return self.connection_manager.set_user_id(websocket, user_id)
-    
+
     def get_connection_info(self, websocket: WebSocket):
         return self.connection_manager.get_connection_info(websocket)
-    
+
     def get_stats(self):
         return self.connection_manager.get_stats()

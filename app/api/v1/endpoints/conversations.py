@@ -23,36 +23,36 @@ async def get_user_conversations(
     try:
         # Resolve user_id: use provided or default to current user
         target_user_id = user_id or current_user["user_id"]
-        
+
         # Verify authorization: users can currently only access their own data
         if current_user["user_id"] != target_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
-        
+
         conversation_orchestrator = container.get('conversation_orchestrator')
         if not conversation_orchestrator:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Conversation service not available"
             )
-        
+
         result = await conversation_orchestrator.get_user_conversations(
             organization_id=current_user["organization_id"],
             user_id=target_user_id,
             limit=pagination.limit
         )
-        
+
         if not result.get('success'):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to get conversations"
             )
-        
+
         conversations = result.get("conversations", [])
         total = result.get("total", 0)
-        
+
         return ConversationListResponse(
             conversations=conversations,
             total=total,

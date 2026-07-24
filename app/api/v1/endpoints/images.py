@@ -239,7 +239,7 @@ async def get_raw_image(
     storage = container.get('storage')
     if not storage:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage service not available")
-        
+
     # Optimisation for LocalStorageClient to serve directly from file
     from app.infrastructure.storage.local import LocalStorageClient
     if isinstance(storage, LocalStorageClient):
@@ -247,7 +247,7 @@ async def get_raw_image(
         if not filepath.exists():
             raise HTTPException(status_code=404, detail="Image file not found")
         return FileResponse(filepath, media_type="image/jpeg")
-        
+
     # Retrieve bytes from MinIO/S3 and stream them
     try:
         data = await storage.download_blob(filename)

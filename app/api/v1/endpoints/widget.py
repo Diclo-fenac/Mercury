@@ -49,7 +49,7 @@ async def instant_search(
         )
 
     collection_name = f"tenant_{tenant_ctx.organization_id}_products"
-    
+
     try:
         # Fast query search
         loop = typesense_client.client.collections[collection_name].documents.search
@@ -64,7 +64,7 @@ async def instant_search(
                 "num_typos": 1
             })
         )
-        
+
         suggestions = []
         hits = res.get("hits", [])
         for hit in hits:
@@ -77,7 +77,7 @@ async def instant_search(
                 "price": doc.get("selling_price"),
                 "in_stock": doc.get("stock")
             })
-            
+
         return {
             "success": True,
             "suggestions": suggestions
@@ -135,7 +135,7 @@ async def widget_chat(
             limit=5,
             tenant_context=tenant_ctx
         )
-        
+
         products = search_res.get("results", [])
 
         # Grounded engine always re-runs tenant-scoped retrieval and returns only
@@ -147,7 +147,7 @@ async def widget_chat(
         answer = await llm_engine.generate_with_tools(sanitized_query, tenant_context=tenant_ctx)
         if not answer.get("success"):
             raise HTTPException(status_code=503, detail="Catalog assistant unavailable")
-        
+
         return {
             "success": True,
             "response": answer["response"],

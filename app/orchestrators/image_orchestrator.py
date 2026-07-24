@@ -10,18 +10,18 @@ from app.addons.search.hybrid import HybridSearch
 
 class ImageOrchestrator:
     """Orchestrates image processing workflow"""
-    
+
     def __init__(
-        self, 
+        self,
         image_processor: ImageProcessor,
         search_service: HybridSearch
     ):
         self.image_processor = image_processor
         self.search = search_service
-    
+
     async def process_image_upload(
-        self, 
-        image_data: str, 
+        self,
+        image_data: str,
         organization_id: str,
         user_id: str,
         message: Optional[str] = None
@@ -34,28 +34,28 @@ class ImageOrchestrator:
                     "error": "image_service_unavailable",
                     "details": "Image processing service not available"
                 }
-            
+
             # Process the image upload using real image processor
             result = await self.image_processor.process_image_upload(
                 image_data, organization_id, user_id
             )
-            
+
             if not result.get('success'):
                 return {
                     "success": False,
                     "error": "image_processing_failed",
                     "details": result.get('error', 'Image processing failed')
                 }
-            
+
             return result
-            
+
         except Exception as e:
             return {
                 "success": False,
                 "error": "image_processing_exception",
                 "details": f"Failed to process image upload: {str(e)}"
             }
-    
+
     async def get_image_metadata(
         self, organization_id: str, image_id: str, user_id: str
     ) -> Dict[str, Any]:
@@ -63,22 +63,22 @@ class ImageOrchestrator:
         try:
             if not self.image_processor:
                 return {"success": False, "error": "image_service_unavailable"}
-            
+
             result = await self.image_processor.get_cached_analysis(organization_id, image_id)
             if not result:
                 return {"success": False, "error": "not_found"}
-            
+
             # Authorization check
             if result.get("organization_id") != organization_id or result.get('user_id') != user_id:
                 return {"success": False, "error": "access_denied"}
-            
+
             return {"success": True, "image": result}
-            
+
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     async def search_by_image(
-        self, 
+        self,
         image_id: Optional[str] = None,
         image_data: Optional[str] = None,
         organization_id: Optional[str] = None,
@@ -95,14 +95,14 @@ class ImageOrchestrator:
                     "error": "missing_image_data",
                     "details": "Either image_id or image_data is required"
                 }
-            
+
             if not self.search:
                 return {
                     "success": False,
                     "error": "search_service_unavailable",
                     "details": "Search service not available"
                 }
-            
+
             if not organization_id or not tenant_context:
                 return {"success": False, "error": "tenant_context_required"}
             if image_id:
@@ -119,7 +119,7 @@ class ImageOrchestrator:
                 results = await self.search.search_by_text("product", {}, limit)
             finally:
                 tenant_context_var.reset(token)
-            
+
             return {
                 "success": True,
                 "results": results,
@@ -129,7 +129,7 @@ class ImageOrchestrator:
                     "search_type": search_type
                 }
             }
-            
+
         except Exception as e:
             return {
                 "success": False,

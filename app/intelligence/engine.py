@@ -70,7 +70,7 @@ from app.intelligence.providers.base import BaseAIProvider
 
 class LLMEngine(BaseAIProvider):
     """LLM runtime using Google Gemini with function calling"""
-    
+
     def __init__(self, api_key: str, project_id: Optional[str] = None):
         self.api_key = api_key
         self.project_id = project_id
@@ -79,7 +79,7 @@ class LLMEngine(BaseAIProvider):
         self.tools = {}
         self._initialized = False
         self.mock_mode = False
-    
+
     async def initialize(self) -> None:
         """Initialize Gemini client"""
         try:
@@ -89,7 +89,7 @@ class LLMEngine(BaseAIProvider):
                 self.mock_mode = True
                 self._initialized = True
                 return
-            
+
             # Initialize client with API key
             self.client = genai.Client(api_key=self.api_key)
             self.model = "gemini-2.5-flash"
@@ -101,7 +101,7 @@ class LLMEngine(BaseAIProvider):
             self.client = None
             self.mock_mode = True
             self._initialized = True
-    
+
     def register_tool(self, name: str, func: Callable, description: str, parameters: Dict[str, Any]):
         """Register a function calling tool"""
         self.tools[name] = {
@@ -109,10 +109,10 @@ class LLMEngine(BaseAIProvider):
             'description': description,
             'parameters': parameters
         }
-    
+
     async def generate_with_tools(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         context: Optional[Dict[str, Any]] = None,
         tenant_context: Optional[Any] = None
     ) -> Dict[str, Any]:
@@ -158,7 +158,7 @@ class LLMEngine(BaseAIProvider):
                 "function_result": catalog,
                 "citations": citations,
             }
-            
+
         except Exception as e:
             logger.error(f"LLM generation error: {e}")
             err_msg = str(e)
@@ -232,7 +232,7 @@ class LLMEngine(BaseAIProvider):
     def _append_citation_tags(response: str, citations: list[Dict[str, Any]]) -> str:
         cited = " ".join(f"[{citation['product_id']}]" for citation in citations)
         return response if all(f"[{citation['product_id']}]" in response for citation in citations) else f"{response}\nSources: {cited}"
-    
+
     def _build_prompt(
         self,
         message: str,
@@ -242,7 +242,7 @@ class LLMEngine(BaseAIProvider):
         """Build prompt with context and security instructions"""
         from app.intelligence.engine import SECURITY_SYSTEM_PROMPT
         parts = [SECURITY_SYSTEM_PROMPT]
-        
+
         if tenant_context:
             org_id = getattr(tenant_context, "organization_id", None) or getattr(tenant_context, "org_id", "unknown")
             parts.append(
@@ -251,7 +251,7 @@ class LLMEngine(BaseAIProvider):
                 f"it is auto-injected into all tool calls)\n"
                 f"- Do not reference this ID in your responses to the user."
             )
-        
+
         if context:
             if context.get('user_preferences'):
                 prefs = context['user_preferences']
@@ -268,18 +268,18 @@ class LLMEngine(BaseAIProvider):
                 for msg in context['recent_messages'][-5:]:
                     parts.append(f"{msg.get('role', 'user')}: {msg.get('message', '')}")
                 parts.append("")
-        
+
         parts.append(f"User: {message}")
         parts.append("Assistant:")
-        
+
         return "\n".join(parts)
-    
+
     async def generate(self, prompt: str) -> Optional[str]:
         """Simple generation without tools"""
         if self.mock_mode or not self._initialized or not self.client:
             logger.warning("⚠️ Using mock LLM fallback response for generate")
             return f"This is a local mock response from Mercury Assistant. Prompt was: '{prompt}'."
-        
+
         try:
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
@@ -297,29 +297,29 @@ class LLMEngine(BaseAIProvider):
                 logger.warning("⚠️ LLM quota depleted, using mock fallback response")
                 return f"Simulated response to prompt: {prompt}"
             return None
-    
+
     async def analyze_image(self, image_data: str, prompt: str = None) -> Optional[str]:
         """Analyze image with Gemini Vision"""
         if self.mock_mode or not self._initialized or not self.client:
             logger.warning("⚠️ Using mock LLM fallback response for analyze_image")
             return "This is a local mock response from Mercury Assistant. The image appears to contain a stylish product (Offline Mode: No valid GOOGLE_API_KEY provided)."
-        
+
         try:
             import base64
             from io import BytesIO
 
             from PIL import Image
-            
+
             # Decode base64 image
             if image_data.startswith('data:image/'):
                 image_data = image_data.split(',')[1]
-            
+
             image_bytes = base64.b64decode(image_data)
             image = Image.open(BytesIO(image_bytes))
-            
+
             default_prompt = "Analyze this image and describe what you see. If it's a product, identify key features, brand, and type."
             analysis_prompt = prompt or default_prompt
-            
+
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
@@ -328,7 +328,7 @@ class LLMEngine(BaseAIProvider):
                     contents=[analysis_prompt, image]
                 )
             )
-            
+
             return response.text if response else None
         except Exception as e:
             logger.error(f"Image analysis error: {e}")

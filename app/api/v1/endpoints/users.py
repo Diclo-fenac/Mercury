@@ -31,16 +31,16 @@ async def get_user_profile(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
-        
+
         user_orchestrator = container.get('user_orchestrator')
         if not user_orchestrator:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="User service not available"
             )
-        
+
         result = await user_orchestrator.get_user_profile(current_user["organization_id"], user_id)
-        
+
         if not result.get("success"):
             if result.get('error') == 'not_found':
                 raise HTTPException(
@@ -52,11 +52,11 @@ async def get_user_profile(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to get user profile"
                 )
-        
+
         return UserProfileResponse(
             profile=result.get("profile")
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -81,16 +81,16 @@ async def get_user_preferences(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
-        
+
         user_orchestrator = container.get('user_orchestrator')
         if not user_orchestrator:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="User service not available"
             )
-        
+
         result = await user_orchestrator.get_user_preferences(current_user["organization_id"], user_id)
-        
+
         if not result.get("success"):
             if result.get('error') == 'not_found':
                 raise HTTPException(
@@ -102,13 +102,13 @@ async def get_user_preferences(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to get user preferences"
                 )
-        
+
         return {
             "user_id": user_id,
             "preferences": result.get("preferences", {}),
             "last_updated": result.get("last_updated")
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -133,28 +133,28 @@ async def update_user_consent(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
-        
+
         privacy_service = container.get('privacy_service')
         if not privacy_service:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Privacy service not available"
             )
-            
+
         success = await privacy_service.update_user_consent(
             organization_id=current_user["organization_id"],
             user_id=user_id,
             consent=request.has_consented
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update user consent"
             )
-            
+
         return {"success": True, "message": "Consent updated successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
