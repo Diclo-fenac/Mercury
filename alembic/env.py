@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection  # noqa: E402
 from sqlalchemy.ext.asyncio import async_engine_from_config  # noqa: E402
 
 from alembic import context  # noqa: E402
+from app.domain.tenants import models as _tenant_models  # noqa: E402, F401
 from app.infrastructure.db.models import Base  # noqa: E402
 from app.settings import get_settings  # noqa: E402
 

@@ -13,6 +13,45 @@ services:
       - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-dev_key}
       - MINIO_ENDPOINT=
       - WORKERS=4
+      - REGION=us-east-1
+    volumes:
+      - .env:/app/.env:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      typesense:
+        condition: service_started
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  api-eu:
+    build: .
+    restart: always
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://mercury:mercury_pass@db:5432/mercury}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_HOST=redis
+      - TYPESENSE_HOST=typesense
+      - TYPESENSE_PORT=8108
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-dev_key}
+      - MINIO_ENDPOINT=
+      - WORKERS=4
+      - REGION=eu-west-1
     volumes:
       - .env:/app/.env:ro
     deploy:
