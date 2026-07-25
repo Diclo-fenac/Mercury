@@ -19,7 +19,7 @@ sys.path.insert(0, str(project_root))
 
 from app.container import Container
 from app.infrastructure.id_generator import IDGenerator
-from main import create_app
+from app.main import create_app
 
 
 @pytest.fixture(scope="session")

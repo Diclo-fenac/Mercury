@@ -4,6 +4,7 @@ Chat functionality with AI assistant
 """
 
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 

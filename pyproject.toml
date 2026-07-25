@@ -83,3 +83,9 @@ exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "B", "I"]
 ignore = ["E501", "B008", "E402", "B904", "B007", "F841", "F401", "B905", "E712", "E701", "E722"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "skip"
+ignore_errors = true

@@ -10,7 +10,7 @@ sys.path.insert(0, str(project_root))
 from app.api.dependencies import get_container_dependency
 from app.container import Container
 from app.infrastructure.id_generator import IDGenerator
-from main import app
+from app.main import app
 
 
 class TestAdminAPIIntegration:

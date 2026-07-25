@@ -5,7 +5,7 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Response, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -404,8 +404,9 @@ async def get_pinned_products(
         )
 
     try:
-        from app.domain.tenants.models import PinnedProduct
         from sqlalchemy import select
+
+        from app.domain.tenants.models import PinnedProduct
         async with tenant_service.db.async_session() as session:
             stmt = select(PinnedProduct).where(PinnedProduct.organization_id == uuid.UUID(tenant_ctx.organization_id))
             result = await session.execute(stmt)

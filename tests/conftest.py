@@ -25,7 +25,7 @@ def client(mock_search_service, mock_product_service, mock_user_service, mock_im
         get_tenant_context,
         require_auth,
     )
-    from main import app
+    from app.main import app
 
     # Override authentication and tenant dependencies for testing
     test_identity = {

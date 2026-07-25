@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import TenantContext
 from app.mcp.context import get_mcp_tenant_context
-from main import app
+from app.main import app
 
 client = TestClient(app)
 

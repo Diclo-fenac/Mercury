@@ -104,15 +104,18 @@ async def process_webhook_ingestion(org_id: str, source_id: str, payload: dict, 
     try:
         # 1. Upsert into Canonical Postgres DB (CatalogItem)
         import uuid
+
         from sqlalchemy import func
         from sqlalchemy.dialects.postgresql import insert
+
         from app.domain.tenants.models import CatalogItem
         
         async with db_session() as session:
             # For simplicity in v1, we assume a default catalog id or we just don't strictly enforce catalog_id if it's not required, 
             # wait, catalog_id is required in CatalogItem. Let's find or create a catalog.
+            from sqlalchemy import select, update
+
             from app.domain.tenants.models import Catalog
-            from sqlalchemy import select
             
             org_uuid = uuid.UUID(org_id)
             
@@ -269,7 +272,7 @@ async def process_webhook_ingestion(org_id: str, source_id: str, payload: dict, 
 
             await session.commit()
             
-        logger.info(f"Successfully processed webhook and wrote to outbox.")
+        logger.info("Successfully processed webhook and wrote to outbox.")
         
         # Publish batch progress
         try:

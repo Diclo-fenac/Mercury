@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
-from sqlalchemy import select, func, desc
+from sqlalchemy import desc, func, select
 
-from app.infrastructure.db.postgres import PostgresClient
 from app.infrastructure.db.models import TenantActivity, TenantConversation
+from app.infrastructure.db.postgres import PostgresClient
 from app.utils.logger import get_logger
 
 logger = get_logger("dashboard_service")

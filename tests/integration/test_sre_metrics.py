@@ -40,7 +40,7 @@ def setup_env():
 @pytest.fixture(scope="module")
 def client(setup_env):
     # Setup test configuration
-    from main import app
+    from app.main import app
     app.dependency_overrides = {}
     with TestClient(app) as test_client:
         yield test_client
@@ -51,7 +51,7 @@ def mock_auth():
     from fastapi import Request
 
     from app.api.dependencies import get_tenant_context, require_admin_key
-    from main import app
+    from app.main import app
     
     def override_require_admin_key(request: Request = None):
         from app.api.dependencies import TenantContext
@@ -152,7 +152,7 @@ class TestSREMetrics:
         """9. Simulated failure (graceful degradation)"""
         # We can simulate failure by temporarily patching the container's cache
         from app.container import Container
-        from main import app
+        from app.main import app
 
         container_instance = app.state.container
         search_orchestrator = container_instance.get("search_orchestrator")
@@ -173,7 +173,7 @@ class TestSREMetrics:
 
     def test_simulated_failure_typesense(self, client):
         """10. Simulated failure Typesense"""
-        from main import app
+        from app.main import app
         container_instance = app.state.container
         search_orchestrator = container_instance.get("search_orchestrator")
         original_typesense = search_orchestrator.search.typesense

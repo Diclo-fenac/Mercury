@@ -4,6 +4,7 @@ Image upload, analysis, and search functionality
 """
 
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 
 logger = logging.getLogger(__name__)

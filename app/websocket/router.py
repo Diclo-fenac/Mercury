@@ -1,9 +1,10 @@
 import asyncio
 import json
-from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from starlette.websockets import WebSocketState
 import logging
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 
 from app.container import get_container
 from app.domain.tenants.service import TenantService
@@ -18,7 +19,6 @@ async def dashboard_websocket_endpoint(websocket: WebSocket):
     
     client_ip = websocket.client.host if websocket.client else "unknown"
     from app.api.dependencies import check_rate_limit
-    from app.container import get_container
     container = get_container()
     redis_client = container.get("redis")
     

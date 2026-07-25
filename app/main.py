@@ -166,8 +166,9 @@ def create_app() -> FastAPI:
 
         @app.get("/widget/test-page", include_in_schema=False)
         async def serve_widget_test_page(req: "Request") -> "Response":
-            from fastapi.responses import HTMLResponse
             import os as _os
+
+            from fastapi.responses import HTMLResponse
 
             # MERCURY_WIDGET_TEST_KEY must be set in .env or environment
             api_key = _os.environ.get("MERCURY_WIDGET_TEST_KEY", "")

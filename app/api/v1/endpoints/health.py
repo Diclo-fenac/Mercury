@@ -3,7 +3,7 @@ Health Check Endpoints
 System health and status monitoring
 """
 
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from app.api.dependencies import get_container_dependency
 from app.models.responses import HealthStatus

@@ -6,6 +6,7 @@ Seeds real product data into Postgres for testing
 import asyncio
 import sys
 from datetime import datetime
+from uuid import UUID
 from pathlib import Path
 
 # Add project root to path
@@ -222,70 +223,72 @@ class ProductSeeder:
         try:
             logger.info("🌱 Starting product seeding...")
             
-            # Check if products already exist
-            if not overwrite:
-                existing = await self.db.query_collection('products', limit=1)
-                if existing:
-                    logger.info("Products already exist. Use --overwrite to replace them.")
-                    return
+            # Check if products already exist using async session
+            org_id = "00000000-0000-0000-0000-000000000001"
+            org_uuid = UUID(org_id)
             
-            seeded_count = 0
-            
-            for product_data in SAMPLE_PRODUCTS:
-                try:
-                    # Generate product ID
-                    product_id = self.id_gen.product_id()
-                    
-                    # Transform product_data to Postgres schema format
-                    postgres_product = {
-                        'id': product_id,
+            async with self.db.async_session() as session:
+                from sqlalchemy import select
+                from app.domain.tenants.models import Organization, Catalog, CatalogItem
+                
+                # Ensure default organization exists
+                org = await session.get(Organization, org_uuid)
+                if not org:
+                    org = Organization(id=org_uuid, name="Demo Store", slug="demo-store", owner_email="demo@mystore.com")
+                    session.add(org)
+                    await session.flush()
+                
+                # Ensure default catalog exists
+                cat_stmt = select(Catalog).where(Catalog.organization_id == org_uuid)
+                cat_res = await session.execute(cat_stmt)
+                catalog = cat_res.scalar_one_or_none()
+                if not catalog:
+                    catalog = Catalog(organization_id=org_uuid, name="Default Catalog", slug="default-catalog")
+                    session.add(catalog)
+                    await session.flush()
+
+                # Check existing items
+                if not overwrite:
+                    item_stmt = select(CatalogItem).where(CatalogItem.organization_id == org_uuid).limit(1)
+                    existing = (await session.execute(item_stmt)).scalar()
+                    if existing:
+                        logger.info("Products already exist in default catalog. Use --overwrite to replace them.")
+                        return
+
+                seeded_count = 0
+                for product_data in SAMPLE_PRODUCTS:
+                    prod_id = self.id_gen.product_id()
+                    doc = {
+                        'id': prod_id,
                         'name': product_data['name'],
                         'title': product_data['name'],
                         'brand': product_data['brand'],
                         'category': product_data['category'],
-                        'sub_category': product_data.get('subcategory') or product_data.get('sub_category'),
+                        'sub_category': product_data.get('subcategory') or product_data.get('sub_category', ''),
                         'description': product_data['description'],
-                        'url': product_data.get('image_url'),
-                        'price': {
-                            'actual': product_data.get('original_price', product_data['price']),
-                            'selling': product_data['price'],
-                            'discount_percent': product_data.get('discount_percentage', 0.0)
-                        },
-                        'price_history': [{'date': datetime.now().isoformat(), 'price': product_data['price']}],
-                        'tags': product_data.get('tags', []),
-                        'images': [product_data['image_url']] if product_data.get('image_url') else [],
-                        'availability': [{
-                            'store_id': 'WM_STORE_001',
-                            'aisle': 'A1',
-                            'shelf': '1',
-                            'quantity': product_data.get('stock_quantity', 10),
-                            'is_backstock': False
-                        }],
-                        'metadata': {
-                            'features': product_data.get('features', []),
-                            'review_count': product_data.get('review_count', 0),
-                        },
                         'rating': product_data.get('rating', 0.0),
                         'stock': product_data.get('in_stock', True),
                         'online_available': True,
-                        'uploaded_at': datetime.now().isoformat()
+                        'selling_price': product_data['price']
                     }
-                    
-                    # Save to PostgreSQL
-                    success = await self.db.set_document('products', product_id, postgres_product)
-                    if not success:
-                        logger.error(f"Failed to save product {product_data['name']} to PostgreSQL")
-                        continue
-                    
-                    if success:
-                        seeded_count += 1
-                        logger.info(f"✅ Seeded: {product_data['name']}")
-                
-                except Exception as e:
-                    logger.error(f"Failed to seed product {product_data.get('name', 'unknown')}: {e}")
-                    continue
-            
-            logger.info(f"🎉 Successfully seeded {seeded_count}/{len(SAMPLE_PRODUCTS)} products")
+                    item = CatalogItem(
+                        organization_id=org_uuid,
+                        catalog_id=catalog.id,
+                        external_id=prod_id,
+                        resource_type="product",
+                        title=product_data['name'],
+                        brand=product_data['brand'],
+                        category=product_data['category'],
+                        description=product_data['description'],
+                        document=doc,
+                        status="active"
+                    )
+                    session.add(item)
+                    seeded_count += 1
+                    logger.info(f"✅ Seeded: {product_data['name']}")
+
+                await session.commit()
+                logger.info(f"🎉 Successfully seeded {seeded_count}/{len(SAMPLE_PRODUCTS)} products")
             
         except Exception as e:
             logger.error(f"❌ Product seeding failed: {e}")
@@ -317,19 +320,13 @@ class ProductSeeder:
         try:
             logger.info("🔍 Verifying seeded data...")
             
-            # Check PostgreSQL
-            products = await self.db.query_collection('products', limit=20)
-            logger.info(f"PostgreSQL: Found {len(products)} products")
-            
-
-            # Sample some products
-            if products:
-                sample = products[:3]
-                logger.info("Sample products:")
-                for product in sample:
-                    logger.info(f"  - {product.get('name', 'Unknown')} (${product.get('price', {}).get('selling', 0) if isinstance(product.get('price'), dict) else product.get('price', 0)})")
-            
-            return len(products) > 0
+            async with self.db.async_session() as session:
+                from sqlalchemy import select
+                from app.domain.tenants.models import CatalogItem
+                res = await session.execute(select(CatalogItem).limit(20))
+                items = res.scalars().all()
+                logger.info(f"PostgreSQL: Found {len(items)} catalog items")
+                return len(items) > 0
             
         except Exception as e:
             logger.error(f"❌ Verification failed: {e}")

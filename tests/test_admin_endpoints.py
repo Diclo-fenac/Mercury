@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def admin_client():
     from app.api.dependencies import TenantContext, get_container_dependency, require_admin_key
-    from main import app
+    from app.main import app
     
     # Mock admin tenant
     dummy_admin_tenant = TenantContext(

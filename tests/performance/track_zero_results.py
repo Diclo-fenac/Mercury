@@ -97,8 +97,9 @@ TEST_QUERIES = [
 
 async def main():
     import json
-    from app.container import get_container
+
     from app.api.dependencies import TenantContext
+    from app.container import get_container
 
     container = get_container()
     await container.initialize()

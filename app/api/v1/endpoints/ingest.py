@@ -7,7 +7,12 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 
-from app.api.dependencies import get_tenant_context, TenantContext, require_admin_key, check_rate_limit
+from app.api.dependencies import (
+    TenantContext,
+    check_rate_limit,
+    get_tenant_context,
+    require_admin_key,
+)
 from app.container import Container, get_container
 from app.infrastructure.db.models import CatalogIntegration
 
