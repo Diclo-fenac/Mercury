@@ -54,4 +54,4 @@ Mercury's ETL ingestion pipeline supports multiple flexible ingestion patterns:
 Mercury Search v1.0.0 is licensed under the **Business Source License 1.1 (BUSL-1.1)**.
 - **What you CAN do**: Inspect the source code, modify it, audit it for security, and self-host it for any internal or commercial e-commerce storefronts you own or operate.
 - **What you CANNOT do**: Offer Mercury Search itself as a commercial hosted/managed SaaS offering or search-as-a-service to third parties.
-- **Open-Source Conversion**: On the 4th anniversary of this release date, this version will automatically convert to the OSI-approved **Apache 2.0 License**.
+- **Open-Source Conversion**: On the 4th anniversary of this release date, this version will automatically convert to the OSI-approved **GNU General Public License v3.0 (GPLv3)**.

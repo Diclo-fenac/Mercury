@@ -157,4 +157,4 @@ To stop services, wipe existing corrupted volumes, and restore cleanly from a ba
 
 ## Software License
 
-Mercury is licensed under the **Business Source License 1.1 (BUSL-1.1)**. You are permitted to inspect, modify, and self-host Mercury for any internal or commercial e-commerce storefronts you operate. Offering Mercury itself as a commercial hosted/managed search SaaS to third parties is strictly prohibited. On the 4th anniversary of this release, this license automatically converts to Apache 2.0.
+Mercury is licensed under the **Business Source License 1.1 (BUSL-1.1)**. You are permitted to inspect, modify, and self-host Mercury for any internal or commercial e-commerce storefronts you operate. Offering Mercury itself as a commercial hosted/managed search SaaS to third parties is strictly prohibited. On the 4th anniversary of this release, this license automatically converts to the **GNU General Public License v3.0 (GPLv3)**.
