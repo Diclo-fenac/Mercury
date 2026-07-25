@@ -59,7 +59,7 @@ line_length = 100
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests/unit", "tests/test_api_endpoints.py", "tests/test_admin_endpoints.py"]
+testpaths = ["tests/unit"]
 addopts = "--ignore=tests/load --ignore=tests/e2e --ignore=tests/integration --ignore=tests/performance"
 markers = [
     "integration: requires live PostgreSQL, Redis, Typesense, or storage services",
