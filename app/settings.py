@@ -4,9 +4,9 @@ Environment configuration with validation
 """
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -83,8 +83,8 @@ class Settings(BaseSettings):
     CATALOG_INDEX_MAX_ATTEMPTS: int = Field(default=10, ge=1, alias="CATALOG_INDEX_MAX_ATTEMPTS")
     
     # CORS settings
-    ALLOWED_ORIGINS: List[str] = Field(default=["*"], alias="ALLOWED_ORIGINS")
-    WS_ALLOWED_ORIGINS: List[str] = Field(default=["*"], alias="WS_ALLOWED_ORIGINS")
+    ALLOWED_ORIGINS: Union[str, List[str]] = Field(default=["*"], alias="ALLOWED_ORIGINS")
+    WS_ALLOWED_ORIGINS: Union[str, List[str]] = Field(default=["*"], alias="WS_ALLOWED_ORIGINS")
     
     # Logging
     LOG_LEVEL: str = Field(default="INFO", alias="LOG_LEVEL")
@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     
     # File upload settings
     MAX_FILE_SIZE: int = Field(default=10 * 1024 * 1024, alias="MAX_FILE_SIZE")  # 10MB
-    ALLOWED_FILE_TYPES: List[str] = Field(
+    ALLOWED_FILE_TYPES: Union[str, List[str]] = Field(
         default=["image/jpeg", "image/png", "image/gif", "image/webp"],
         alias="ALLOWED_FILE_TYPES"
     )
@@ -108,8 +108,21 @@ class Settings(BaseSettings):
     MCP_TOKEN_EXPIRY_MINUTES: int = Field(default=60, alias="MCP_TOKEN_EXPIRY_MINUTES")
 
     # Feature Flags
-    FEATURE_FLAGS: List[str] = Field(default=["vector-search", "semantic-ranking"], alias="FEATURE_FLAGS")
+    FEATURE_FLAGS: Union[str, List[str]] = Field(default=["vector-search", "semantic-ranking"], alias="FEATURE_FLAGS")
     
+    @field_validator("ALLOWED_ORIGINS", "WS_ALLOWED_ORIGINS", "ALLOWED_FILE_TYPES", "FEATURE_FLAGS", mode="before")
+    @classmethod
+    def parse_list_from_str(cls, v):
+        if isinstance(v, str):
+            if v.strip().startswith("[") and v.strip().endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

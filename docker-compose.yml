@@ -83,7 +83,7 @@ services:
 
   seeder:
     build: .
-    command: bash -c "sleep 10 && ./scripts/setup_typesense.sh && python scripts/seed_products.py && python scripts/index_typesense.py"
+    command: bash -c "sleep 10 && python scripts/seed_products.py && python scripts/index_typesense.py"
     env_file:
       - .env
     environment:

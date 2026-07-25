@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+if [ $# -gt 0 ]; then
+  exec "$@"
+fi
+
 echo "Running Alembic Database Migrations..."
 alembic upgrade head
 
