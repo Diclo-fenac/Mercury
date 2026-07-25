@@ -333,6 +333,8 @@ async def add_synonym(
             session.add(syn)
             await session.commit()
 
+        await tenant_service.update_config(tenant_ctx.organization_id, has_merchandising_rules=True)
+
         typesense_client = container.get("typesense")
         if typesense_client:
             collection_name = f"tenant_{tenant_ctx.organization_id}_products"
@@ -379,6 +381,7 @@ async def add_pinned_product(
             )
             session.add(pin)
             await session.commit()
+        await tenant_service.update_config(tenant_ctx.organization_id, has_merchandising_rules=True)
         return {"success": True}
     except Exception as e:
         logger.error(f"Add pinned product failed: {e}", exc_info=True)
@@ -465,6 +468,9 @@ async def sync_catalog(
 
     try:
         stats = await catalog_importer.import_json(tenant_ctx.organization_id, products, async_mode=True)
+        tenant_service = container.get("tenant_service")
+        if tenant_service:
+            await tenant_service.update_config(tenant_ctx.organization_id, has_ingested_catalog=True)
         return {
             "success": stats.get("success", False),
             "stats": stats
@@ -502,6 +508,9 @@ async def upload_csv_catalog(
         csv_content = content_bytes.decode("utf-8", errors="ignore")
 
         stats = await catalog_importer.import_csv(tenant_ctx.organization_id, csv_content, async_mode=True)
+        tenant_service = container.get("tenant_service")
+        if tenant_service:
+            await tenant_service.update_config(tenant_ctx.organization_id, has_ingested_catalog=True)
         return {
             "success": stats.get("success", False),
             "stats": stats
@@ -619,6 +628,9 @@ async def upsert_product(
         }
 
         persisted = await catalog_service.upsert_products(tenant_ctx.organization_id, [doc])
+        tenant_service = container.get("tenant_service")
+        if tenant_service:
+            await tenant_service.update_config(tenant_ctx.organization_id, has_ingested_catalog=True)
         worker = container.get("catalog_index_worker")
         if worker:
             await worker.run_once(limit=10)

@@ -1,45 +1,49 @@
 #!/bin/bash
 set -e
 
-BACKUP_DIR=$1
-
-if [ -z "$BACKUP_DIR" ]; then
+if [ -z "$1" ]; then
     echo "Usage: ./scripts/restore.sh <backup_dir>"
-    echo "Example: ./scripts/restore.sh ./backups/20260701_120000"
     exit 1
 fi
 
+BACKUP_DIR="${1%/}" # Remove trailing slash
 if [ ! -d "$BACKUP_DIR" ]; then
-    echo "❌ Backup directory $BACKUP_DIR does not exist."
+    echo "Error: Directory $BACKUP_DIR does not exist."
     exit 1
 fi
 
-echo "🚨 Starting Mercury Disaster Recovery Restore from $BACKUP_DIR..."
+echo "Restoring PostgreSQL..."
+if [ -f "$BACKUP_DIR/postgres.sql.gz" ]; then
+    zcat "$BACKUP_DIR/postgres.sql.gz" | docker compose exec -T postgres psql -U mercury -d mercury
+else
+    echo "No postgres.sql.gz found in $BACKUP_DIR"
+fi
 
-echo "🛑 Stopping Mercury services..."
-docker compose stop app postgres typesense
+echo "Restoring Typesense collections..."
+TYPESENSE_API_KEY="xyz"
+TYPESENSE_HOST="localhost:8108"
 
-PROJECT_NAME=$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
-
-echo "🔎 Restoring Typesense Volume..."
-docker run --rm -v ${PROJECT_NAME}_typesense_data:/data -v "$(pwd)/$BACKUP_DIR":/backup alpine sh -c "rm -rf /data/* && tar -xf /backup/typesense.tar -C /data"
-
-echo "🚀 Starting PostgreSQL..."
-docker compose up -d postgres
-
-echo "⏳ Waiting for PostgreSQL to initialize..."
-until docker compose exec -T postgres pg_isready -U mercury; do
-  sleep 2
+for SCHEMA_FILE in "$BACKUP_DIR"/*.schema.json; do
+    if [ ! -f "$SCHEMA_FILE" ]; then continue; fi
+    
+    COLLECTION=$(basename "$SCHEMA_FILE" .schema.json)
+    echo "  Restoring collection: $COLLECTION"
+    
+    # 1. Drop existing collection (optional, but ensures clean restore)
+    curl -s -X DELETE -H "X-TYPESENSE-API-KEY: ${TYPESENSE_API_KEY}" "http://${TYPESENSE_HOST}/collections/${COLLECTION}" > /dev/null || true
+    
+    # 2. Create collection from schema
+    curl -s -X POST -H "X-TYPESENSE-API-KEY: ${TYPESENSE_API_KEY}" -H "Content-Type: application/json" \
+        -d @"$SCHEMA_FILE" "http://${TYPESENSE_HOST}/collections" > /dev/null
+        
+    # 3. Import documents
+    DOC_FILE="$BACKUP_DIR/${COLLECTION}.jsonl.gz"
+    if [ -f "$DOC_FILE" ]; then
+        zcat "$DOC_FILE" | curl -s -X POST -H "X-TYPESENSE-API-KEY: ${TYPESENSE_API_KEY}" \
+            -H "Content-Type: text/plain" \
+            --data-binary @- \
+            "http://${TYPESENSE_HOST}/collections/${COLLECTION}/documents/import?action=upsert" > /dev/null
+    fi
 done
 
-echo "🧹 Dropping existing database and recreating..."
-docker compose exec -T postgres dropdb -U mercury --if-exists mercury
-docker compose exec -T postgres createdb -U mercury mercury
-
-echo "💾 Restoring PostgreSQL Database..."
-cat "$BACKUP_DIR/postgres.sql" | docker compose exec -T postgres psql -U mercury -d mercury
-
-echo "🚀 Starting all Mercury services..."
-docker compose up -d
-
-echo "✅ Restore complete! Mercury is back online and fully recovered."
+echo "Restore complete from $BACKUP_DIR"

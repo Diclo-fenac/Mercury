@@ -4,17 +4,21 @@ set -e
 BACKUP_DIR="./backups/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-echo "📦 Starting Mercury Disaster Recovery Backup..."
+echo "Backing up PostgreSQL..."
+docker compose exec -T postgres pg_dump -U mercury -d mercury --clean | gzip > "$BACKUP_DIR/postgres.sql.gz"
 
-# Backup PostgreSQL
-echo "💾 Backing up PostgreSQL..."
-docker compose exec -T postgres pg_dump -U mercury mercury > "$BACKUP_DIR/postgres.sql"
+echo "Backing up Typesense collections..."
+TYPESENSE_API_KEY="xyz"
+TYPESENSE_HOST="localhost:8108"
 
-# Get the sanitized project name for volume mapping
-PROJECT_NAME=$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
+COLLECTIONS=$(curl -s -H "X-TYPESENSE-API-KEY: ${TYPESENSE_API_KEY}" "http://${TYPESENSE_HOST}/collections" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
 
-# Backup Typesense using an alpine sidecar
-echo "🔎 Backing up Typesense Volume..."
-docker run --rm -v ${PROJECT_NAME}_typesense_data:/data -v "$(pwd)/$BACKUP_DIR":/backup alpine tar -cf /backup/typesense.tar -C /data .
+for COLLECTION in $COLLECTIONS; do
+    echo "  Exporting collection: $COLLECTION"
+    # Backup schema
+    curl -s -H "X-TYPESENSE-API-KEY: ${TYPESENSE_API_KEY}" "http://${TYPESENSE_HOST}/collections/${COLLECTION}" > "$BACKUP_DIR/${COLLECTION}.schema.json"
+    # Backup documents
+    curl -s -H "X-TYPESENSE-API-KEY: ${TYPESENSE_API_KEY}" "http://${TYPESENSE_HOST}/collections/${COLLECTION}/export" | gzip > "$BACKUP_DIR/${COLLECTION}.jsonl.gz"
+done
 
-echo "✅ Backup complete! Archive saved to $BACKUP_DIR"
+echo "Backup complete: $BACKUP_DIR"

@@ -226,6 +226,8 @@ class TenantService:
                 if not config:
                     return None
                 return {
+                    "has_ingested_catalog": config.has_ingested_catalog,
+                    "has_merchandising_rules": config.has_merchandising_rules,
                     "enable_semantic": config.enable_semantic,
                     "enable_personalization": config.enable_personalization,
                     "enable_image_search": config.enable_image_search,
@@ -244,6 +246,8 @@ class TenantService:
                 }
         except Exception:
             return {
+                "has_ingested_catalog": False,
+                "has_merchandising_rules": False,
                 "enable_semantic": True,
                 "enable_personalization": False,
                 "enable_image_search": False,
@@ -505,11 +509,10 @@ class TenantService:
             ctr = round((total_clicks / total_queries * 100), 2) if total_queries > 0 else 0.0
 
             # 6. Milestones
-            catalog_stmt = select(1).select_from(CatalogItem).where(CatalogItem.organization_id == org_uuid).limit(1)
-            has_ingested_catalog = (await session.execute(catalog_stmt)).scalar() is not None
-
-            rules_stmt = select(1).select_from(PinnedProduct).where(PinnedProduct.organization_id == org_uuid).limit(1)
-            has_merchandising_rules = (await session.execute(rules_stmt)).scalar() is not None
+            config_stmt = select(TenantConfig.has_ingested_catalog, TenantConfig.has_merchandising_rules).where(TenantConfig.organization_id == org_uuid)
+            config_row = (await session.execute(config_stmt)).first()
+            has_ingested_catalog = config_row.has_ingested_catalog if config_row else False
+            has_merchandising_rules = config_row.has_merchandising_rules if config_row else False
 
             return {
                 "total_queries": total_queries,

@@ -71,6 +71,7 @@ blob-report/
 hey
 scratch/
 plan/
+backups/
 /test_*.py
 fix_html.py
 
