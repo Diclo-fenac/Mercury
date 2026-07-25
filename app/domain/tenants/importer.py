@@ -21,7 +21,7 @@ class CatalogImporter:
         self.embeddings = embeddings
         self.catalog_service = catalog_service
 
-    async def import_csv(self, org_id: str, csv_content: str) -> Dict[str, Any]:
+    async def import_csv(self, org_id: str, csv_content: str, async_mode: bool = False) -> Dict[str, Any]:
         """
         Parse CSV content, generate local embeddings, and bulk index to Typesense.
         """
@@ -35,9 +35,9 @@ class CatalogImporter:
         for i, row in enumerate(reader):
             docs.append(self._normalize_product(row, i))
 
-        return await self._process_and_index(org_id, collection_name, docs)
+        return await self._process_and_index(org_id, collection_name, docs, async_mode=async_mode)
 
-    async def import_json(self, org_id: str, products: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def import_json(self, org_id: str, products: List[Dict[str, Any]], async_mode: bool = False) -> Dict[str, Any]:
         """
         Parse JSON array, generate local embeddings, and bulk index to Typesense.
         """
@@ -47,7 +47,7 @@ class CatalogImporter:
         for i, row in enumerate(products):
             docs.append(self._normalize_product(row, i))
 
-        return await self._process_and_index(org_id, collection_name, docs)
+        return await self._process_and_index(org_id, collection_name, docs, async_mode=async_mode)
 
     def _normalize_product(self, row: Dict[str, Any], index: int) -> Dict[str, Any]:
         """Normalize a single product dict"""
@@ -97,13 +97,23 @@ class CatalogImporter:
         }
 
     async def _process_and_index(
-        self, org_id: str, collection_name: str, docs: List[Dict[str, Any]]
+        self, org_id: str, collection_name: str, docs: List[Dict[str, Any]], async_mode: bool = False
     ) -> Dict[str, Any]:
         """Generate embeddings and index to Typesense"""
         if not docs:
             return {"success": True, "total": 0, "indexed": 0, "errors": 0}
 
         persisted_docs = await self.catalog_service.upsert_products(org_id, docs)
+        if async_mode:
+            return {
+                "success": True,
+                "total": len(persisted_docs),
+                "enqueued": len(persisted_docs),
+                "indexed": 0,
+                "errors": 0,
+                "status": "enqueued_to_outbox",
+                "message": "Products persisted to catalog and enqueued to durable outbox for background indexing."
+            }
 
         # 2. Construct text strings for batch embedding
         texts = []

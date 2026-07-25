@@ -1,11 +1,14 @@
 """
 Admin Endpoints for Merchant Onboarding, Keys, Custom Rules, Configs, and Analytics
 """
+import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Response, Request
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import (
     TenantContext,
@@ -55,11 +58,14 @@ class ConfigUpdateRequest(BaseModel):
     widget_position: Optional[str] = None
     widget_placeholder: Optional[str] = None
     out_of_stock_behavior: Optional[str] = None
+    allowed_domains: Optional[List[str]] = None
 
 
 @router.post("/onboard", status_code=status.HTTP_201_CREATED)
 async def onboard_tenant(
     request: OnboardRequest,
+    response: Response,
+    req: Request,
     container = Depends(get_container_dependency)
 ):
     """Onboard a new merchant organization, provision its Typesense index, and generate initial keys."""
@@ -70,6 +76,16 @@ async def onboard_tenant(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Multi-tenancy provisioning services not available"
+        )
+        
+    client_ip = req.client.host if req.client else "unknown"
+    cache = container.get("redis")
+    from app.api.dependencies import check_rate_limit
+    # Strict rate limit for onboarding: 5 per hour per IP
+    if not await check_rate_limit(f"onboard:{client_ip}", limit=5, window=3600, cache=cache):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many onboarding requests from this IP"
         )
 
     try:
@@ -92,7 +108,7 @@ async def onboard_tenant(
             org_id=org_id,
             key_type="private_admin",
             name="Default Admin Key",
-            scopes=["all"]
+            scopes=["admin", "all", "*"]
         )
 
         # 4. Generate initial public search key (pk_*)
@@ -103,21 +119,92 @@ async def onboard_tenant(
             scopes=["search"]
         )
 
-        return {
+        res_body = {
             "success": True,
-            "organization": org,
+            "organization": {
+                "id": org_id,
+                "name": org["name"],
+                "slug": org["slug"],
+                "plan": org["plan"]
+            },
             "keys": {
                 "admin_key": admin_key,
                 "search_key": search_key
-            },
-            "widget_url": "/widget/mercury-search.min.js",
-            "ws_endpoint": "/ws"
+            }
         }
+
+        response.set_cookie(
+            key="admin_token",
+            value=admin_key,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+            max_age=30 * 24 * 60 * 60
+        )
+        return res_body
     except Exception as e:
+        logger.error(f"Onboarding failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Onboarding failed: {str(e)}"
+            detail="Onboarding failed due to an internal server error"
         )
+
+
+class LoginRequest(BaseModel):
+    admin_key: str = Field(..., description="Private admin key (sk_*)")
+
+@router.post("/login", status_code=status.HTTP_200_OK)
+async def login_tenant(
+    request: LoginRequest,
+    response: Response,
+    req: Request,
+    container = Depends(get_container_dependency)
+):
+    """Authenticate and set session cookie"""
+    client_ip = req.client.host if req.client else "unknown"
+    cache = container.get("redis")
+    from app.api.dependencies import check_rate_limit
+    # Rate limit: 10 attempts per minute per IP
+    if not await check_rate_limit(f"login:{client_ip}", limit=10, window=60, cache=cache):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts"
+        )
+        
+    tenant_service = container.get("tenant_service")
+    ctx_dict = await tenant_service.validate_api_key(request.admin_key)
+    if not ctx_dict or ctx_dict.get("key_type") != "private_admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin key"
+        )
+        
+    response.set_cookie(
+        key="admin_token",
+        value=request.admin_key,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=30 * 24 * 60 * 60
+    )
+    
+    return {"status": "ok", "organization_id": ctx_dict.get("organization_id")}
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout_tenant(response: Response):
+    """Clear session cookie"""
+    response.delete_cookie(
+        key="admin_token",
+        httponly=True,
+        samesite="lax",
+        secure=False
+    )
+    return {"status": "ok"}
+
+@router.get("/verify", status_code=status.HTTP_200_OK)
+async def verify_tenant(ctx: TenantContext = Depends(require_admin_key)):
+    """Verify session cookie is still valid"""
+    return {"status": "ok", "organization_id": ctx.organization_id}
 
 
 @router.post("/keys")
@@ -147,10 +234,25 @@ async def generate_api_key(
             "api_key": raw_key
         }
     except Exception as e:
+        logger.error(f"Key generation failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Key generation failed due to an internal server error"
         )
+
+@router.get("/keys")
+async def list_api_keys(
+    tenant_ctx: TenantContext = Depends(require_admin_key),
+    container = Depends(get_container_dependency)
+):
+    """List API keys for the tenant."""
+    tenant_service = container.get("tenant_service")
+    if not tenant_service:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Tenant service not available"
+        )
+    return await tenant_service.get_api_keys(tenant_ctx.organization_id)
 
 
 @router.get("/config")
@@ -198,9 +300,10 @@ async def update_tenant_config(
         ok = await tenant_service.update_config(tenant_ctx.organization_id, **updates)
         return {"success": ok}
     except Exception as e:
+        logger.error(f"Config update failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Config update failed due to an internal server error"
         )
 
 
@@ -243,9 +346,10 @@ async def add_synonym(
 
         return {"success": True}
     except Exception as e:
+        logger.error(f"Add synonym failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Add synonym failed due to an internal server error"
         )
 
 
@@ -277,11 +381,49 @@ async def add_pinned_product(
             await session.commit()
         return {"success": True}
     except Exception as e:
+        logger.error(f"Add pinned product failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Add pinned product failed due to an internal server error"
         )
 
+@router.get("/pinned")
+async def get_pinned_products(
+    tenant_ctx: TenantContext = Depends(require_admin_key),
+    container = Depends(get_container_dependency)
+):
+    """Get all pinned products for the tenant."""
+    tenant_service = container.get("tenant_service")
+    if not tenant_service:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Tenant service not available"
+        )
+
+    try:
+        from app.domain.tenants.models import PinnedProduct
+        from sqlalchemy import select
+        async with tenant_service.db.async_session() as session:
+            stmt = select(PinnedProduct).where(PinnedProduct.organization_id == uuid.UUID(tenant_ctx.organization_id))
+            result = await session.execute(stmt)
+            pins = result.scalars().all()
+            
+            return [
+                {
+                    "id": str(pin.id),
+                    "query_pattern": pin.query_pattern,
+                    "product_id": pin.product_id,
+                    "position": pin.position,
+                    "is_active": pin.is_active
+                }
+                for pin in pins
+            ]
+    except Exception as e:
+        logger.error(f"Get pinned products failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Get pinned products failed due to an internal server error"
+        )
 
 @router.get("/analytics")
 async def get_tenant_analytics(
@@ -300,9 +442,10 @@ async def get_tenant_analytics(
         analytics = await tenant_service.get_analytics(tenant_ctx.organization_id)
         return analytics
     except Exception as e:
+        logger.error(f"Get analytics failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="Get analytics failed due to an internal server error"
         )
 
 
@@ -321,15 +464,16 @@ async def sync_catalog(
         )
 
     try:
-        stats = await catalog_importer.import_json(tenant_ctx.organization_id, products)
+        stats = await catalog_importer.import_json(tenant_ctx.organization_id, products, async_mode=True)
         return {
             "success": stats.get("success", False),
             "stats": stats
         }
     except Exception as e:
+        logger.error(f"Sync failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Sync failed: {str(e)}"
+            detail="Catalog sync failed due to an internal server error"
         )
 
 @router.post("/catalog/upload")
@@ -357,15 +501,16 @@ async def upload_csv_catalog(
         content_bytes = await file.read()
         csv_content = content_bytes.decode("utf-8", errors="ignore")
 
-        stats = await catalog_importer.import_csv(tenant_ctx.organization_id, csv_content)
+        stats = await catalog_importer.import_csv(tenant_ctx.organization_id, csv_content, async_mode=True)
         return {
             "success": stats.get("success", False),
             "stats": stats
         }
     except Exception as e:
+        logger.error(f"Upload failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload failed: {str(e)}"
+            detail="Catalog upload failed due to an internal server error"
         )
 
 
@@ -406,9 +551,10 @@ async def get_catalog_stats(
             "collection_name": collection_name
         }
     except Exception as e:
+        logger.error(f"Failed to fetch catalog stats: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch catalog stats: {str(e)}"
+            detail="Failed to fetch catalog stats due to an internal server error"
         )
 
 
@@ -473,18 +619,22 @@ async def upsert_product(
         }
 
         persisted = await catalog_service.upsert_products(tenant_ctx.organization_id, [doc])
+        worker = container.get("catalog_index_worker")
+        if worker:
+            await worker.run_once(limit=10)
         return {
             "success": True,
             "action": "upsert",
             "id": prod_id,
-            "index_status": "pending",
+            "index_status": "indexed" if worker else "pending",
             "index_event_id": persisted[0]["index_event_id"],
         }
 
     except Exception as e:
+        logger.error(f"Upsert failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upsert failed: {str(e)}"
+            detail="Upsert failed due to an internal server error"
         )
 
 @router.delete("/catalog/products/{product_id}")
@@ -503,6 +653,9 @@ async def delete_product(
 
     try:
         deleted = await catalog_service.delete_product(tenant_ctx.organization_id, product_id)
+        worker = container.get("catalog_index_worker")
+        if worker and deleted:
+            await worker.run_once(limit=10)
         return {
             "success": True,
             "action": "delete",
@@ -510,10 +663,31 @@ async def delete_product(
             "note": None if deleted else "not found",
         }
     except Exception as e:
+        logger.error(f"Delete failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Delete failed: {str(e)}"
+            detail="Delete failed due to an internal server error"
         )
+
+
+@router.post("/catalog/webhook")
+async def catalog_webhook(
+    payload: Dict[str, Any],
+    tenant_ctx: TenantContext = Depends(require_scope("catalog:write")),
+    container = Depends(get_container_dependency)
+):
+    """Handle webhook upsert/delete for catalog items."""
+    action = payload.get("action", "").lower()
+    product = payload.get("product", {})
+    if action == "upsert":
+        return await upsert_product(product=product, tenant_ctx=tenant_ctx, container=container)
+    elif action == "delete":
+        prod_id = product.get("id")
+        if not prod_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product ID required for delete")
+        return await delete_product(product_id=str(prod_id), tenant_ctx=tenant_ctx, container=container)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported action: {action}")
 
 
 @router.get("/webhooks")

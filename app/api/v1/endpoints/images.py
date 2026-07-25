@@ -3,7 +3,10 @@ Image Endpoints
 Image upload, analysis, and search functionality
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import (
     TenantContext,
@@ -72,9 +75,10 @@ async def upload_image(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Image upload failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Image upload failed: {str(e)}"
+            detail="Image upload failed due to an internal server error"
         )
 
 @router.get("/{image_id}")
@@ -113,9 +117,10 @@ async def get_image_details(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get image details: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get image details: {str(e)}"
+            detail="Failed to get image details due to an internal server error"
         )
 
 @router.post("/search")
@@ -162,9 +167,10 @@ async def search_by_image(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Image search failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Image search failed: {str(e)}"
+            detail="Image search failed due to an internal server error"
         )
 
 @router.get("/{image_id}/analysis", deprecated=True)
@@ -206,9 +212,10 @@ async def get_image_analysis(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get image analysis: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get image analysis: {str(e)}"
+            detail="Failed to get image analysis due to an internal server error"
         )
 
 from fastapi.responses import FileResponse
@@ -257,7 +264,8 @@ async def get_raw_image(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to retrieve image: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve image: {str(e)}"
+            detail="Failed to retrieve image due to an internal server error"
         )

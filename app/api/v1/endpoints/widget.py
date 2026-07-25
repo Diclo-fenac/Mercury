@@ -1,23 +1,42 @@
 """
 Widget Endpoints - Layer 6: API
 Supports instant search suggestions and widget config retrieval using public search keys.
+
+SECURITY: All endpoints in this router REQUIRE a public (pk_*) key.
+Admin (sk_*) keys are explicitly rejected.
 """
 import asyncio
+import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import TenantContext, get_container_dependency, get_tenant_context
 
 router = APIRouter()
 
 
+async def require_public_key(
+    tenant_ctx: TenantContext = Depends(get_tenant_context),
+) -> TenantContext:
+    """Reject admin/private keys on all public widget endpoints."""
+    if tenant_ctx.key_type != "public_search":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public search key (pk_*) required for widget endpoints",
+        )
+    return tenant_ctx
+
+
 @router.get("/config")
 async def get_widget_config(
-    tenant_ctx: TenantContext = Depends(get_tenant_context)
+    tenant_ctx: TenantContext = Depends(require_public_key)
 ):
     """
     Get public styling and branding configuration for the widget.
-    Allows public keys.
+    Requires a public (pk_*) key.
     """
     config = tenant_ctx.config or {}
     return {
@@ -34,12 +53,14 @@ async def get_widget_config(
 
 @router.get("/search/instant")
 async def instant_search(
-    q: str = Query(..., min_length=1, description="Query string"),
-    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    q: str = Query(..., min_length=1, max_length=100, description="Query string"),
+    limit: int = Query(default=8, ge=1, le=50, description="Max results"),
+    tenant_ctx: TenantContext = Depends(require_public_key),
     container = Depends(get_container_dependency)
 ):
     """
     Ultra-fast keyword-only search for typeahead. Target latency < 30ms.
+    Requires a public (pk_*) key. Admin keys are rejected.
     """
     typesense_client = container.get("typesense")
     if not typesense_client or not typesense_client._connected:
@@ -49,16 +70,16 @@ async def instant_search(
         )
 
     collection_name = f"tenant_{tenant_ctx.organization_id}_products"
+    search_id = str(uuid.uuid4())
 
     try:
-        # Fast query search
         loop = typesense_client.client.collections[collection_name].documents.search
         res = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: loop({
                 "q": q,
                 "query_by": "title,brand,category",
-                "per_page": 5,
+                "per_page": limit,
                 "prefix": True,
                 "typo_tokens_threshold": 1,
                 "num_typos": 1
@@ -69,23 +90,28 @@ async def instant_search(
         hits = res.get("hits", [])
         for hit in hits:
             doc = hit.get("document", {})
+            # Return only safe, storefront-facing fields — no internal IDs or credentials
             suggestions.append({
                 "id": doc.get("id"),
                 "title": doc.get("title") or doc.get("name"),
                 "brand": doc.get("brand"),
                 "category": doc.get("category"),
                 "price": doc.get("selling_price"),
-                "in_stock": doc.get("stock")
+                "in_stock": doc.get("stock"),
+                "image_url": doc.get("image_url") or "",
+                "url": doc.get("url") or doc.get("product_url") or "",
             })
 
         return {
             "success": True,
+            "search_id": search_id,  # For telemetry click attribution
             "suggestions": suggestions
         }
     except Exception as e:
+        logger.error(f"Instant search failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Instant search failed: {str(e)}"
+            detail="Instant search failed due to an internal server error"
         )
 
 
@@ -102,7 +128,7 @@ class WidgetChatRequest(BaseModel):
 @router.post("/chat")
 async def widget_chat(
     request: WidgetChatRequest,
-    tenant_ctx: TenantContext = Depends(get_tenant_context),
+    tenant_ctx: TenantContext = Depends(require_public_key),
     container = Depends(get_container_dependency)
 ):
     """
@@ -156,7 +182,8 @@ async def widget_chat(
             "conversation_id": request.conversation_id or "session_" + tenant_ctx.organization_id[:8]
         }
     except Exception as e:
+        logger.error(f"Widget chat failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Widget chat failed: {str(e)}"
+            detail="Widget chat failed due to an internal server error"
         )

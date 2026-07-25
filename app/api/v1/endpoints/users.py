@@ -3,8 +3,11 @@ User Endpoints
 User profile management, preferences, and activity tracking
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import get_container_dependency, require_auth, validate_user_id
 from app.models.responses import UserProfileResponse
@@ -60,9 +63,10 @@ async def get_user_profile(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get user profile: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get user profile: {str(e)}"
+            detail="Failed to get user profile due to an internal server error"
         )
 
 
@@ -112,9 +116,10 @@ async def get_user_preferences(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get user preferences: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get user preferences: {str(e)}"
+            detail="Failed to get user preferences due to an internal server error"
         )
 
 @router.put("/{user_id}/consent")
@@ -158,7 +163,8 @@ async def update_user_consent(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to update user consent: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user consent: {str(e)}"
+            detail="Failed to update user consent due to an internal server error"
         )

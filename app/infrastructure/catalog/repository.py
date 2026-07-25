@@ -264,6 +264,8 @@ class CatalogRepository:
                         "organization_id": str(event.organization_id),
                         "operation": event.operation,
                         "document": item.document,
+                        "external_id": str(item.external_id),
+                        "payload": event.payload,
                     }
                 )
             await session.commit()

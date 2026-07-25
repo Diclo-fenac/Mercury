@@ -12,6 +12,7 @@ from sqlalchemy import delete, func, select, update
 from app.domain.tenants.models import (
     APIKey,
     BoostRule,
+    CatalogItem,
     Organization,
     PinnedProduct,
     RedirectRule,
@@ -61,7 +62,8 @@ class TenantService:
                 widget_position="center",
                 widget_placeholder="Search products...",
                 out_of_stock_behavior="demote",
-                webhook_urls=[]
+                webhook_urls=[],
+                allowed_domains=[]
             )
             session.add(config)
             await session.commit()
@@ -92,7 +94,7 @@ class TenantService:
 
         async with self.db.async_session() as session:
             api_key = APIKey(
-                organization_id=uuid.UUID(org_id),
+                organization_id=uuid.UUID(org_id) if isinstance(org_id, str) else org_id,
                 key_prefix=display_prefix,
                 key_hash=key_hash,
                 key_type=key_type,
@@ -102,8 +104,25 @@ class TenantService:
             )
             session.add(api_key)
             await session.commit()
+            return display_prefix, raw_key
 
-        return display_prefix, raw_key
+    async def get_api_keys(self, org_id: str) -> List[Dict[str, Any]]:
+        """List all API keys for an organization."""
+        async with self.db.async_session() as session:
+            result = await session.execute(
+                select(APIKey).where(APIKey.organization_id == (uuid.UUID(org_id) if isinstance(org_id, str) else org_id))
+            )
+            keys = result.scalars().all()
+            return [
+                {
+                    "id": str(k.id),
+                    "prefix": k.key_prefix,
+                    "type": k.key_type,
+                    "name": k.name,
+                    "created_at": k.created_at.isoformat() if k.created_at else None
+                }
+                for k in keys
+            ]
 
     async def validate_api_key(self, raw_key: str) -> Optional[Dict[str, Any]]:
         """Validate API key and return tenant context. Cached in Redis."""
@@ -160,16 +179,20 @@ class TenantService:
                 "widget_font_family": config.widget_font_family if config else "Inter",
                 "widget_position": config.widget_position if config else "center",
                 "widget_placeholder": config.widget_placeholder if config else "Search products...",
-                "out_of_stock_behavior": config.out_of_stock_behavior if config else "demote"
+                "out_of_stock_behavior": config.out_of_stock_behavior if config else "demote",
+                "webhook_urls": config.webhook_urls if config else [],
+                "allowed_domains": config.allowed_domains if config else []
             }
 
             ctx = {
                 "key_id": str(row.key_id),
                 "key_type": row.key_type,
-                "scopes": row.scopes,
+                "scopes": row.scopes or [],
+                "is_active": row.is_active,
                 "organization_id": str(row.org_id),
                 "organization_slug": row.org_slug,
-                "plan": row.org_plan,
+                "org_status": row.org_status,
+                "org_plan": row.org_plan,
                 "config": config_dict
             }
 
@@ -181,12 +204,11 @@ class TenantService:
             )
             await session.commit()
 
-        # 3. Cache result
-        if self.cache:
+        # 3. Save to cache
+        if self.cache and ctx:
             try:
-                cache_ttl = 3600
-                await self.cache.set_json(cache_key, ctx, ttl=cache_ttl)
-                await self.cache.track_tenant_context_key(
+                cache_ttl = 300  # 5 minutes
+                await self.cache.set_json(
                     ctx["organization_id"], cache_key, ttl=cache_ttl
                 )
             except Exception:
@@ -196,27 +218,47 @@ class TenantService:
 
     async def get_config(self, org_id: str) -> Optional[Dict[str, Any]]:
         """Get organization's search/widget configuration"""
-        async with self.db.async_session() as session:
-            stmt = select(TenantConfig).where(TenantConfig.organization_id == uuid.UUID(org_id))
-            res = await session.execute(stmt)
-            config = res.scalar_one_or_none()
-            if not config:
-                return None
+        try:
+            async with self.db.async_session() as session:
+                stmt = select(TenantConfig).where(TenantConfig.organization_id == uuid.UUID(org_id))
+                res = await session.execute(stmt)
+                config = res.scalar_one_or_none()
+                if not config:
+                    return None
+                return {
+                    "enable_semantic": config.enable_semantic,
+                    "enable_personalization": config.enable_personalization,
+                    "enable_image_search": config.enable_image_search,
+                    "rrf_keyword_weight": config.rrf_keyword_weight,
+                    "rrf_vector_weight": config.rrf_vector_weight,
+                    "typo_tolerance": config.typo_tolerance,
+                    "searchable_fields": config.searchable_fields,
+                    "facet_fields": config.facet_fields,
+                    "widget_primary_color": config.widget_primary_color,
+                    "widget_font_family": config.widget_font_family,
+                    "widget_position": config.widget_position,
+                    "widget_placeholder": config.widget_placeholder,
+                    "out_of_stock_behavior": config.out_of_stock_behavior,
+                    "webhook_urls": config.webhook_urls or [],
+                    "allowed_domains": config.allowed_domains or []
+                }
+        except Exception:
             return {
-                "enable_semantic": config.enable_semantic,
-                "enable_personalization": config.enable_personalization,
-                "enable_image_search": config.enable_image_search,
-                "rrf_keyword_weight": config.rrf_keyword_weight,
-                "rrf_vector_weight": config.rrf_vector_weight,
-                "typo_tolerance": config.typo_tolerance,
-                "searchable_fields": config.searchable_fields,
-                "facet_fields": config.facet_fields,
-                "widget_primary_color": config.widget_primary_color,
-                "widget_font_family": config.widget_font_family,
-                "widget_position": config.widget_position,
-                "widget_placeholder": config.widget_placeholder,
-                "out_of_stock_behavior": config.out_of_stock_behavior,
-                "webhook_urls": config.webhook_urls or []
+                "enable_semantic": True,
+                "enable_personalization": False,
+                "enable_image_search": False,
+                "rrf_keyword_weight": 0.6,
+                "rrf_vector_weight": 0.4,
+                "typo_tolerance": 2,
+                "searchable_fields": ["title", "description", "brand", "category"],
+                "facet_fields": ["brand", "category"],
+                "widget_primary_color": "#6366f1",
+                "widget_font_family": "Inter",
+                "widget_position": "center",
+                "widget_placeholder": "Search products...",
+                "out_of_stock_behavior": "demote",
+                "webhook_urls": [],
+                "allowed_domains": []
             }
 
     async def update_config(self, org_id: str, **kwargs) -> bool:
@@ -241,28 +283,28 @@ class TenantService:
                 pass
         return True
 
-    async def get_pinned_products(self, org_id: str, query: str) -> List[Dict[str, Any]]:
-        """Get pinned products matching query pattern"""
+    async def get_merchandising_rules(self, org_id: str, query: str) -> Dict[str, List[str]]:
+        """Get merchandising rules (pinned/hidden items) for a query"""
         org_uuid = uuid.UUID(org_id)
+        from app.infrastructure.db.models import MerchandisingRule
         async with self.db.async_session() as session:
             stmt = (
-                select(PinnedProduct)
+                select(MerchandisingRule)
                 .where(
-                    PinnedProduct.organization_id == org_uuid,
-                    PinnedProduct.is_active == True,
-                    PinnedProduct.query_pattern.in_([query.lower(), '*'])
+                    MerchandisingRule.organization_id == org_uuid,
+                    MerchandisingRule.is_active == True,
+                    MerchandisingRule.query_exact_match == query.lower()
                 )
-                .order_by(PinnedProduct.position.asc())
             )
             res = await session.execute(stmt)
-            pins = res.scalars().all()
-            return [
-                {
-                    "product_id": p.product_id,
-                    "position": p.position
+            rule = res.scalar_one_or_none()
+            
+            if rule:
+                return {
+                    "pinned_items": rule.pinned_items or [],
+                    "hidden_items": rule.hidden_items or []
                 }
-                for p in pins
-            ]
+            return {"pinned_items": [], "hidden_items": []}
 
     async def get_redirects(self, org_id: str) -> List[Dict[str, Any]]:
         """Get redirect rules for an organization"""
@@ -452,9 +494,30 @@ class TenantService:
             top_res = await session.execute(top_stmt)
             top_queries = [{"query": row.query_text, "count": row.count} for row in top_res.all()]
 
+            # 5. Get total clicks for CTR
+            click_stmt = select(func.count(UsageEvent.id)).where(
+                UsageEvent.organization_id == org_uuid,
+                UsageEvent.event_type == 'click'
+            )
+            click_res = await session.execute(click_stmt)
+            total_clicks = click_res.scalar_one() or 0
+            
+            ctr = round((total_clicks / total_queries * 100), 2) if total_queries > 0 else 0.0
+
+            # 6. Milestones
+            catalog_stmt = select(1).select_from(CatalogItem).where(CatalogItem.organization_id == org_uuid).limit(1)
+            has_ingested_catalog = (await session.execute(catalog_stmt)).scalar() is not None
+
+            rules_stmt = select(1).select_from(PinnedProduct).where(PinnedProduct.organization_id == org_uuid).limit(1)
+            has_merchandising_rules = (await session.execute(rules_stmt)).scalar() is not None
+
             return {
                 "total_queries": total_queries,
                 "zero_result_count": zero_queries,
                 "average_latency_ms": round(avg_latency, 2),
-                "top_queries": top_queries
+                "top_queries": top_queries,
+                "click_through_rate": ctr,
+                "has_ingested_catalog": has_ingested_catalog,
+                "has_merchandising_rules": has_merchandising_rules,
+                "has_live_searches": total_queries > 0
             }

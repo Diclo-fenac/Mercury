@@ -17,12 +17,9 @@ fi
 echo "🚨 Starting Mercury Disaster Recovery Restore from $BACKUP_DIR..."
 
 echo "🛑 Stopping Mercury services..."
-docker compose stop app postgres qdrant typesense
+docker compose stop app postgres typesense
 
 PROJECT_NAME=$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
-
-echo "🧠 Restoring Qdrant Volume..."
-docker run --rm -v ${PROJECT_NAME}_qdrant_data:/data -v "$(pwd)/$BACKUP_DIR":/backup alpine sh -c "rm -rf /data/* && tar -xf /backup/qdrant.tar -C /data"
 
 echo "🔎 Restoring Typesense Volume..."
 docker run --rm -v ${PROJECT_NAME}_typesense_data:/data -v "$(pwd)/$BACKUP_DIR":/backup alpine sh -c "rm -rf /data/* && tar -xf /backup/typesense.tar -C /data"

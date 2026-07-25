@@ -1,5 +1,6 @@
 services:
   api:
+    image: ghcr.io/diclo-fenac/mercury:latest
     build: .
     restart: always
     ports:
@@ -38,6 +39,7 @@ services:
         max-file: "5"
 
   api-eu:
+    image: ghcr.io/diclo-fenac/mercury:latest
     build: .
     restart: always
     ports:

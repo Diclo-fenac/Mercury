@@ -1,11 +1,18 @@
 {
   "name": "mercury-widget",
-  "version": "1.0.0",
-  "description": "Zero-dependency Mercury Search Widget",
+  "version": "2.0.0",
+  "description": "Zero-dependency Mercury Search Widget – Shadow DOM, WCAG AA, <30KB gzip",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --minify --outfile=mercury-search.min.js --loader:.css=text"
+    "build": "node build.mjs",
+    "build:analyze": "node build.mjs --analyze",
+    "test:unit": "node --test tests/unit/api.test.mjs",
+    "test:e2e": "playwright test tests/e2e/widget.spec.ts --project=chromium",
+    "test": "node --test tests/unit/api.test.mjs",
+    "size": "gzip -c mercury-widget.min.js | wc -c && echo 'bytes gzip'",
+    "prepack": "npm run build"
   },
   "devDependencies": {
-    "esbuild": "^0.19.0"
+    "@playwright/test": "^1.62.0",
+    "esbuild": "^0.24.0"
   }
 }

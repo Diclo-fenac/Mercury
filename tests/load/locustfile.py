@@ -49,7 +49,7 @@ class MercurySearchLoadUser(HttpUser):
     def search_products(self):
         query = random.choice(self.queries)
         with self.client.post(
-            "/api/v1/search/",
+            "/api/v1/search",
             headers=self.headers,
             json={"query": query, "pagination": {"page": 1, "limit": 10}},
             name="/api/v1/search",

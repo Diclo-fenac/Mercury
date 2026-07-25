@@ -5,10 +5,11 @@ from typing import Any, Dict, List
 class CatalogIndexWorker:
     """Replay pending catalog events. Safe across processes through row-level claiming."""
 
-    def __init__(self, catalog_service, embeddings, typesense):
+    def __init__(self, catalog_service, embeddings, typesense, tenant_provisioner=None):
         self.catalog_service = catalog_service
         self.embeddings = embeddings
         self.typesense = typesense
+        self.tenant_provisioner = tenant_provisioner
 
     async def run_once(self, limit: int = 100) -> Dict[str, int]:
         events = await self.catalog_service.claim_index_events(limit)
@@ -21,7 +22,8 @@ class CatalogIndexWorker:
                 if not self.typesense:
                     raise RuntimeError("Typesense unavailable")
                 if event["operation"] == "delete":
-                    succeeded = await self.typesense.delete_document(collection, str(document["id"]))
+                    doc_id = str(event.get("external_id") or (document.get("id") if document else "") or (event.get("payload", {}).get("external_id", "")) or "")
+                    succeeded = await self.typesense.delete_document(collection, doc_id)
                     outcomes.append(
                         {
                             "event_id": event_id,
@@ -30,6 +32,31 @@ class CatalogIndexWorker:
                         }
                     )
                     continue
+                if not await self.typesense.collection_exists(collection):
+                    if self.tenant_provisioner:
+                        await self.tenant_provisioner.provision_tenant(str(event["organization_id"]))
+                    else:
+                        schema = {
+                            "name": collection,
+                            "fields": [
+                                {"name": "id", "type": "string"},
+                                {"name": "title", "type": "string", "optional": True},
+                                {"name": "name", "type": "string", "optional": True},
+                                {"name": "brand", "type": "string", "optional": True, "facet": True},
+                                {"name": "category", "type": "string", "optional": True, "facet": True},
+                                {"name": "sub_category", "type": "string", "optional": True, "facet": True},
+                                {"name": "description", "type": "string", "optional": True},
+                                {"name": "rating", "type": "float"},
+                                {"name": "stock", "type": "bool", "optional": True},
+                                {"name": "online_available", "type": "bool", "optional": True},
+                                {"name": "selling_price", "type": "float", "optional": True},
+                                {"name": "embedding", "type": "float[]", "num_dim": 384, "optional": True},
+                                {"name": "image_vector", "type": "float[]", "num_dim": 512, "optional": True},
+                            ],
+                            "default_sorting_field": "rating"
+                        }
+                        await self.typesense.create_collection(schema)
+                    
                 text = " ".join(
                     str(document.get(field, ""))
                     for field in ("title", "name", "description", "brand", "category", "sub_category")

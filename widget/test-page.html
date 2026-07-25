@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercury Widget – E2E Test Page</title>
+  <style>
+    /* Deliberately hostile host CSS to test Shadow DOM isolation */
+    *, *::before, *::after { box-sizing: border-box; }
+    button, input { all: unset; }
+    input { display: block; border: 3px solid red !important; background: pink !important; color: purple !important; font-size: 8px !important; }
+    button { cursor: pointer; }
+    body { margin: 0; font-family: sans-serif; background: #f0f0f0; padding: 24px; }
+
+    #host-input { width: 100%; padding: 10px; background: white; color: black; border: 2px solid #ccc; }
+
+    .overflow-box { overflow: hidden; border: 2px dashed #ccc; padding: 24px; margin: 24px 0; }
+
+    /* Very high z-index header */
+    .sticky-header { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: #333; color: white; display: flex; align-items: center; padding: 0 16px; z-index: 9999; font-size: 14px; }
+    body { padding-top: 70px; }
+  </style>
+</head>
+<body>
+
+<div class="sticky-header">🧪 E2E Test Harness — Hostile CSS Active — z-index: 9999</div>
+
+<!--
+  DATA_API_KEY and DATA_ENDPOINT are injected server-side by the /widget/test-page endpoint.
+  This ensures the E2E tests always use a valid, live key against the real backend.
+-->
+
+<h2>Test: Auto-mount</h2>
+<p>Input below should NOT be pink (Shadow DOM isolated):</p>
+<script
+  id="mercury-script"
+  src="/widget/mercury-widget.min.js"
+  data-api-key="{{API_KEY}}"
+  data-endpoint="{{ENDPOINT}}"
+  data-placeholder="Search products…"
+  data-limit="8"
+  defer>
+</script>
+
+<h2>Test: Overflow container</h2>
+<div class="overflow-box" id="overflow-container">
+  <p>Dropdown must escape overflow:hidden</p>
+  <div id="mount-in-overflow"></div>
+</div>
+
+<h2>Test: Custom theme via CSS variables</h2>
+<mercury-search
+  id="custom-theme-widget"
+  style="--mercury-accent:#e11d48;--mercury-bg:#fff1f2;--mercury-border:#fda4af;display:block;max-width:500px;">
+</mercury-search>
+
+<h2>Test: Coexist with host input</h2>
+<input id="host-input" type="text" placeholder="Host input (red border, pink bg from global CSS)">
+<div id="coexist-mount"></div>
+
+<h2>Test: Programmatic mount then destroy</h2>
+<div id="destroy-target"></div>
+
+<!-- Event log for telemetry assertion -->
+<div id="event-log" style="display:none;"></div>
+
+<script type="module">
+// Wait for auto-mount to have installed MercurySearch
+window.addEventListener('load', () => {
+  const KEY = '{{API_KEY}}';
+  const ENDPOINT = '{{ENDPOINT}}';
+
+  // Programmatic mounts
+  if (window.MercurySearch) {
+    window.MercurySearch.mount({ target: '#mount-in-overflow', apiKey: KEY, endpoint: ENDPOINT, placeholder: 'Overflow search…', limit: 5 });
+    window.MercurySearch.mount({ target: '#coexist-mount',     apiKey: KEY, endpoint: ENDPOINT, placeholder: 'Coexist search…', limit: 5 });
+
+    // Custom theme widget
+    const ct = document.getElementById('custom-theme-widget');
+    if (ct && !ct._mercuryMounted) {
+      ct._mercuryConfig = { apiKey: KEY, endpoint: ENDPOINT, placeholder: 'Custom theme…', limit: 8, minLength: 2, debounce: 200 };
+      if (typeof ct.configure === 'function') ct.configure(ct._mercuryConfig);
+    }
+
+    // Destroy target – mount then expose instance for test
+    window.__destroyInstance = window.MercurySearch.mount({ target: '#destroy-target', apiKey: KEY, endpoint: ENDPOINT, placeholder: 'Destroy me…' });
+  }
+
+  // Expose beacon tracking for telemetry tests
+  const origBeacon = navigator.sendBeacon?.bind(navigator);
+  window.__beaconUrls = [];
+  if (origBeacon) {
+    navigator.sendBeacon = function(url, data) {
+      window.__beaconUrls.push(url);
+      return origBeacon(url, data);
+    };
+  }
+
+  // Track mercury:result-selected events
+  window.__mercuryEvents = [];
+  document.addEventListener('mercury:result-selected', (e) => {
+    window.__mercuryEvents.push(e.detail);
+  });
+});
+</script>
+</body>
+</html>

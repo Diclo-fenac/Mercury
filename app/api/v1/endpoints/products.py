@@ -2,9 +2,12 @@
 Product Endpoints
 Product information, recommendations, and related operations
 """
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, status
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import (
     PaginationParams,
@@ -81,9 +84,10 @@ async def search_products(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Search failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Search failed: {str(e)}"
+            detail="Search failed due to an internal server error"
         )
 
 @router.get("/search/suggestions")
@@ -123,9 +127,10 @@ async def get_search_suggestions(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get suggestions: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get suggestions: {str(e)}"
+            detail="Failed to get suggestions due to an internal server error"
         )
 
 
@@ -168,9 +173,10 @@ async def get_product(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get product: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get product: {str(e)}"
+            detail="Failed to get product due to an internal server error"
         )
 
 @router.get("/{product_id}/recommendations")
@@ -237,7 +243,8 @@ async def get_product_recommendations(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get recommendations: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get recommendations: {str(e)}"
+            detail="Failed to get recommendations due to an internal server error"
         )

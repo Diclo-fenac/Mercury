@@ -147,6 +147,15 @@ class SearchOrchestrator:
 
             # 2. Retrieve candidates from Typesense
             candidate_limit = min(250, limit + offset)
+            
+            # Fetch merchandising rules before retrieval to pass them to Typesense
+            pinned_items = []
+            hidden_items = []
+            if self.tenant_service and tenant_context:
+                merch = await self.tenant_service.get_merchandising_rules(tenant_context.organization_id, query)
+                pinned_items = merch.get("pinned_items", [])
+                hidden_items = merch.get("hidden_items", [])
+                
             retrieval = await self.search.search_with_metadata(
                 expanded_query,
                 filters=filters,
@@ -159,6 +168,8 @@ class SearchOrchestrator:
                 vector_weight=float(tenant_context.config.get("rrf_vector_weight", 1.0)) if tenant_context else 1.0,
                 num_typos=int(tenant_context.config.get("typo_tolerance", 2)) if tenant_context else 2,
                 searchable_fields=tenant_context.config.get("searchable_fields") if tenant_context else None,
+                pinned_hits=",".join(pinned_items) if pinned_items else None,
+                hidden_hits=",".join(hidden_items) if hidden_items else None,
             )
             results = retrieval["documents"]
             total_results = retrieval["total"]
@@ -182,6 +193,8 @@ class SearchOrchestrator:
                         vector_weight=float(tenant_context.config.get("rrf_vector_weight", 1.0)) if tenant_context else 1.0,
                         num_typos=int(tenant_context.config.get("typo_tolerance", 2)) if tenant_context else 2,
                         searchable_fields=tenant_context.config.get("searchable_fields") if tenant_context else None,
+                        pinned_hits=",".join(pinned_items) if pinned_items else None,
+                        hidden_hits=",".join(hidden_items) if hidden_items else None,
                     )
                     results = retrieval["documents"]
                     total_results = retrieval["total"]
@@ -193,12 +206,11 @@ class SearchOrchestrator:
                 behavior = tenant_context.config.get("out_of_stock_behavior", "demote")
                 results = self._apply_stock_policy(results, behavior)
 
-            # 4. Apply boosts and pinned products (merchandising)
+            # 4. Apply boosts (merchandising)
             if self.tenant_service and tenant_context:
-                pins = await self.tenant_service.get_pinned_products(tenant_context.organization_id, query)
                 boosts = await self.tenant_service.get_boosts(tenant_context.organization_id)
-                if pins or boosts:
-                    results = SearchRuleEngine.apply_result_rules(results, pins, boosts)
+                if boosts:
+                    results = SearchRuleEngine.apply_result_rules(results, [], boosts)
 
             # 5. Personalize results and add transparency (only if enabled by tenant config)
             personalization_applied = False
@@ -251,9 +263,24 @@ class SearchOrchestrator:
             for item in results:
                 retrieval_evidence = item.pop("_retrieval", {})
                 current_score = item.get("personalization_score") or retrieval_evidence.get("rrf_score") or 0.0
+                ranks = retrieval_evidence.get("ranks", {})
+                keyword_info = ranks.get("keyword", {}) if isinstance(ranks, dict) else {}
+                semantic_info = ranks.get("semantic", {}) if isinstance(ranks, dict) else {}
+
+                kw_score = float(keyword_info.get("text_match") or 0.0) if isinstance(keyword_info, dict) else 0.0
+                sem_dist = semantic_info.get("vector_distance") if isinstance(semantic_info, dict) else None
+                sem_score = float(round(1.0 - sem_dist, 4)) if (sem_dist is not None and isinstance(sem_dist, (int, float))) else 0.0
+                rrf_score = float(retrieval_evidence.get("rrf_score") or 0.0)
+                pers_score = item.get("personalization_score")
+                pers_boost = float(round(pers_score - rrf_score, 4)) if (personalization_applied and pers_score is not None) else 0.0
+
                 breakdown = {
+                    "keyword_score": kw_score,
+                    "semantic_score": sem_score,
+                    "rrf_score": rrf_score,
+                    "personalization_boost": pers_boost,
                     "retrieval": retrieval_evidence,
-                    "personalization_score": item.get("personalization_score") if personalization_applied else None,
+                    "personalization_score": pers_score if personalization_applied else None,
                 }
                 
                 item['score'] = current_score

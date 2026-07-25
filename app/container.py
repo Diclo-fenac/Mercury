@@ -295,6 +295,7 @@ class Container:
             catalog_service=self._services['catalog_service'],
             embeddings=self._services['embeddings'],
             typesense=self._services.get('typesense'),
+            tenant_provisioner=self._services.get('tenant_provisioner'),
         )
         
         logger.info("Add-ons layer initialized")

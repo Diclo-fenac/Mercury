@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # Base response models
@@ -27,6 +27,7 @@ class ErrorResponse(BaseModel):
 # Product models
 class ScoreBreakdown(BaseModel):
     """Transparency for search ranking scores"""
+    model_config = ConfigDict(extra="allow")
     keyword_score: float = Field(0.0, description="Keyword/Exact match score")
     semantic_score: float = Field(0.0, description="Semantic/Vector similarity score")
     rrf_score: float = Field(0.0, description="Reciprocal Rank Fusion combined score")
@@ -34,6 +35,7 @@ class ScoreBreakdown(BaseModel):
 
 class ProductInfo(BaseModel):
     """Product information with ranking transparency"""
+    model_config = ConfigDict(extra="allow")
     id: str = Field(..., description="Product identifier")
     title: str = Field(..., description="Product title")
     description: Optional[str] = Field(None, description="Product description")
@@ -51,6 +53,7 @@ class ProductInfo(BaseModel):
 
 class SearchMeta(BaseModel):
     """Search execution metadata"""
+    model_config = ConfigDict(extra="allow")
     search_id: Optional[str] = Field(None, description="Unique search ID for click telemetry")
     latency_ms: int = Field(..., description="Execution time in milliseconds")
     cache_hit: bool = Field(default=False, description="Whether results came from cache")
@@ -58,6 +61,7 @@ class SearchMeta(BaseModel):
 
 class SearchResult(BaseResponse):
     """Production-ready search results response"""
+    model_config = ConfigDict(extra="allow")
     query: str = Field(..., description="Search query")
     results: List[ProductInfo] = Field(..., description="Search results")
     total_results: int = Field(..., description="Total number of results")

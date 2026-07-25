@@ -22,7 +22,7 @@ class ZeroResultTracker:
             'zero_by_type': defaultdict(int)
         }
     
-    async def run_test_queries(self, test_queries: list):
+    async def run_test_queries(self, test_queries: list, tenant_context=None):
         """Run test queries and track results"""
         for query in test_queries:
             self.stats['total_queries'] += 1
@@ -32,7 +32,8 @@ class ZeroResultTracker:
                 query=query['query'],
                 user_id='test_user',
                 filters=query.get('filters'),
-                limit=10
+                limit=10,
+                tenant_context=tenant_context
             )
             
             result_count = len(result.get('results', []))
@@ -51,7 +52,8 @@ class ZeroResultTracker:
                 fallback_result = await self.orchestrator.handle(
                     query=query['expanded_query'] if query.get('expanded_query') else query['query'],
                     user_id='test_user',
-                    limit=10
+                    limit=10,
+                    tenant_context=tenant_context
                 )
                 
                 if len(fallback_result.get('results', [])) > 0:
@@ -93,6 +95,37 @@ TEST_QUERIES = [
 ]
 
 
+async def main():
+    import json
+    from app.container import get_container
+    from app.api.dependencies import TenantContext
+
+    container = get_container()
+    await container.initialize()
+    
+    tenant_service = container.get("tenant_service")
+    ctx_dict = await tenant_service.validate_api_key("pk_5c75cd41dd114ca7aaf32a040a777008")
+    if not ctx_dict:
+        print("Failed to validate API key")
+        return
+
+    tenant_context = TenantContext(
+        organization_id=ctx_dict["organization_id"],
+        organization_slug=ctx_dict["organization_slug"],
+        key_type=ctx_dict["key_type"],
+        scopes=ctx_dict["scopes"],
+        plan=ctx_dict.get("org_plan", ctx_dict.get("plan", "free")),
+        config=ctx_dict["config"],
+        collection_name=f"tenant_{ctx_dict['organization_id']}_products",
+    )
+    
+    orchestrator = container.get("search_orchestrator")
+    tracker = ZeroResultTracker(orchestrator)
+    await tracker.run_test_queries(TEST_QUERIES, tenant_context=tenant_context)
+    report = tracker.get_report()
+    print("\n--- ZERO RESULT REPORT ---")
+    print(json.dumps(report, indent=2))
+
 if __name__ == '__main__':
-    print("Run: python -c \"from tests.track_zero_results import *; asyncio.run(main())\"")
-    print("Or integrate into your test suite to track over time")
+    import asyncio
+    asyncio.run(main())

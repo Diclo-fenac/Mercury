@@ -289,6 +289,23 @@ class TestHealthEndpoints:
         response = client.get("/")
         assert response.status_code == 200
 
+    @pytest.mark.asyncio
+    async def test_health_live(self, client):
+        """Test liveness endpoint"""
+        response = client.get("/health/live")
+        assert response.status_code == 200
+        assert response.json() == {"status": "alive"}
+
+    @pytest.mark.asyncio
+    async def test_health_ready(self, client):
+        """Test readiness endpoint"""
+        response = client.get("/health/ready")
+        # In test mode, dependencies might be mocked or uninitialized, so status can be 200 or 503
+        assert response.status_code in [200, 503]
+        data = response.json()
+        assert "status" in data
+        assert "services" in data
+
 
 class TestErrorHandling:
     """Tests for error handling"""

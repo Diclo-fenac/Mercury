@@ -3,8 +3,11 @@ Chat Endpoints
 Chat functionality with AI assistant
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import (
     PaginationParams,
@@ -69,9 +72,10 @@ async def chat_completion(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Chat failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chat failed: {str(e)}"
+            detail="Chat failed due to an internal server error"
         )
 
 @router.post("/stream")
@@ -108,9 +112,10 @@ async def chat_stream(
         )
 
     except Exception as e:
+        logger.error(f"Streaming failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Streaming failed: {str(e)}"
+            detail="Streaming failed due to an internal server error"
         )
 
 @router.post("/tools")
@@ -144,9 +149,10 @@ async def chat_tools(
             return {"success": True, "result": result}
 
     except Exception as e:
+        logger.error(f"Tool operation failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Tool operation failed: {str(e)}"
+            detail="Tool operation failed due to an internal server error"
         )
 
 @router.get("/history/{conversation_id}")
@@ -207,7 +213,8 @@ async def get_conversation_history(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get history: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get history: {str(e)}"
+            detail="Failed to get history due to an internal server error"
         )

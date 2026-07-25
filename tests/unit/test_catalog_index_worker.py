@@ -27,6 +27,12 @@ class TypesenseStub:
         self.indexed = []
         self.deleted = []
 
+    async def collection_exists(self, collection_name: str) -> bool:
+        return True
+        
+    async def create_collection(self, schema: dict) -> bool:
+        return True
+
     async def index_documents(self, collection, documents):
         self.indexed.append((collection, documents))
         return {"success": True, "results": [{"success": True}]}

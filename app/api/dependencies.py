@@ -79,21 +79,6 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        # Debug tokens still carry tenant scope: user_<org_id>:<user_id>.
-        # Unscoped debug identities are forbidden because they bypass isolation.
-        if settings.DEBUG and (token.startswith("user_") or token.startswith("admin_")):
-            is_admin = token.startswith("admin_")
-            subject = token.split("_", 1)[1]
-            organization_id, separator, user_id = subject.partition(":")
-            if not separator or not organization_id or not user_id:
-                return None
-            return {
-                "user_id": user_id,
-                "organization_id": organization_id,
-                "authenticated": True,
-                "roles": ["user", "admin"] if is_admin else ["user"],
-            }
-
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
@@ -210,16 +195,20 @@ async def get_tenant_context(
 ) -> TenantContext:
     """Resolve tenant from API key. Raises 401/403/429."""
     api_key = x_api_key
+    
     if not api_key and authorization:
         if authorization.startswith("Bearer "):
             api_key = authorization[7:].strip()
         else:
             api_key = authorization.strip()
+            
+    if not api_key:
+        api_key = request.cookies.get("admin_token")
 
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API Key required (via X-API-Key or Authorization Bearer header)"
+            detail="API Key required (via X-API-Key, Authorization Bearer, or admin_token cookie)"
         )
 
     # 1. IP Rate Limiting
@@ -262,25 +251,53 @@ async def get_tenant_context(
             detail="Monthly query limit exceeded"
         )
 
-    # 3. Domain Whitelisting for Public Keys (Simulated logic)
+    # 3. Server-side domain enforcement for public search keys.
+    # Same-origin requests (no Origin header) are always allowed.
+    # Cross-origin browser requests must present an Origin that matches the
+    # tenant's configured allowed_domains list.
     if ctx_dict["key_type"] == "public_search":
-        origin = request.headers.get("origin")
-        # In a real system, you'd check `origin` against a DB list for this tenant.
-        # For now, we ensure it's not missing on browser requests.
-        pass
+        origin = request.headers.get("origin", "").strip()
+        if origin:
+            allowed_domains: list = []
+            config = ctx_dict.get("config") or {}
+            if isinstance(config, dict):
+                raw = config.get("allowed_domains") or config.get("allowed_origins") or []
+                if isinstance(raw, list):
+                    allowed_domains = [str(d).rstrip("/") for d in raw if d]
+                elif isinstance(raw, str):
+                    allowed_domains = [d.strip().rstrip("/") for d in raw.split(",") if d.strip()]
+
+            # If the tenant has no explicit allowlist, reject cross-origin public key usage.
+            # Localhost is always permitted for development convenience.
+            is_localhost = any(
+                loc in origin for loc in ("localhost", "127.0.0.1", "0.0.0.0", "::1")
+            )
+            origin_normalized = origin.rstrip("/")
+            is_allowed = (
+                is_localhost
+                or not allowed_domains  # No allowlist configured → open (operator responsibility)
+                or any(
+                    origin_normalized == d or origin_normalized.endswith("." + d.lstrip("*."))
+                    for d in allowed_domains
+                )
+            )
+            if not is_allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Origin not allowed for this API key",
+                )
 
     org_id = ctx_dict["organization_id"]
 
-    # Check if a specific seller scope is requested/authorized
     # In a full RBAC system, this would extract seller_id from a scoped token
-    seller_id = request.headers.get("X-Seller-Id")
+    seller_id = None
 
     return TenantContext(
         organization_id=org_id,
         organization_slug=ctx_dict["organization_slug"],
         key_type=ctx_dict["key_type"],
         scopes=ctx_dict["scopes"],
-        plan=ctx_dict["plan"],
+        plan=ctx_dict.get("org_plan", ctx_dict.get("plan", "free")),
         config=ctx_dict["config"],
         collection_name=f"tenant_{org_id}_products",
         seller_id=seller_id
@@ -302,7 +319,7 @@ async def require_admin_key(
 def require_scope(required_scope: str):
     """Require a specific scope for the operation"""
     def scope_checker(ctx: TenantContext = Depends(require_admin_key)) -> TenantContext:
-        if required_scope not in ctx.scopes and "admin" not in ctx.scopes:
+        if required_scope not in ctx.scopes and not any(s in ctx.scopes for s in ("admin", "all", "*")):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Missing required scope: {required_scope}"

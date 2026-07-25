@@ -42,6 +42,16 @@ async def log_telemetry_event(
             member=event.product_id
         )
         
+        tenant_service = container.get('tenant_service')
+        if tenant_service:
+            background_tasks.add_task(
+                tenant_service.record_usage,
+                org_id=tenant.organization_id,
+                event_type="click",
+                query_text=event.query,
+                api_key_id=tenant.key_id
+            )
+        
     if event.query:
         query_key = f"telemetry:{tenant.organization_id}:trending_searches:7d"
         background_tasks.add_task(

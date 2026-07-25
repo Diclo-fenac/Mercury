@@ -12,7 +12,6 @@ from sqlalchemy.orm import sessionmaker
 
 from app.domain.tenants.models import CatalogItem
 from app.infrastructure.db.models import (
-    Product,
     TenantActivity,
     TenantConversation,
     TenantMessage,
@@ -61,18 +60,6 @@ class PostgresClient:
             logger.error(f"❌ PostgreSQL connection failed: {e}")
             raise
     
-    def setup_sync(self, embeddings, typesense) -> None:
-        """Wire up the sync pipeline and register ORM event triggers."""
-        from app.infrastructure.sync.pipeline import SyncPipeline
-        from app.infrastructure.sync.triggers import register_triggers
-
-        pipeline = SyncPipeline(
-            embeddings=embeddings,
-            typesense=typesense,
-            collection_name="products",
-        )
-        register_triggers(pipeline)
-        logger.info("✅ Sync pipeline wired to PostgresClient")
 
     async def close(self) -> None:
         """Close PostgreSQL connection"""
@@ -483,31 +470,6 @@ class PostgresClient:
     
     # ==================== Helper Methods ====================
     
-    def _product_to_dict(self, product: Product) -> Dict[str, Any]:
-        """Convert Product model to dict"""
-        return {
-            'id': product.id,
-            'name': product.name,
-            'title': product.title,
-            'brand': product.brand,
-            'category': product.category,
-            'sub_category': product.sub_category,
-            'description': product.description,
-            'url': product.url,
-            'price': product.price,
-            'price_history': product.price_history,
-            'tags': product.tags,
-            'images': product.images,
-            'availability': product.availability,
-            'metadata': product.extra_data,
-            'rating': product.rating,
-            'stock': bool(product.stock),
-            'online_available': bool(product.online_available),
-            'created_at': product.created_at,
-            'updated_at': product.updated_at,
-            'uploaded_at': product.uploaded_at,
-        }
-
     @staticmethod
     def _catalog_item_to_dict(item: CatalogItem) -> Dict[str, Any]:
         """Expose canonical document while preserving normalized searchable fields."""

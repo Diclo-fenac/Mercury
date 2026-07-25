@@ -280,6 +280,7 @@ class TenantConfig(Base):
     widget_placeholder = Column(Text, server_default='Search products...')
     out_of_stock_behavior = Column(String(20), server_default='demote')  # 'hide' | 'demote' | 'notify'
     webhook_urls = Column(ARRAY(String), server_default='{}')
+    allowed_domains = Column(ARRAY(String), server_default='{}')
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 

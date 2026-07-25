@@ -76,6 +76,8 @@ class HybridSearch:
         vector_weight: float = 1.0,
         num_typos: int = 2,
         searchable_fields: Optional[List[str]] = None,
+        pinned_hits: Optional[str] = None,
+        hidden_hits: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Run independent keyword/vector retrieval then deterministic weighted RRF.
 
@@ -100,6 +102,10 @@ class HybridSearch:
         # vector search that cannot return document vectors in that state.
         if not (getattr(tenant, "config", {}) or {}).get("enable_semantic", True):
             mode = "keyword"
+
+        # Pagination Hard Limit (DoS Protection)
+        if offset + limit > 1000:
+            raise ValueError("Maximum pagination depth exceeded. Please refine search filters.")
 
         filters = filters or {}
         if tenant.seller_id:
@@ -136,6 +142,8 @@ class HybridSearch:
                     per_page=candidate_limit,
                     num_typos=max(0, min(2, num_typos)),
                     facet_by="brand,category",
+                    pinned_hits=pinned_hits,
+                    hidden_hits=hidden_hits,
                 )
             )
         if self.typesense and (query_vector or image_vector) and mode in {"hybrid", "semantic"}:
@@ -157,6 +165,8 @@ class HybridSearch:
                     per_page=candidate_limit,
                     num_typos=max(0, min(2, num_typos)),
                     facet_by="brand,category",
+                    pinned_hits=pinned_hits,
+                    hidden_hits=hidden_hits,
                 )
             )
         if tasks:
@@ -177,15 +187,27 @@ class HybridSearch:
             vector_weight=vector_weight,
         )
         if ranked:
-            canonical = await self.db.get_products_by_ids(
-                tenant.organization_id, [str(document["id"]) for document in ranked]
-            )
+            try:
+                canonical = await self.db.get_products_by_ids(
+                    tenant.organization_id, [str(document["id"]) for document in ranked]
+                )
+            except Exception as db_exc:
+                logger.error(f"Postgres rehydration failed: {db_exc}. Entering Degraded Mode.")
+                canonical = None
+
             documents = []
             for document in ranked:
-                product = canonical.get(str(document["id"]))
-                if product:
-                    product["_retrieval"] = document["_retrieval"]
+                if canonical is None:
+                    # DEGRADED MODE: Postgres is down, serve raw Typesense hits
+                    product = dict(document)
+                    product["_retrieval"] = document.get("_retrieval", {})
+                    product["_retrieval"]["degraded_mode"] = True
                     documents.append(product)
+                else:
+                    product = canonical.get(str(document["id"]))
+                    if product:
+                        product["_retrieval"] = document["_retrieval"]
+                        documents.append(product)
             total = max(keyword_response.get("found", 0), vector_response.get("found", 0), len(documents))
             return {
                 "documents": documents[offset : offset + limit],

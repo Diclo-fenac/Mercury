@@ -25,6 +25,11 @@ class TestAdminAPIIntegration:
         container = Container()
         await container.initialize()
 
+        redis = container.get("redis")
+        if redis:
+            await redis.delete_matching("onboard:*")
+            await redis.delete_matching("rate_limit:*")
+
         # Remove mock dependency overrides from app
         app.dependency_overrides.clear()
         
@@ -84,9 +89,10 @@ class TestAdminAPIIntegration:
         cfg = res_get_cfg.json()
         assert cfg["out_of_stock_behavior"] == "demote"
 
-        # Test unauthorized (no header)
+        # Test unauthorized (no header or cookie)
+        client.cookies.clear()
         res_unauth = await client.get("/api/v1/admin/config")
-        assert res_unauth.status_code == 422  # validation error (header required)
+        assert res_unauth.status_code in (401, 422)  # unauthorized when credentials missing
 
         # Test invalid key
         res_invalid = await client.get("/api/v1/admin/config", headers={"X-API-Key": "invalid_key"})

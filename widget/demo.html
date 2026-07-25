@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercury Search – Demo Storefront</title>
+  <meta name="description" content="Demo storefront for the Mercury Search Widget SDK">
+  <style>
+    /* ================================================================
+       DEMO HOST PAGE – deliberately hostile to test widget isolation
+       Uses Tailwind-like reset + Bootstrap-like variables
+       ================================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* Simulate Tailwind preflight / aggressive global reset */
+    button, input { all: unset; }
+    input { display: block; border: 2px solid red !important; background: pink !important; color: purple !important; }
+    button { cursor: pointer; }
+
+    /* Simulate Bootstrap button reset */
+    button.host-btn {
+      background: #0d6efd;
+      color: white;
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    /* Simulate high z-index sticky header */
+    .site-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: #1a1a2e;
+      color: white;
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f5f5f0;
+      padding-top: 80px;
+      color: #1a1a2e;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Simulate overflow:hidden container */
+    .overflow-trap {
+      overflow: hidden;
+      border: 1px dashed #ccc;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 32px;
+      background: white;
+    }
+
+    h2 { font-size: 22px; margin-bottom: 16px; }
+    h3 { font-size: 16px; margin-bottom: 12px; color: #555; }
+
+    /* Existing search input that might conflict */
+    .host-search {
+      width: 100%;
+      max-width: 400px;
+      padding: 10px 16px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 16px;
+      background: #fff;
+      color: #111;
+      display: block;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .demo-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .demo-card h3 {
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+
+    .snippet {
+      background: #1e2435;
+      color: #e8eaf0;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    .event-log {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 12px;
+      white-space: pre-wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 2px;
+    }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-blue  { background: #dbeafe; color: #1e40af; }
+
+    /* CLS measurement display */
+    .cls-display {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 48px 24px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- High z-index sticky header to verify widget overlays correctly -->
+<header class="site-header" role="banner">
+  <div>🔭 Demo Storefront – Mercury Widget Testbed</div>
+  <nav>
+    <span class="badge badge-green">Hostile CSS Active</span>
+    <span class="badge badge-blue">z-index: 9999 Header</span>
+  </nav>
+</header>
+
+<main class="container" id="main-content">
+
+  <h2>Mercury Search Widget – Demo & Integration Test</h2>
+  <p style="color:#6b7280; margin-bottom: 32px;">This page deliberately applies aggressive host CSS (global input resets, all:unset on buttons/inputs, overflow:hidden containers) to verify widget Shadow DOM isolation.</p>
+
+  <!-- ========================================================
+       Demo 1: Script-tag auto-mount (simplest install)
+       ======================================================== -->
+  <div class="demo-card" style="margin-bottom: 24px;">
+    <h3>Demo 1 – Auto-mount via script tag</h3>
+    <p style="font-size:14px; color:#6b7280; margin-bottom:16px;">The widget auto-inserts itself after its script tag. Host CSS must NOT affect it.</p>
+
+    <!--
+      In production, replace data-api-key with your real pk_* key.
+      Replace data-endpoint with your Mercury instance URL.
+    -->
+    <script
+      src="/widget/mercury-widget.min.js"
+      data-api-key="pk_demo_replace_me"
+      data-endpoint=""
+      data-placeholder="Search products… (auto-mount)"
+      data-theme="auto"
+      data-limit="8"
+      defer>
+    </script>
+
+    <div class="snippet">&lt;script
+  src="/widget/mercury-widget.min.js"
+  data-api-key="pk_xxx"
+  data-endpoint="https://store.example"
+  data-placeholder="Search products…"
+  data-theme="auto"
+  data-limit="8"
+  defer&gt;
+&lt;/script&gt;</div>
+  </div>
+
+  <!-- ========================================================
+       Demo 2: Programmatic mount in overflow:hidden container
+       ======================================================== -->
+  <div class="overflow-trap" id="overflow-container">
+    <h3>Demo 2 – Programmatic mount inside <code>overflow:hidden</code></h3>
+    <p style="font-size:14px; color:#6b7280; margin-bottom:16px;">Verifies dropdown escapes overflow:hidden via correct positioning strategy.</p>
+    <div id="search-mount-target"></div>
+  </div>
+
+  <!-- ========================================================
+       Demo 3: Custom CSS variables (merchant theming)
+       ======================================================== -->
+  <div class="demo-card" style="margin-bottom: 24px;">
+    <h3>Demo 3 – Custom CSS variable theme</h3>
+    <mercury-search
+      id="custom-theme-widget"
+      style="
+        --mercury-accent: #e11d48;
+        --mercury-bg: #fff1f2;
+        --mercury-border: #fda4af;
+        display: block;
+        max-width: 500px;
+      ">
+    </mercury-search>
+    <div class="snippet">/* CSS variable theming */
+mercury-search {
+  --mercury-accent: #e11d48;
+  --mercury-bg:     #fff1f2;
+  --mercury-border: #fda4af;
+}</div>
+  </div>
+
+  <!-- ========================================================
+       Demo 4: Conflict – existing search input on page
+       ======================================================== -->
+  <div class="demo-card" style="margin-bottom: 24px;">
+    <h3>Demo 4 – Coexistence with host page search input</h3>
+    <p style="font-size:14px; color:#6b7280; margin-bottom:12px;">This host-page search input has aggressive global CSS applied. Widget must not inherit it.</p>
+    <input class="host-search" type="text" placeholder="Host page search (aggressive styles)">
+    <div id="coexist-mount-target"></div>
+  </div>
+
+  <!-- ========================================================
+       Demo grid – features
+       ======================================================== -->
+  <div class="demo-grid">
+    <div class="demo-card">
+      <h3>📡 Event Telemetry Log</h3>
+      <p style="font-size:13px; color:#6b7280;">Custom events dispatched by widget:</p>
+      <div class="event-log" id="event-log">Waiting for events…
+</div>
+    </div>
+
+    <div class="demo-card">
+      <h3>📐 Layout Shift Monitor</h3>
+      <p style="font-size:13px; color:#6b7280;">Cumulative Layout Shift (CLS) measured via Layout Instability API:</p>
+      <div class="cls-display" id="cls-display">CLS: measuring…</div>
+      <div style="font-size:12px; color:#9ca3af; margin-top:8px;">
+        WCAG AA pass: CLS &lt; 0.1<br>
+        Good: &lt; 0.1 · Needs work: 0.1–0.25 · Poor: &gt; 0.25
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <h3>♿ Accessibility Checklist</h3>
+      <ul style="font-size:13px; color:#374151; line-height:1.8; list-style:none; padding:0;">
+        <li>✅ Visible label (screen reader)</li>
+        <li>✅ role="combobox" + aria-expanded</li>
+        <li>✅ role="listbox" + role="option"</li>
+        <li>✅ aria-activedescendant tracking</li>
+        <li>✅ Arrow / Enter / Escape / Tab</li>
+        <li>✅ ARIA live region announcements</li>
+        <li>✅ Focus ring visible (3px)</li>
+        <li>✅ prefers-reduced-motion</li>
+        <li>✅ forced-colors (high contrast)</li>
+        <li>✅ Touch targets ≥ 44px</li>
+      </ul>
+    </div>
+
+    <div class="demo-card">
+      <h3>🔒 Security Properties</h3>
+      <ul style="font-size:13px; color:#374151; line-height:1.8; list-style:none; padding:0;">
+        <li>✅ Only pk_* key in browser</li>
+        <li>✅ No innerHTML with untrusted data</li>
+        <li>✅ URL validation (https/http only)</li>
+        <li>✅ No localStorage with sensitive data</li>
+        <li>✅ No admin API routes called</li>
+        <li>✅ Backend payloads not exposed in UI</li>
+        <li>✅ Telemetry: anonymous session ID only</li>
+        <li>✅ No cross-tenant data possible</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       Mobile viewport test note
+       ======================================================== -->
+  <div class="demo-card" style="margin-top: 24px;">
+    <h3>📱 Mobile Testing</h3>
+    <p style="font-size:13px; color:#6b7280;">Test at: 320px, 375px, 390px, 768px, 1280px+ viewport widths.</p>
+    <p style="font-size:13px; color:#6b7280; margin-top:8px;">Current viewport: <strong id="viewport-display"></strong></p>
+    <p style="font-size:13px; color:#6b7280; margin-top:4px;">Open DevTools → Device Toolbar to simulate mobile.</p>
+  </div>
+
+</main>
+
+<footer>
+  Mercury Search Widget SDK v2.0.0 · Demo Storefront · Not for production use
+</footer>
+
+<script type="module">
+// ================================================================
+// Demo page initialization scripts
+// ================================================================
+
+// 1. Programmatic mount (Demo 2)
+if (window.MercurySearch) {
+  window.MercurySearch.mount({
+    target: '#search-mount-target',
+    apiKey: 'pk_demo_replace_me',
+    endpoint: '',
+    placeholder: 'Search in overflow container…',
+    limit: 6,
+  });
+
+  // Demo 3: configure the <mercury-search> element
+  const customWidget = document.getElementById('custom-theme-widget');
+  if (customWidget) {
+    customWidget._mercuryConfig = {
+      apiKey: 'pk_demo_replace_me',
+      endpoint: '',
+      placeholder: 'Search (custom theme)…',
+      theme: 'auto',
+      limit: 8,
+      minLength: 2,
+      debounce: 200,
+    };
+    if (typeof customWidget.configure === 'function') {
+      customWidget.configure(customWidget._mercuryConfig);
+    }
+  }
+
+  // Demo 4: coexist mount
+  window.MercurySearch.mount({
+    target: '#coexist-mount-target',
+    apiKey: 'pk_demo_replace_me',
+    placeholder: 'Widget coexisting with host search…',
+    limit: 5,
+  });
+}
+
+// 2. Event telemetry log
+const eventLog = document.getElementById('event-log');
+function logEvent(name, detail) {
+  const line = `[${new Date().toISOString().slice(11,19)}] ${name}: ${JSON.stringify(detail)}\n`;
+  if (eventLog.textContent === 'Waiting for events…\n') eventLog.textContent = '';
+  eventLog.textContent += line;
+  eventLog.scrollTop = eventLog.scrollHeight;
+}
+
+document.addEventListener('mercury:result-selected', (e) => {
+  logEvent('result-selected', { title: e.detail?.product?.title, position: e.detail?.position });
+});
+
+// 3. Layout Shift measurement
+const clsDisplay = document.getElementById('cls-display');
+let clsValue = 0;
+if ('PerformanceObserver' in window) {
+  try {
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (!entry.hadRecentInput) {
+          clsValue += entry.value;
+          clsDisplay.textContent = `CLS: ${clsValue.toFixed(4)} ${clsValue < 0.1 ? '✅ Good' : clsValue < 0.25 ? '⚠️ Needs work' : '❌ Poor'}`;
+        }
+      }
+    });
+    observer.observe({ type: 'layout-shift', buffered: true });
+  } catch {
+    clsDisplay.textContent = 'CLS: API not supported in this browser';
+  }
+}
+
+// 4. Viewport display
+const vp = document.getElementById('viewport-display');
+function updateVP() {
+  vp.textContent = `${window.innerWidth}×${window.innerHeight}px`;
+}
+updateVP();
+window.addEventListener('resize', updateVP);
+</script>
+
+</body>
+</html>

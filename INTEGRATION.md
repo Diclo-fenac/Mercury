@@ -1,16 +1,20 @@
-# Mercury Widget Integration
+# Mercury Widget – Quick Integration Reference
 
-Copy and paste this snippet into your website's `<head>` or `<body>` tag:
+For complete documentation, see:
+- [WIDGET_INTEGRATION.md](./WIDGET_INTEGRATION.md) — Installation guide
+- [WIDGET_CONFIGURATION.md](./WIDGET_CONFIGURATION.md) — All configuration options
+- [WIDGET_SECURITY.md](./WIDGET_SECURITY.md) — Security guide (read before deploying)
+- [WIDGET_EVENTS.md](./WIDGET_EVENTS.md) — Event hooks and telemetry
+
+## Quickstart
 
 ```html
-<script src="http://localhost:8000/widget/mercury-search.min.js"></script>
-<script>
-  window.addEventListener('load', () => {
-    MercurySearch.init({
-      apiKey: 'pk_YOUR_PUBLIC_SEARCH_KEY',
-      apiBase: 'http://localhost:8000',
-      selector: '.search-input'
-    });
-  });
+<script
+  src="https://your-mercury-instance.example/widget/mercury-widget.min.js"
+  data-api-key="pk_your_public_search_key"
+  data-endpoint="https://your-mercury-instance.example"
+  defer>
 </script>
 ```
+
+> ⚠️ **Never** embed a private (`sk_*`) key in storefront code. See [WIDGET_SECURITY.md](./WIDGET_SECURITY.md).

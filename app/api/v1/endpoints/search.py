@@ -5,7 +5,7 @@ Maintains compatibility with /api/v1/search/... endpoints
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -66,9 +66,10 @@ async def public_chat(
     except Exception:
         return {"success": False, "answer": "I'm sorry, I cannot process your request right now."}
 
-@router.post("/", response_model=SearchResult, deprecated=True)
+@router.post("", response_model=SearchResult, deprecated=True)
 async def search_products(
     request: SearchRequest,
+    http_request: Request,
     background_tasks: BackgroundTasks,
     tenant: TenantContext = Depends(get_tenant_context),
     container = Depends(get_container_dependency)
@@ -139,6 +140,12 @@ async def search_products(
                 amount=1.0,
                 member=request.query.lower().strip()
             )
+            
+            # --- Activation Metric (Live Deployment Tracking) ---
+            origin = http_request.headers.get("origin", "")
+            if origin and not any(local in origin for local in ["localhost", "127.0.0.1", "0.0.0.0"]):
+                activation_key = f"tenant:{tenant.organization_id}:live_searches"
+                background_tasks.add_task(cache.incr, activation_key)
 
         return SearchResult(
             query=request.query,
@@ -152,10 +159,10 @@ async def search_products(
             }
         )
     except Exception as e:
-        logger.error(f"Search failed: {str(e)}", exc_info=True)
+        logger.error(f"Search failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Search failed: {str(e)}"
+            detail="Search failed due to an internal server error"
         )
 
 
@@ -195,9 +202,10 @@ async def get_search_suggestions(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get suggestions: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get suggestions: {str(e)}"
+            detail="Failed to get suggestions due to an internal server error"
         )
 
 
@@ -237,9 +245,10 @@ async def get_trending_searches(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get trending searches: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get trending searches: {str(e)}"
+            detail="Failed to get trending searches due to an internal server error"
         )
 
 
@@ -276,9 +285,10 @@ async def get_popular_searches(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get popular searches: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get popular searches: {str(e)}"
+            detail="Failed to get popular searches due to an internal server error"
         )
 
 
@@ -325,7 +335,8 @@ async def search_by_image_legacy(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Image search failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Image search failed: {str(e)}"
+            detail="Image search failed due to an internal server error"
         )

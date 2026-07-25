@@ -108,7 +108,7 @@ class TypesenseClient(SearchAdapter):
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None,
-                lambda: self.client.collections[collection].synonyms[synonym_id].upsert(mapping)
+                lambda: self.client.collections[collection].synonyms.upsert(synonym_id, mapping)
             )
             return True
         except Exception as e:
@@ -176,6 +176,8 @@ class TypesenseClient(SearchAdapter):
         page: int = 1,
         num_typos: int = 2,
         facet_by: Optional[str] = None,
+        pinned_hits: Optional[str] = None,
+        hidden_hits: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Search documents with fuzzy/hybrid matching"""
         try:
@@ -196,6 +198,10 @@ class TypesenseClient(SearchAdapter):
                 search_params['sort_by'] = sort_by
             if facet_by:
                 search_params['facet_by'] = facet_by
+            if pinned_hits:
+                search_params['pinned_hits'] = pinned_hits
+            if hidden_hits:
+                search_params['hidden_hits'] = hidden_hits
 
             if vector_query:
                 search_params['vector_query'] = vector_query

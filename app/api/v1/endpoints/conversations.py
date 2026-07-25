@@ -2,9 +2,12 @@
 Conversation Endpoints
 Conversation management and history
 """
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+
+logger = logging.getLogger(__name__)
 
 from app.api.dependencies import PaginationParams, get_container_dependency, require_auth
 from app.models.requests import ConversationCreate
@@ -67,9 +70,10 @@ async def get_user_conversations(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get conversations: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get conversations: {str(e)}"
+            detail="Failed to get conversations due to an internal server error"
         )
 
 @router.get("/{conversation_id}", response_model=ConversationDetailResponse)
@@ -118,9 +122,10 @@ async def get_conversation_details(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get conversation: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get conversation: {str(e)}"
+            detail="Failed to get conversation due to an internal server error"
         )
 
 @router.post("/")
@@ -170,9 +175,10 @@ async def create_conversation(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to create conversation: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create conversation: {str(e)}"
+            detail="Failed to create conversation due to an internal server error"
         )
 
 @router.delete("/{conversation_id}")
@@ -219,7 +225,8 @@ async def delete_conversation(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to delete conversation: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete conversation: {str(e)}"
+            detail="Failed to delete conversation due to an internal server error"
         )

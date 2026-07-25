@@ -8,7 +8,7 @@ from asyncio import CancelledError, create_task, sleep
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
@@ -104,6 +104,9 @@ def create_app() -> FastAPI:
     
     app.add_middleware(VersioningMiddleware)
     
+    from app.middleware.security_headers import SecurityHeadersMiddleware
+    app.add_middleware(SecurityHeadersMiddleware)
+    
     # Add global exception handler
     from app.middleware.error_handler import global_exception_handler
     app.add_exception_handler(Exception, global_exception_handler)
@@ -125,20 +128,59 @@ def create_app() -> FastAPI:
     if not os.path.exists(widget_path):
         widget_path = os.path.abspath("widget")
     if os.path.exists(dashboard_path):
-        app.mount("/dashboard/static", StaticFiles(directory=dashboard_path), name="dashboard_static")
+        app.mount("/assets", StaticFiles(directory=os.path.join(dashboard_path, "assets")), name="dashboard_assets")
         
+        @app.get("/dashboard/{full_path:path}", include_in_schema=False)
         @app.get("/dashboard", include_in_schema=False)
-        async def serve_dashboard():
-            return FileResponse(os.path.join(dashboard_path, "index.html"))
+        async def serve_dashboard(full_path: str = ""):
+            if full_path == "demo":
+                return FileResponse(os.path.join(dashboard_path, "demo.html"))
+            return FileResponse(
+                os.path.join(dashboard_path, "index.html"),
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                }
+            )
             
         @app.get("/dashboard/demo", include_in_schema=False)
         async def serve_demo():
-            return FileResponse(os.path.join(dashboard_path, "demo.html"))
+            return FileResponse(
+                os.path.join(dashboard_path, "demo.html"),
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                }
+            )
 
     if settings.MCP_ENABLED:
         from app.mcp.server import get_mcp_app
         app.mount("/api/v1/mcp", get_mcp_app())
     
+    # Serve widget test/demo page with real API key injected server-side.
+    # Must be registered BEFORE the StaticFiles mount so it takes priority.
+    if os.path.exists(widget_path):
+        test_page_path = os.path.join(widget_path, "test-page.html")
+
+        @app.get("/widget/test-page", include_in_schema=False)
+        async def serve_widget_test_page(req: "Request") -> "Response":
+            from fastapi.responses import HTMLResponse
+            import os as _os
+
+            # MERCURY_WIDGET_TEST_KEY must be set in .env or environment
+            api_key = _os.environ.get("MERCURY_WIDGET_TEST_KEY", "")
+            origin = str(req.base_url).rstrip("/")
+
+            if os.path.exists(test_page_path):
+                with open(test_page_path, "r") as f:
+                    html = f.read()
+                html = html.replace("{{API_KEY}}", api_key).replace("{{ENDPOINT}}", origin)
+                return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+            from fastapi.responses import Response as Resp
+            return Resp("Test page not found", status_code=404)
+
     # Serve static widget scripts
     if os.path.exists(widget_path):
         app.mount("/widget", StaticFiles(directory=widget_path), name="widget")
@@ -207,6 +249,16 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health():
         return {"status": "healthy"}
+
+    @app.get("/health/live")
+    async def health_live():
+        return {"status": "alive"}
+
+    @app.get("/health/ready")
+    async def health_ready(response: Response):
+        from app.api.v1.endpoints.health import readiness_check
+        container = get_container()
+        return await readiness_check(response=response, container=container)
 
     @app.get("/metrics")
     async def metrics():
