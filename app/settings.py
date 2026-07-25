@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     MERCURY_MODE: str = Field(default="standard", alias="MERCURY_MODE")
     
     # Security
-    SECRET_KEY: str = Field(alias="SECRET_KEY")
+    SECRET_KEY: str = Field(default="dev_secret_key_mercury_v1_change_in_production_9999", alias="SECRET_KEY")
     
     # Google Cloud & AI
     GOOGLE_API_KEY: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")

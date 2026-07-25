@@ -6,8 +6,8 @@ Seeds real product data into Postgres for testing
 import asyncio
 import sys
 from datetime import datetime
-from uuid import UUID
 from pathlib import Path
+from uuid import UUID
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -229,7 +229,8 @@ class ProductSeeder:
             
             async with self.db.async_session() as session:
                 from sqlalchemy import select
-                from app.domain.tenants.models import Organization, Catalog, CatalogItem
+
+                from app.domain.tenants.models import Catalog, CatalogItem, Organization
                 
                 # Ensure default organization exists
                 org = await session.get(Organization, org_uuid)
@@ -322,6 +323,7 @@ class ProductSeeder:
             
             async with self.db.async_session() as session:
                 from sqlalchemy import select
+
                 from app.domain.tenants.models import CatalogItem
                 res = await session.execute(select(CatalogItem).limit(20))
                 items = res.scalars().all()

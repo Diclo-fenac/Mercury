@@ -30,7 +30,7 @@ fi
 
 # 3. Search test
 echo "3. Testing Search API..."
-SEARCH_RESP=$(curl -s -X POST http://localhost:8000/api/v1/search/ \
+SEARCH_RESP=$(curl -s -L -X POST http://localhost:8000/api/v1/search \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $SEARCH_KEY" \
   -d '{"query": "laptop"}')

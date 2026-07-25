@@ -20,10 +20,10 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8000, alias="PORT")
     
     # Security
-    SECRET_KEY: str = Field(alias="SECRET_KEY")
+    SECRET_KEY: str = Field(default="dev_secret_key_mercury_v1_change_in_production_9999", alias="SECRET_KEY")
     
     # Google Cloud & AI
-    GOOGLE_API_KEY: str = Field(alias="GOOGLE_API_KEY")
+    GOOGLE_API_KEY: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
     GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(default=None, alias="GOOGLE_APPLICATION_CREDENTIALS")
     

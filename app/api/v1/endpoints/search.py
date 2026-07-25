@@ -67,6 +67,7 @@ async def public_chat(
         return {"success": False, "answer": "I'm sorry, I cannot process your request right now."}
 
 @router.post("", response_model=SearchResult, deprecated=True)
+@router.post("/", response_model=SearchResult, include_in_schema=False)
 async def search_products(
     request: SearchRequest,
     http_request: Request,
