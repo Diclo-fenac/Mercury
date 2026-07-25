@@ -49,6 +49,8 @@ class TenantService:
             # 2. Create default TenantConfig
             config = TenantConfig(
                 organization_id=org.id,
+                has_ingested_catalog=False,
+                has_merchandising_rules=False,
                 enable_semantic=True,
                 enable_personalization=False,
                 enable_image_search=False,

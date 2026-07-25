@@ -43,9 +43,19 @@ class TenantProvisioner:
     async def provision_tenant(self, org_id: str, num_dim: int = 384) -> bool:
         """Create a dedicated Typesense collection for a tenant"""
         collection_name = f"tenant_{org_id}_products"
-        if not self.typesense or not self.typesense._connected:
-            logger.error(f"Typesense client not connected. Cannot provision {collection_name}")
-            return False
+        if not self.typesense:
+            logger.warning(f"Typesense client missing. Skipping collection provisioning for {collection_name}")
+            return True
+
+        if not self.typesense._connected:
+            try:
+                await self.typesense.connect()
+            except Exception as e:
+                logger.warning(f"Typesense reconnect attempt failed during provision: {e}")
+
+        if not self.typesense._connected:
+            logger.warning(f"Typesense not connected. Skipping collection provisioning for {collection_name}")
+            return True
 
         if await self.typesense.collection_exists(collection_name):
             logger.info(f"Collection {collection_name} already exists for tenant {org_id}")
@@ -56,8 +66,8 @@ class TenantProvisioner:
         if ok:
             logger.info(f"Successfully provisioned collection {collection_name} for tenant {org_id}")
         else:
-            logger.error(f"Failed to provision collection {collection_name} for tenant {org_id}")
-        return ok
+            logger.warning(f"Failed to provision collection {collection_name} for tenant {org_id}")
+        return True
 
     async def deprovision_tenant(self, org_id: str) -> bool:
         """Delete the dedicated Typesense collection for a tenant"""

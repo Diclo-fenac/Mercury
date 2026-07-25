@@ -266,8 +266,8 @@ class TenantConfig(Base):
     __tablename__ = 'tenant_configs'
 
     organization_id = Column(UUID(as_uuid=True), ForeignKey('organizations.id', ondelete='CASCADE'), primary_key=True)
-    has_ingested_catalog = Column(Boolean, server_default='false', nullable=False)
-    has_merchandising_rules = Column(Boolean, server_default='false', nullable=False)
+    has_ingested_catalog = Column(Boolean, default=False, server_default='false', nullable=False)
+    has_merchandising_rules = Column(Boolean, default=False, server_default='false', nullable=False)
     enable_semantic = Column(Boolean, server_default='true')
     enable_personalization = Column(Boolean, server_default='false')
     enable_image_search = Column(Boolean, server_default='false')

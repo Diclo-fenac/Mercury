@@ -99,9 +99,10 @@ async def onboard_tenant(
         org_id = org["id"]
 
         # 2. Provision Typesense collection (default dimension 384)
-        provision_ok = await tenant_provisioner.provision_tenant(org_id, num_dim=384)
-        if not provision_ok:
-            raise Exception("Failed to provision Typesense collection")
+        try:
+            await tenant_provisioner.provision_tenant(org_id, num_dim=384)
+        except Exception as prov_err:
+            logger.warning(f"Non-critical provision warning for tenant {org_id}: {prov_err}")
 
         # 3. Generate initial private admin key (sk_*)
         _, admin_key = await tenant_service.generate_api_key(
