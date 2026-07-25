@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system .[dev]
+          uv sync --extra dev
 
       - name: Lint
         run: uv run ruff check .
@@ -41,7 +41,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system .[dev]
+          uv sync --extra dev
 
       - name: Run tests
         run: uv run pytest tests/
