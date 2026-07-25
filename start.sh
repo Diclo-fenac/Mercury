@@ -627,7 +627,7 @@ fi
 # Start uvicorn in background
 log_info "Launching FastAPI on port 8000..."
 VENV_DIR="$PROJECT_ROOT/.venv"
-nohup "$VENV_DIR/bin/python" -m uvicorn main:app \
+nohup "$VENV_DIR/bin/python" -m uvicorn app.main:app \
     --host 0.0.0.0 \
     --port 8000 \
     --reload \

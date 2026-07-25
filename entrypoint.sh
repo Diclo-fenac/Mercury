@@ -14,7 +14,7 @@ echo "Starting Uvicorn Server with multi-core workers..."
 WORKERS=${WORKERS:-2}
 BACKLOG=${BACKLOG:-2048}
 LIMIT_CONCURRENCY=${LIMIT_CONCURRENCY:-1000}
-exec uvicorn main:app \
+exec uvicorn app.main:app \
   --host 0.0.0.0 \
   --port 8000 \
   --workers "$WORKERS" \
