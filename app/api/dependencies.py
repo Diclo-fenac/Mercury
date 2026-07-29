@@ -140,14 +140,20 @@ async def require_admin(
     return current_user
 
 
+import asyncio
 import hashlib
 import time
-import asyncio
 from collections import defaultdict
 
 # Simple in-memory rate limiter (in production, use Redis)
 _RATE_LIMITS = defaultdict(list)
-_RATE_LIMIT_LOCK = asyncio.Lock()
+_RATE_LIMIT_LOCK = None
+
+def get_rate_limit_lock():
+    global _RATE_LIMIT_LOCK
+    if _RATE_LIMIT_LOCK is None:
+        _RATE_LIMIT_LOCK = asyncio.Lock()
+    return _RATE_LIMIT_LOCK
 
 async def check_rate_limit(key: str, limit: int = 60, window: int = 60, cache=None) -> bool:
     """Simple rate limiting using token bucket / sliding window"""
@@ -155,7 +161,7 @@ async def check_rate_limit(key: str, limit: int = 60, window: int = 60, cache=No
         return await cache.allow_rate_limit(key, limit, window)
         
     now = time.time()
-    async with _RATE_LIMIT_LOCK:
+    async with get_rate_limit_lock():
         # Clean up old timestamps
         _RATE_LIMITS[key] = [t for t in _RATE_LIMITS[key] if now - t < window]
 

@@ -19,8 +19,8 @@ class CatalogIndexWorker:
         outcomes: List[Dict[str, Any]] = []
         
         # Group events by collection for bulk operations
-        from collections import defaultdict
         import asyncio
+        from collections import defaultdict
         
         deletes = []
         upsert_events = []
