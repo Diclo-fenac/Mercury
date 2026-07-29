@@ -22,7 +22,7 @@ async def dashboard_websocket_endpoint(websocket: WebSocket):
     container = get_container()
     redis_client = container.get("redis")
     
-    if not await check_rate_limit(f"ws:{client_ip}", limit=10, window=60, cache=redis_client):
+    if not await check_rate_limit(f"ws:{client_ip}", limit=1000, window=60, cache=redis_client):
         await websocket.close(code=1008, reason="Too many connection attempts")
         return
     

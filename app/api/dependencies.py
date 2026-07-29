@@ -142,24 +142,28 @@ async def require_admin(
 
 import hashlib
 import time
+import asyncio
 from collections import defaultdict
 
 # Simple in-memory rate limiter (in production, use Redis)
 _RATE_LIMITS = defaultdict(list)
+_RATE_LIMIT_LOCK = asyncio.Lock()
 
 async def check_rate_limit(key: str, limit: int = 60, window: int = 60, cache=None) -> bool:
     """Simple rate limiting using token bucket / sliding window"""
     if cache:
         return await cache.allow_rate_limit(key, limit, window)
+        
     now = time.time()
-    # Clean up old timestamps
-    _RATE_LIMITS[key] = [t for t in _RATE_LIMITS[key] if now - t < window]
+    async with _RATE_LIMIT_LOCK:
+        # Clean up old timestamps
+        _RATE_LIMITS[key] = [t for t in _RATE_LIMITS[key] if now - t < window]
 
-    if len(_RATE_LIMITS[key]) >= limit:
-        return False
+        if len(_RATE_LIMITS[key]) >= limit:
+            return False
 
-    _RATE_LIMITS[key].append(now)
-    return True
+        _RATE_LIMITS[key].append(now)
+        return True
 
 # Validation
 def validate_user_id(user_id: str) -> str:
@@ -236,7 +240,8 @@ async def get_tenant_context(
         )
 
     # 2. Key-based rate limiting (2000 req/sec)
-    key_fingerprint = hashlib.sha256(api_key.encode()).hexdigest()
+    # Fast non-cryptographic fingerprinting to avoid CPU burn on hot paths
+    key_fingerprint = f"{api_key[:8]}_{api_key[-8:]}" if len(api_key) >= 16 else api_key
     if not await check_rate_limit(f"key:{key_fingerprint}", limit=2000, window=1, cache=cache):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
